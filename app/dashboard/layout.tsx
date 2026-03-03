@@ -6,7 +6,7 @@ import { Sidebar } from '@/components/dashboard/Sidebar';
 import { BottomNav } from '@/components/dashboard/BottomNav';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
-import { FirebaseAccessRepository } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
+import { getAccessRepository } from '@/lib/container';
 
 export default function DashboardLayout({
   children,
@@ -29,7 +29,7 @@ export default function DashboardLayout({
       }
 
       try {
-        const accessRepo = new FirebaseAccessRepository();
+        const accessRepo = getAccessRepository();
         const hasAccess = await accessRepo.hasAdminAccess(user.email);
 
         if (!hasAccess) {

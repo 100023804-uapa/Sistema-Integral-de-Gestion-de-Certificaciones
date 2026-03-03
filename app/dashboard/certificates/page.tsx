@@ -4,11 +4,12 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlusCircle, Search, Filter, Loader2, FileText, Calendar, User, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { FirebaseCertificateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
+import { getCertificateRepository } from '@/lib/container';
 import { Certificate } from '@/lib/domain/entities/Certificate';
 
 export default function CertificatesPage() {
   const router = useRouter();
+  const repository = getCertificateRepository();
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +17,6 @@ export default function CertificatesPage() {
   useEffect(() => {
     const fetchCertificates = async () => {
       try {
-        const repository = new FirebaseCertificateRepository();
         const data = await repository.list();
         setCertificates(data);
       } catch (err) {

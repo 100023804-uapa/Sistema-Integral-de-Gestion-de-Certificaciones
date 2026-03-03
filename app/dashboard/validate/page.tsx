@@ -4,15 +4,14 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Search, QrCode, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { FirebaseCertificateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
+import { getCertificateRepository } from '@/lib/container';
 import { Certificate } from '@/lib/domain/entities/Certificate';
-
-const certificateRepo = new FirebaseCertificateRepository();
 
 type ValidationStatus = 'idle' | 'valid' | 'invalid' | 'error';
 
 export default function ValidatePage() {
   const router = useRouter();
+  const certificateRepo = getCertificateRepository();
   const [folio, setFolio] = useState('');
   const [status, setStatus] = useState<ValidationStatus>('idle');
   const [loading, setLoading] = useState(false);

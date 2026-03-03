@@ -3,6 +3,9 @@ import { FirebaseCertificateRepository } from '@/lib/infrastructure/repositories
 import { FirebaseStudentRepository } from '@/lib/infrastructure/repositories/FirebaseStudentRepository';
 import { FirebaseTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseTemplateRepository';
 
+export type { ProgramStat } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
+export type { AccessRequest, AccessUser } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
+
 import { CreateCertificate } from '@/lib/application/use-cases/CreateCertificate';
 import { GenerateFolio } from '@/lib/application/use-cases/GenerateFolio';
 

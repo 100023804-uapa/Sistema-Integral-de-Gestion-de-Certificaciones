@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { FirebaseAccessRepository } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
+import { getAccessRepository } from '@/lib/container';
 import { useRouter } from 'next/navigation';
 import { Toaster, toast } from 'sonner';
 import Link from 'next/link';
@@ -35,7 +35,7 @@ export default function RegisterAdminPage() {
 
     try {
       // 1. Verify Whitelist
-      const accessRepo = new FirebaseAccessRepository();
+      const accessRepo = getAccessRepository();
       const isAllowed = await accessRepo.hasAdminAccess(email);
 
       if (!isAllowed) {

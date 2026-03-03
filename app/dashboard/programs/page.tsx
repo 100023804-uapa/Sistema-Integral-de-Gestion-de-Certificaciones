@@ -2,9 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Loader2, GraduationCap, Award, Search, BookOpen, AlertCircle } from 'lucide-react';
-import { FirebaseCertificateRepository, ProgramStat } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
-
-const certRepo = new FirebaseCertificateRepository();
+import { getCertificateRepository, type ProgramStat } from '@/lib/container';
 
 interface ProgramCardData {
     name: string;
@@ -14,6 +12,7 @@ interface ProgramCardData {
 }
 
 export default function ProgramsPage() {
+    const certRepo = getCertificateRepository();
     const [loading, setLoading] = useState(true);
     const [programs, setPrograms] = useState<ProgramCardData[]>([]);
     const [searchTerm, setSearchTerm] = useState('');

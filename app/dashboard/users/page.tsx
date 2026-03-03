@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React, { useEffect, useState } from 'react';
-import { FirebaseAccessRepository, AccessRequest, AccessUser } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
+import { getAccessRepository, type AccessRequest, type AccessUser } from '@/lib/container';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -16,7 +16,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const accessRepo = new FirebaseAccessRepository();
+  const accessRepo = getAccessRepository();
 
   const loadData = async () => {
     try {

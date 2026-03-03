@@ -4,13 +4,12 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlusCircle, Search, Filter, Loader2, User, FileText, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { FirebaseStudentRepository } from '@/lib/infrastructure/repositories/FirebaseStudentRepository';
+import { getStudentRepository } from '@/lib/container';
 import { Student } from '@/lib/domain/entities/Student';
-
-const studentRepo = new FirebaseStudentRepository();
 
 export default function GraduatesPage() {
   const router = useRouter();
+  const studentRepo = getStudentRepository();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

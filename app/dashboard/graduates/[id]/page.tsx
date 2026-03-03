@@ -3,18 +3,17 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, User, Mail, GraduationCap, Calendar, FileText, Loader2, Award, AlertCircle } from 'lucide-react';
-import { FirebaseStudentRepository } from '@/lib/infrastructure/repositories/FirebaseStudentRepository';
-import { FirebaseCertificateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
+import { getCertificateRepository, getStudentRepository } from '@/lib/container';
 import { Student } from '@/lib/domain/entities/Student';
 import { Certificate } from '@/lib/domain/entities/Certificate';
-
-const studentRepo = new FirebaseStudentRepository();
-const certRepo = new FirebaseCertificateRepository();
 
 export default function GraduateDetailsPage() {
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
+
+    const studentRepo = getStudentRepository();
+    const certRepo = getCertificateRepository();
 
     const [student, setStudent] = useState<Student | null>(null);
     const [certificates, setCertificates] = useState<Certificate[]>([]);

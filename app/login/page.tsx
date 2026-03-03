@@ -11,14 +11,14 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { APP_VERSION } from '@/lib/config/changelog';
 import { ChangelogModal } from '@/components/ui/ChangelogModal';
-import { FirebaseAccessRepository } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
+import { getAccessRepository } from '@/lib/container';
 
 type LoginRole = 'admin' | 'student';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const accessRepo = new FirebaseAccessRepository();
+  const accessRepo = getAccessRepository();
   const [role, setRole] = useState<LoginRole>('student');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
