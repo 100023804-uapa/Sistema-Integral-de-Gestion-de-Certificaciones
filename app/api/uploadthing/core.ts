@@ -3,6 +3,8 @@ import { UploadThingError } from "uploadthing/server";
 
 const f = createUploadthing();
 
+const SESSION_COOKIE = "session";
+
 // FileRouter for your app, can contain multiple FileRoutes
 export const ourFileRouter = {
     // Define as many FileRoutes as you like, each with a unique routeSlug
@@ -14,7 +16,17 @@ export const ourFileRouter = {
             // const user = await auth(req);
             // if (!user) throw new UploadThingError("Unauthorized");
             // return { userId: user.id };
-            return { userId: "user" }; // TODO: Add proper auth check
+            const cookieHeader = req.headers.get("cookie") ?? "";
+            const hasSession = cookieHeader
+                .split(";")
+                .map((part) => part.trim())
+                .some((part) => part === `${SESSION_COOKIE}=1`);
+
+            if (!hasSession) {
+                throw new UploadThingError("Unauthorized");
+            }
+
+            return { userId: "session" };
         })
         .onUploadComplete(async ({ metadata, file }) => {
             // This code RUNS ON YOUR SERVER after upload

@@ -6,38 +6,68 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function userEmail() {
+      return request.auth.token.email;
+    }
+
+    function userEmailLower() {
+      return userEmail().lower();
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && userEmail() != null
+        && exists(/databases/$(database)/documents/access_users/$(userEmailLower()))
+        && get(/databases/$(database)/documents/access_users/$(userEmailLower())).data.role == 'admin'
+        && get(/databases/$(database)/documents/access_users/$(userEmailLower())).data.disabled != true;
+    }
+
     // Public verification flow relies on read access to certificates.
     match /certificates/{certificateId} {
       allow read: if true;
-      allow create, update: if isSignedIn();
+      allow create, update: if isAdmin();
       allow delete: if false;
     }
 
     match /students/{studentId} {
-      allow read, create, update: if isSignedIn();
+      allow read, create, update: if isAdmin();
       allow delete: if false;
     }
 
     match /templates/{templateId} {
-      allow read, create, update: if isSignedIn();
+      allow read, create, update: if isAdmin();
       allow delete: if false;
     }
 
     match /program_stats/{programId} {
-      allow read, create, update: if isSignedIn();
+      allow read, create, update: if isAdmin();
       allow delete: if false;
     }
 
     match /folio_counters/{counterId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isAdmin();
     }
 
     match /access_users/{userId} {
-      allow read, create, update, delete: if isSignedIn();
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /access_requests/{requestId} {
+      allow create: if true
+        && request.resource.id == requestId
+        && request.resource.data.email is string
+        && request.resource.data.name is string
+        && request.resource.data.reason is string
+        && request.resource.data.status == 'pending'
+        && requestId == request.resource.data.email.lower();
+
+      allow read, update, delete: if isAdmin();
     }
 
     match /programs/{programId} {
-      allow read, create, update: if isSignedIn();
+      allow read, create, update: if isAdmin();
       allow delete: if false;
     }
 
