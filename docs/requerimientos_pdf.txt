@@ -1,0 +1,383 @@
+
+
+--- PAGE 1 ---
+
+Escuela de Ingeniera y Tecnología 
+ 
+ 
+Proyecto: Pasantía 
+Unidad solicitante: Escuela de Ingeniería y Tecnología y Usuario Final  
+ 
+PROYECTO 
+1. Segmentación Institucional por Recinto 
+2. Clasificación por Área Académica 
+3. Tipología de Certificados 
+4. Flujo de Aprobación y Firma Digital 
+5. Control Administrativo (Pago y Documentación) 
+6. Historial del Participante y Verificación Pública 
+7. Dashboard Ejecutivo y Analítica 
+8. Seguridad, Auditoría y Gobernanza 
+ 
+PRODUCT BACKLOG (User Stories) 
+ÉPICA 1: Segmentación por Recinto 
+US-01: Parametrización de Recintos 
+Como administrador 
+Quiero registrar y gestionar recintos 
+Para segmentar la emisión de certificados por sede 
+Criterios de aceptación: 
+• CRUD de recintos. 
+• Campo obligatorio recinto_id en certificado. 
+• No permitir emisión sin recinto asociado. 
+US-02: Filtro por Recinto 
+Como usuario administrativo 
+Quiero filtrar certificados por recinto 
+Para visualizar estadísticas independientes 
+Criterios de aceptación: 
+• Filtro en listado. 
+• Métrica en dashboard. 
+• Reporte exportable por recinto. 
+ 
+
+--- PAGE 2 ---
+
+Escuela de Ingeniera y Tecnología 
+ 
+ 
+ 
+ÉPICA 2: Clasificación por Área Académica 
+US-03: Parametrización de Áreas 
+Como administrador 
+Quiero definir áreas académicas 
+Para categorizar certificados 
+ 
+US-04: Certificados por Área 
+Como coordinador académico 
+Quiero asignar un área al certificado 
+Para generar reportes históricos por escuela 
+Criterios: 
+• Campo obligatorio area_academica. 
+• Visualización agrupada en dashboard. 
+• Historial del participante filtrable por área. 
+ 
+ÉPICA 3: Tipología de Certificados 
+US-05: Configuración de Tipos 
+Como administrador 
+Quiero definir tipos (horizontal, vertical, institucional macro) 
+Para diferenciar estructuras de emisión 
+Criterios: 
+• Selector de tipo. 
+• Plantilla diferenciada por tipo. 
+• Certificado institucional macro solo genera estructura sin firma automática. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+--- PAGE 3 ---
+
+Escuela de Ingeniera y Tecnología 
+ 
+ 
+ÉPICA 4: Flujo de Aprobación y Firma 
+US-06: Flujo de Estados 
+Como sistema 
+Quiero manejar estados del certificado 
+Para controlar su ciclo de vida 
+Estados mínimos: 
+• Borrador 
+• En espera de 
+verificación 
+• Verificado 
+• En espera de firma 
+• Firmado 
+• Emitido 
+• Disponible 
+• Rechazado 
+• Bloqueado por 
+pago 
+• Bloqueado por 
+documentación 
+• Bloqueado 
+administrativo 
+ 
+US-07: Notificación a Firmante 
+Como autoridad académica 
+Quiero recibir notificación de certificados pendientes 
+Para aprobar su firma 
+Criterios: 
+• Notificación automática. 
+• Listado consolidado. 
+• Acción de aprobar/rechazar. 
+ 
+US-08: Firma Digital Controlada 
+Como sistema 
+Quiero habilitar firma solo tras aprobación 
+Para evitar firma fija incrustada 
+Criterios: 
+• Firma parametrizada por usuario. 
+• Registro en auditoría. 
+• No permitir generación con firma sin aprobación previa. 
+ 
+ 
+ 
+ 
+
+--- PAGE 4 ---
+
+Escuela de Ingeniera y Tecnología 
+ 
+ 
+ÉPICA 5: Control Administrativo (Pago y Documentación) 
+US-09: Validación Financiera 
+Como sistema 
+Quiero consultar estado financiero 
+Para bloquear certificados con pago pendiente 
+Criterios: 
+• Integración con sistema financiero. 
+• Validación en tiempo real. 
+• Cambio automático a “Bloqueado por pago”. 
+ 
+US-10: Validación Documental 
+Como sistema 
+Quiero verificar documentación pendiente 
+Para impedir visualización del certificado 
+Criterios: 
+• Integración con sistema académico. 
+• Cambio a “Bloqueado por documentación”. 
+ 
+US-11: Restricción de Visualización 
+Como participante 
+Quiero ver el estado del certificado 
+Pero no descargarlo si tengo pendientes 
+Criterios: 
+• Mostrar mensaje informativo. 
+• No mostrar PDF. 
+• Estado visible como “Pendiente de regularización”. 
+ 
+ÉPICA 6: Historial del Participante 
+US-12: Historial Filtrable 
+Como participante 
+Quiero visualizar mis certificados por área y estado 
+Para gestionar mi trayectoria académica 
+ 
+
+--- PAGE 5 ---
+
+Escuela de Ingeniera y Tecnología 
+ 
+ 
+ 
+US-13: Código de Verificación 
+Como tercero externo 
+Quiero validar un certificado con código único 
+Para confirmar su autenticidad 
+Criterios: 
+• Código hash único. 
+• Consulta pública. 
+• Mostrar datos esenciales. 
+• Indicar si está bloqueado. 
+ 
+ÉPICA 7: Dashboard Ejecutivo 
+US-14: Métricas Globales 
+Como directivo 
+Quiero ver estadísticas macro 
+Para tomar decisiones estratégicas 
+Indicadores: 
+• Total emitidos. 
+• Por recinto. 
+• Por área. 
+• Pendientes de firma. 
+• Bloqueados. 
+• Tendencia mensual. 
+ 
+US-15: Reportes Exportables 
+Como administrador 
+Quiero exportar reportes 
+Para análisis institucional 
+ 
+ 
+ 
+ 
+
+--- PAGE 6 ---
+
+Escuela de Ingeniera y Tecnología 
+ 
+ 
+ÉPICA 8: Seguridad y Auditoría 
+US-16: Registro de Auditoría 
+Como sistema 
+Quiero registrar cada transición de estado 
+Para garantizar trazabilidad 
+Criterios: 
+• Usuario. 
+• Fecha. 
+• Hora. 
+• Acción ejecutada. 
+US-17: Control de Roles 
+Como administrador 
+Quiero gestionar roles 
+Para limitar acciones según perfil 
+Roles mínimos: 
+• Coordinador 
+• Verificador 
+• Firmante 
+• Administrador 
+ 
+Priorización Sugerida (MVP) 
+Sprint 1 
+• Segmentación por recinto 
+• Áreas académicas 
+• Tipología de certificados 
+Sprint 2 
+• Flujo de estados 
+• Firma digital 
+• Control de roles 
+• Auditoría 
+Sprint 3 
+• Integración financiera 
+• Integración documental 
+• Bloqueos administrativos 
+Sprint 4 
+• Dashboard ejecutivo 
+• Verificación pública 
+• Reportes exportables 
+ 
+
+--- PAGE 7 ---
+
+Escuela de Ingeniera y Tecnología 
+ 
+ 
+Sprints Crum 
+Solicitante: Escuela de Ingeniería y Tecnología 
+Duración estimada:  
+Sprint:  
+Total:  Sprints 
+ Estructura Scrum 
+Roles 
+Product Owner (PO) 
+Representante designado por la Escuela de Ingeniería y Tecnología. 
+Responsable de priorización y validación funcional. 
+Scrum Master 
+Responsable de facilitar el proceso y remover impedimentos. 
+Development Team 
+• Backend 
+• Frontend 
+• QA 
+• DevOps 
+ Product Backlog Priorizado (Orden Estratégico) 
+1. Control de Roles 
+2. Segmentación por Recinto 
+3. Áreas Académicas 
+4. Flujo de Estados 
+5. Firma Digital Controlada 
+6. Registro de Auditoría 
+7. Validación Financiera 
+8. Validación Documental 
+9. Restricción de Visualización 
+10. Historial del Participante 
+11. Código de Verificación 
+12. Dashboard Ejecutivo 
+ 
+ 
+
+--- PAGE 8 ---
+
+Escuela de Ingeniera y Tecnología 
+ 
+ 
+ 
+ PLANIFICACIÓN DE SPRINTS 
+ 
+SPRINT 1 – Gobernanza Base y Estructura Institucional 
+Duración:  
+Objetivo: Construir la base estructural del sistema. 
+Historias Incluidas: 
+• US-17 Control de Roles 
+• US-01 Parametrización de Recintos 
+• US-03 Parametrización de Áreas 
+• US-05 Configuración de Tipos de Certificado 
+Entregables: 
+• CRUD de recintos. 
+• CRUD de áreas académicas. 
+• Gestión de tipos de certificados. 
+• Sistema de roles funcional. 
+• Base de datos estructurada. 
+ 
+SPRINT 2 – Flujo de Vida del Certificado y Seguridad 
+Duración:  
+Objetivo: Implementar ciclo completo de estados y firma institucional segura. 
+Historias Incluidas: 
+• US-06 Implementación de Estados 
+• US-08 Firma Digital Controlada 
+• US-07 Notificación a Firmante 
+• US-16 Registro de Auditoría 
+Entregables: 
+• Máquina de estados funcional. 
+• Firma habilitada solo tras aprobación. 
+• Notificaciones automáticas. 
+• Log de auditoría completo. 
+
+--- PAGE 9 ---
+
+Escuela de Ingeniera y Tecnología 
+ 
+ 
+ 
+ 
+SPRINT 3 – Control Administrativo (Bloqueos) 
+Duración: 2 semanas 
+Objetivo: Integrar validaciones financieras y documentales. 
+Historias Incluidas: 
+• US-09 Validación Financiera 
+• US-10 Validación Documental 
+• US-11 Restricción de Visualización 
+Entregables: 
+• Integración con sistema financiero. 
+• Integración con sistema académico. 
+• Estados de bloqueo automáticos. 
+• Mensajes visibles al participante. 
+• Imposibilidad de descarga con pendientes. 
+SPRINT 4 – Visibilidad Estratégica y Experiencia de Usuario 
+Duración: 2 semanas 
+Objetivo: Implementar monitoreo, historial y verificación pública. 
+Historias Incluidas: 
+• US-12 Historial Filtrable 
+• US-13 Código Único de Verificación 
+• US-14 Dashboard Macro 
+• US-15 Reportes Exportables 
+Entregables: 
+• Historial organizado por área y estado. 
+• Sistema público de verificación. 
+• Dashboard con métricas: 
+o Por recinto 
+o Por área 
+o Bloqueados 
+o Pendientes de firma 
+o Tendencia mensual 
+• Exportación de reportes. 
+
+--- PAGE 10 ---
+
+Escuela de Ingeniera y Tecnología 
+ 
+ 
+Definición de Hecho (Definition of Done) 
+• Código revisado (Code Review aprobado). 
+• Pruebas unitarias ejecutadas. 
+• Pruebas de integración aprobadas. 
+• Validación funcional por Product Owner. 
+• Registro en auditoría funcionando. 
+• Seguridad validada. 
+• No existen errores críticos abiertos. 
+ 
+ Métricas Scrum Sugeridas 
+• Velocidad del equipo (Story Points por Sprint). 
+• Burndown Chart. 
+• Tasa de defectos por Sprint. 
+• Tiempo promedio de aprobación de certificados. 
+• % de certificados bloqueados vs emitidos. 
