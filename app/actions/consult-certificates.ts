@@ -1,6 +1,6 @@
 'use server';
 
-import { FirebaseCertificateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
+import { getCertificateRepository } from '@/lib/container';
 import { Certificate } from '@/lib/domain/entities/Certificate';
 
 // DTO for the frontend
@@ -23,11 +23,7 @@ export async function consultCertificates(query: string): Promise<ConsultationRe
     }
 
     const searchTerm = query.trim();
-    // TODO: Use Dependency Injection container in the future.
-    // For now, checking environment to decide (defaulting to Firebase for production logic unless configured otherwise)
-    // But strictly, we should use the repository that connects to our data.
-    // Assuming Firebase is the source of truth.
-    const repository = new FirebaseCertificateRepository();
+    const repository = getCertificateRepository();
 
     try {
         const results: Certificate[] = [];

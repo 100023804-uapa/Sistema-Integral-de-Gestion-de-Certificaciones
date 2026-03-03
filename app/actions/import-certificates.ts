@@ -1,12 +1,11 @@
 'use server';
 
-import { FirebaseCertificateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
-import { FirebaseStudentRepository } from '@/lib/infrastructure/repositories/FirebaseStudentRepository';
+import { getCertificateRepository, getStudentRepository } from '@/lib/container';
 import { CreateCertificateDTO } from '@/lib/domain/entities/Certificate';
 import { CreateStudentDTO } from '@/lib/domain/entities/Student';
 
-const certificateRepo = new FirebaseCertificateRepository();
-const studentRepo = new FirebaseStudentRepository();
+const certificateRepo = getCertificateRepository();
+const studentRepo = getStudentRepository();
 
 export type ImportResult = {
     total: number;
