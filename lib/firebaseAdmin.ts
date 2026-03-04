@@ -9,7 +9,16 @@ function initAdmin() {
         throw new Error('Missing FIREBASE_SERVICE_ACCOUNT_KEY env var');
     }
 
-    const parsed = JSON.parse(serviceAccountJson);
+    console.log('🔍 FIREBASE_SERVICE_ACCOUNT_KEY length:', serviceAccountJson.length);
+    console.log('🔍 FIREBASE_SERVICE_ACCOUNT_KEY preview:', serviceAccountJson.substring(0, 100) + '...');
+
+    let parsed;
+    try {
+        parsed = JSON.parse(serviceAccountJson);
+    } catch (error) {
+        console.error('❌ Error parsing FIREBASE_SERVICE_ACCOUNT_KEY:', error);
+        throw new Error('Invalid FIREBASE_SERVICE_ACCOUNT_KEY JSON');
+    }
 
     return admin.initializeApp({
         credential: admin.credential.cert(parsed),
