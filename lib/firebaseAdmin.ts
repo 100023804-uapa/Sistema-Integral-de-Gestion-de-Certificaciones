@@ -3,12 +3,15 @@ import admin from 'firebase-admin';
 function initAdmin() {
     if (admin.apps.length > 0) return admin.app();
 
-    // Intentar leer la variable directamente o en Base64
-    let serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    // Intentar leer la variable Base64 primero, luego la directa
+    let serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64;
     
-    if (!serviceAccountJson && process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64) {
+    if (serviceAccountJson) {
         console.log('🔍 Decoding FIREBASE_SERVICE_ACCOUNT_KEY from Base64');
-        serviceAccountJson = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64, 'base64').toString('utf8');
+        serviceAccountJson = Buffer.from(serviceAccountJson, 'base64').toString('utf8');
+        console.log('✅ Base64 decoded successfully');
+    } else {
+        serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
     }
 
     if (!serviceAccountJson) {
