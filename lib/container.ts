@@ -1,13 +1,13 @@
-import { FirebaseAccessRepository } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
-import { FirebaseCertificateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
-import { FirebaseStudentRepository } from '@/lib/infrastructure/repositories/FirebaseStudentRepository';
-import { FirebaseTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseTemplateRepository';
+import { FirebaseAccessRepository, AccessUser, AccessRequest } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
+import { FirebaseCertificateRepository, ProgramStat } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
+import { FirebaseStudentRepository } from './infrastructure/repositories/FirebaseStudentRepository';
+import { FirebaseTemplateRepository } from './infrastructure/repositories/FirebaseTemplateRepository';
+import { CreateCertificate } from './application/use-cases/CreateCertificate';
+import { GenerateFolio } from './application/use-cases/GenerateFolio';
+import { QueryDocumentSnapshot } from 'firebase/firestore';
 
-export type { ProgramStat } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
-export type { AccessRequest, AccessUser } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
-
-import { CreateCertificate } from '@/lib/application/use-cases/CreateCertificate';
-import { GenerateFolio } from '@/lib/application/use-cases/GenerateFolio';
+// Re-exportar tipos para evitar imports de infraestructura en app/
+export type { ProgramStat, AccessUser, AccessRequest, QueryDocumentSnapshot };
 
 export function getAccessRepository() {
     return new FirebaseAccessRepository();

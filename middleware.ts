@@ -3,17 +3,31 @@ import type { NextRequest } from 'next/server';
 
 const SESSION_COOKIE = 'session';
 
-function hasValidSession(request: NextRequest): boolean {
-    return request.cookies.get(SESSION_COOKIE)?.value === '1';
+async function hasValidSession(request: NextRequest): Promise<boolean> {
+    const cookieValue = request.cookies.get(SESSION_COOKIE)?.value;
+    if (!cookieValue) return false;
+
+    try {
+        const verifyUrl = new URL('/api/auth/session/verify', request.url);
+        const res = await fetch(verifyUrl, {
+            headers: {
+                cookie: `${SESSION_COOKIE}=${cookieValue}`,
+            },
+        });
+
+        return res.ok;
+    } catch {
+        return false;
+    }
 }
 
 function isProtectedRoute(pathname: string): boolean {
     return pathname.startsWith('/dashboard') || pathname.startsWith('/admin');
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     const { pathname, search } = request.nextUrl;
-    const hasSession = hasValidSession(request);
+    const hasSession = await hasValidSession(request);
 
     if (isProtectedRoute(pathname) && !hasSession) {
         const loginUrl = new URL('/login', request.url);

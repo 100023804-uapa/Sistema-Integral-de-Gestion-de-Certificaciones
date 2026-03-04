@@ -26,8 +26,9 @@ export default function ReportsPage() {
     try {
       setLoading(true);
       setError('');
-      const data = await certRepo.list(500);
-      setCertificates(data);
+      // Evitar full scan: usar paginación y límite razonable
+      const result = await certRepo.listPaginated(undefined, 100);
+      setCertificates(result.data);
     } catch (err) {
       console.error('Error loading reports data:', err);
       setError('No se pudieron cargar los datos para reportes.');

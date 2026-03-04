@@ -15,6 +15,8 @@ import {
     Timestamp,
     updateDoc,
     where,
+    startAfter,
+    QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { Certificate, CertificateType, CreateCertificateDTO } from '../../domain/entities/Certificate';
 import { ICertificateRepository } from '../../domain/repositories/ICertificateRepository';
@@ -34,6 +36,7 @@ export interface ProgramStat {
 }
 
 export class FirebaseCertificateRepository implements ICertificateRepository {
+    private pageSize = 20;
 
     async create(data: CreateCertificateDTO): Promise<Certificate> {
         return this.save(data);
@@ -134,6 +137,28 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
         const q = query(collection(db, COLLECTION_NAME), orderBy('createdAt', 'desc'), limit(limitCount));
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map((item) => this.mapDocToEntity(item));
+    }
+
+    async listPaginated(cursor?: QueryDocumentSnapshot, pageSize: number = this.pageSize): Promise<{ data: Certificate[]; hasMore: boolean; lastVisible?: QueryDocumentSnapshot }> {
+        const q = cursor
+            ? query(
+                collection(db, COLLECTION_NAME),
+                orderBy('createdAt', 'desc'),
+                startAfter(cursor),
+                limit(pageSize)
+            )
+            : query(
+                collection(db, COLLECTION_NAME),
+                orderBy('createdAt', 'desc'),
+                limit(pageSize)
+            );
+
+        const querySnapshot = await getDocs(q);
+        const data = querySnapshot.docs.map((item) => this.mapDocToEntity(item));
+        const hasMore = querySnapshot.docs.length === pageSize;
+        const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+        return { data, hasMore, lastVisible };
     }
 
     async findAll(): Promise<Certificate[]> {

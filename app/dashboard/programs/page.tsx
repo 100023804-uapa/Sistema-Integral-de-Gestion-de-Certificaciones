@@ -31,11 +31,11 @@ export default function ProgramsPage() {
                 return;
             }
 
-            // Backward-compatible fallback: aggregate from recent certificates only.
-            const recent = await certRepo.list(500);
+            // Backward-compatible fallback: evitar full scan, usar paginación y límite razonable
+            const result = await certRepo.listPaginated(undefined, 200);
             const map = new Map<string, ProgramCardData>();
 
-            recent.forEach((cert) => {
+            result.data.forEach((cert) => {
                 const key = cert.academicProgram?.trim();
                 if (!key) return;
 

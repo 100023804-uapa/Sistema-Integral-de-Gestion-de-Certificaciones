@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlusCircle, Search, Filter, Loader2, User, FileText, FileSpreadsheet } from 'lucide-react';
+import { PlusCircle, Search, Filter, Loader2, User, FileText, FileSpreadsheet, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { getStudentRepository } from '@/lib/container';
+import { getStudentRepository, QueryDocumentSnapshot } from '@/lib/container';
 import { Student } from '@/lib/domain/entities/Student';
 
 export default function GraduatesPage() {
@@ -13,20 +13,43 @@ export default function GraduatesPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [hasMore, setHasMore] = useState(false);
+  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | undefined>();
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
     loadStudents();
   }, []);
 
-  const loadStudents = async () => {
+  const loadStudents = async (cursor?: QueryDocumentSnapshot, reset: boolean = false) => {
     try {
       setLoading(true);
-      const data = await studentRepo.list(50);
-      setStudents(data);
+      const result = await studentRepo.listPaginated(cursor);
+      if (reset) {
+        setStudents(result.data);
+      } else {
+        setStudents(prev => cursor ? [...prev, ...result.data] : result.data);
+      }
+      setHasMore(result.hasMore);
+      setLastVisible(result.lastVisible);
     } catch (error) {
       console.error("Error loading students:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (hasMore && lastVisible) {
+      loadStudents(lastVisible);
+      setPage(p => p + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (page > 0) {
+      loadStudents(undefined, true);
+      setPage(0);
     }
   };
 
@@ -158,6 +181,31 @@ export default function GraduatesPage() {
                     </tbody>
                 </table>
             </div>
+        )}
+
+        {/* Paginación */}
+        {!loading && students.length > 0 && (
+          <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-100">
+            <div className="text-sm text-gray-600">
+              Página {page + 1}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handlePrevPage}
+                disabled={page === 0}
+                className="px-3 py-1 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                <ChevronLeft size={16} /> Anterior
+              </button>
+              <button
+                onClick={handleNextPage}
+                disabled={!hasMore}
+                className="px-3 py-1 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                Siguiente <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>
