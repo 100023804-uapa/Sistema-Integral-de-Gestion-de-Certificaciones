@@ -16,5 +16,11 @@ function initAdmin() {
     });
 }
 
-export const adminApp = initAdmin();
-export const adminAuth = adminApp.auth();
+// Lazy initialization: solo se ejecuta en runtime, no en build
+export function getAdminApp() {
+    return initAdmin();
+}
+
+export function getAdminAuth() {
+    return getAdminApp().auth();
+}

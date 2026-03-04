@@ -1,19 +1,29 @@
 import { NextResponse } from 'next/server';
+import { getAdminAuth } from '@/lib/firebaseAdmin';
 
 const SESSION_COOKIE = 'session';
 
 export async function POST() {
-    const response = NextResponse.json({ success: true });
+    try {
+        const adminAuth = getAdminAuth();
+        
+        // Opcional: revocar todos los tokens del usuario si se desea
+        // await adminAuth.revokeRefreshTokens(uid);
 
-    response.cookies.set({
-        name: SESSION_COOKIE,
-        value: '',
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 0,
-    });
+        const response = NextResponse.json({ success: true });
 
-    return response;
+        // Borrar cookie
+        response.cookies.set(SESSION_COOKIE, '', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 0,
+        });
+
+        return response;
+    } catch (error) {
+        console.error('Logout session error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
 }
