@@ -7,7 +7,7 @@ import { ChevronLeft, Send, CheckCircle, AlertCircle, ShieldQuestion } from 'luc
 import Link from 'next/link';
 import { sendAdminRequestEmail } from '@/app/actions/send-email';
 import { Toaster, toast } from 'sonner';
-import { FirebaseAccessRepository } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
+import { getAccessRepository } from '@/lib/container';
 
 export default function RequestAccessPage() {
   const [email, setEmail] = useState('');
@@ -22,7 +22,7 @@ export default function RequestAccessPage() {
     
     try {
         // 1. Guardar en Firestore (Persistencia Principal)
-        const accessRepo = new FirebaseAccessRepository();
+        const accessRepo = getAccessRepository();
         await accessRepo.createAccessRequest({ email, name, reason });
 
         // 2. Intentar notificar por correo

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeft, User, Mail, Briefcase, Save, CheckCircle, AlertCircle, Phone, CreditCard } from 'lucide-react';
-import { FirebaseStudentRepository } from '@/lib/infrastructure/repositories/FirebaseStudentRepository';
+import { getStudentRepository } from '@/lib/container';
 import { CreateStudentDTO } from '@/lib/domain/entities/Student';
 
 export default function CreateGraduatePage() {
@@ -34,7 +34,7 @@ export default function CreateGraduatePage() {
     setError(null);
 
     try {
-      const studentRepo = new FirebaseStudentRepository();
+      const studentRepo = getStudentRepository();
       
       // Validar si el estudiante ya existe
       const existingStudent = await studentRepo.findById(formData.id);

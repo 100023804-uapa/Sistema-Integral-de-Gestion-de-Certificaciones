@@ -17,17 +17,6 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
 });
 
-const SESSION_COOKIE = 'session';
-
-function setSessionCookie() {
-  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `${SESSION_COOKIE}=1; Path=/; Max-Age=43200; SameSite=Lax${secure}`;
-}
-
-function clearSessionCookie() {
-  document.cookie = `${SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
-}
-
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -37,15 +26,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let settled = false;
 
-    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       settled = true;
       setUser(authUser);
       setLoading(false);
 
       if (authUser) {
-        setSessionCookie();
+        try {
+          const idToken = await authUser.getIdToken();
+          await fetch('/api/auth/session/login', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+          });
+        } catch (error) {
+          console.error('Error creating server session:', error);
+        }
       } else {
-        clearSessionCookie();
+        try {
+          await fetch('/api/auth/session/logout', { method: 'POST' });
+        } catch (error) {
+          console.error('Error clearing server session:', error);
+        }
       }
     });
 
@@ -64,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       await signOut(auth);
-      clearSessionCookie();
+      await fetch('/api/auth/session/logout', { method: 'POST' });
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;

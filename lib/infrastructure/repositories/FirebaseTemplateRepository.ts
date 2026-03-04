@@ -9,7 +9,10 @@ import {
     query,
     where,
     Timestamp,
-    orderBy
+    orderBy,
+    limit,
+    startAfter,
+    QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { ITemplateRepository } from '../../domain/repositories/ITemplateRepository';
 import { CertificateTemplate, CreateTemplateDTO, UpdateTemplateDTO } from '../../domain/entities/Template';
@@ -17,6 +20,7 @@ import { CertificateTemplate, CreateTemplateDTO, UpdateTemplateDTO } from '../..
 const COLLECTION_NAME = 'templates';
 
 export class FirebaseTemplateRepository implements ITemplateRepository {
+    private pageSize = 20;
 
     async save(data: CreateTemplateDTO): Promise<CertificateTemplate> {
         const templateData = {
@@ -65,6 +69,32 @@ export class FirebaseTemplateRepository implements ITemplateRepository {
 
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => this.mapDocToEntity(doc));
+    }
+
+    async listPaginated(activeOnly: boolean = false, cursor?: QueryDocumentSnapshot, pageSize: number = this.pageSize): Promise<{ data: CertificateTemplate[]; hasMore: boolean; lastVisible?: QueryDocumentSnapshot }> {
+        let q = cursor
+            ? query(
+                collection(db, COLLECTION_NAME),
+                orderBy('updatedAt', 'desc'),
+                startAfter(cursor),
+                limit(pageSize)
+            )
+            : query(
+                collection(db, COLLECTION_NAME),
+                orderBy('updatedAt', 'desc'),
+                limit(pageSize)
+            );
+
+        if (activeOnly) {
+            q = query(q, where('isActive', '==', true));
+        }
+
+        const querySnapshot = await getDocs(q);
+        const data = querySnapshot.docs.map(doc => this.mapDocToEntity(doc));
+        const hasMore = querySnapshot.docs.length === pageSize;
+        const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+        return { data, hasMore, lastVisible };
     }
 
     async delete(id: string): Promise<void> {

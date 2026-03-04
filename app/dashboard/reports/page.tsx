@@ -3,10 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, BarChart3, Loader2, Download, FileText, CheckCircle2, AlertTriangle, Clock3 } from 'lucide-react';
-import { FirebaseCertificateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
+import { getCertificateRepository } from '@/lib/container';
 import { Certificate } from '@/lib/domain/entities/Certificate';
-
-const certRepo = new FirebaseCertificateRepository();
 
 interface MonthlyPoint {
   label: string;
@@ -15,6 +13,7 @@ interface MonthlyPoint {
 
 export default function ReportsPage() {
   const router = useRouter();
+  const certRepo = getCertificateRepository();
   const [loading, setLoading] = useState(true);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [error, setError] = useState('');
@@ -27,8 +26,9 @@ export default function ReportsPage() {
     try {
       setLoading(true);
       setError('');
-      const data = await certRepo.list(500);
-      setCertificates(data);
+      // Evitar full scan: usar paginación y límite razonable
+      const result = await certRepo.listPaginated(undefined, 100);
+      setCertificates(result.data);
     } catch (err) {
       console.error('Error loading reports data:', err);
       setError('No se pudieron cargar los datos para reportes.');

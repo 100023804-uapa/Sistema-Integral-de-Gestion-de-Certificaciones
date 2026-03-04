@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Upload, Type, QrCode, Save, Move, X, Monitor, Smartphone, Trash2, GripVertical, Image as ImageIcon } from 'lucide-react';
-import { FirebaseTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseTemplateRepository';
+import { getTemplateRepository } from '@/lib/container';
 import { CreateTemplateDTO, TemplateElement, TemplateElementType } from '@/lib/domain/entities/Template';
 import { useUploadThing } from '@/lib/uploadthing';
 
@@ -18,6 +18,7 @@ const VARIABLES = [
 
 export default function CreateTemplatePage() {
   const router = useRouter();
+  const repository = getTemplateRepository();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
@@ -228,8 +229,6 @@ export default function CreateTemplatePage() {
                     // Signatures are already uploaded to storage and have public URLs.
                 }))
             };
-
-            const repository = new FirebaseTemplateRepository();
             await repository.save(templateData);
             
             router.push('/dashboard/templates');

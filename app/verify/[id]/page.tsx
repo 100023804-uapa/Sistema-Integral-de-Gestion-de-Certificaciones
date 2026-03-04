@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { CheckCircle, Download, Share2, Calendar, Clock, Award } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { FirebaseCertificateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
+import { getCertificateRepository } from '@/lib/container';
 import { notFound } from 'next/navigation';
 import { CertificateActions } from '@/components/certificates/CertificateActions';
 
@@ -16,7 +16,7 @@ export default async function CertificateDetailsPage({ params }: PageProps) {
   const { id } = await params;
   if (!id) return notFound();
 
-  const repository = new FirebaseCertificateRepository();
+  const repository = getCertificateRepository();
   // Try finding by ID first
   let certificate = await repository.findById(id);
 

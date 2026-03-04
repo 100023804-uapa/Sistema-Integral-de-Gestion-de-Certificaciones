@@ -1,7 +1,10 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
+import { adminAuth } from "@/lib/firebaseAdmin";
 
 const f = createUploadthing();
+
+const SESSION_COOKIE = "session";
 
 // FileRouter for your app, can contain multiple FileRoutes
 export const ourFileRouter = {
@@ -14,7 +17,25 @@ export const ourFileRouter = {
             // const user = await auth(req);
             // if (!user) throw new UploadThingError("Unauthorized");
             // return { userId: user.id };
-            return { userId: "user" }; // TODO: Add proper auth check
+            const cookieHeader = req.headers.get("cookie") ?? "";
+            const sessionCookie = cookieHeader
+                .split(";")
+                .map((part) => part.trim())
+                .find((part) => part.startsWith(`${SESSION_COOKIE}=`))
+                ?.split("=")
+                ?.slice(1)
+                ?.join("=");
+
+            if (!sessionCookie) {
+                throw new UploadThingError("Unauthorized");
+            }
+
+            try {
+                const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+                return { userId: decoded.uid };
+            } catch {
+                throw new UploadThingError("Unauthorized");
+            }
         })
         .onUploadComplete(async ({ metadata, file }) => {
             // This code RUNS ON YOUR SERVER after upload

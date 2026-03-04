@@ -1,10 +1,11 @@
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, setDoc, getDocs, query, limit as firestoreLimit, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, getDocs, query, limit as firestoreLimit, orderBy, Timestamp, startAfter, QueryDocumentSnapshot } from 'firebase/firestore';
 import { IStudentRepository } from '../../domain/repositories/IStudentRepository';
 import { Student, CreateStudentDTO } from '../../domain/entities/Student';
 
 export class FirebaseStudentRepository implements IStudentRepository {
     private collectionName = 'students';
+    private pageSize = 50;
 
     async findById(id: string): Promise<Student | null> {
         const docRef = doc(db, this.collectionName, id);
@@ -53,6 +54,28 @@ export class FirebaseStudentRepository implements IStudentRepository {
 
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(this.mapDocToStudent);
+    }
+
+    async listPaginated(cursor?: QueryDocumentSnapshot, pageSize: number = this.pageSize): Promise<{ data: Student[]; hasMore: boolean; lastVisible?: QueryDocumentSnapshot }> {
+        const q = cursor
+            ? query(
+                collection(db, this.collectionName),
+                orderBy('createdAt', 'desc'),
+                startAfter(cursor),
+                firestoreLimit(pageSize)
+            )
+            : query(
+                collection(db, this.collectionName),
+                orderBy('createdAt', 'desc'),
+                firestoreLimit(pageSize)
+            );
+
+        const querySnapshot = await getDocs(q);
+        const data = querySnapshot.docs.map(this.mapDocToStudent);
+        const hasMore = querySnapshot.docs.length === pageSize;
+        const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+        return { data, hasMore, lastVisible };
     }
 
     private mapDocToStudent(doc: any): Student {

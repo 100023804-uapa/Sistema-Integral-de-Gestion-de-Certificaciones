@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { FirebaseTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseTemplateRepository';
+import { getTemplateRepository } from '@/lib/container';
 import { CreateTemplateDTO } from '@/lib/domain/entities/Template';
 import { Navbar } from '@/components/layout/Navbar';
 
@@ -14,7 +14,7 @@ export default function SeedTemplatePage() {
         setLoading(true);
         setMessage('');
         try {
-            const repo = new FirebaseTemplateRepository();
+            const repo = getTemplateRepository();
             const width = 297; // A4 Landscape mm
             const height = 210;
             const centerX = width / 2;

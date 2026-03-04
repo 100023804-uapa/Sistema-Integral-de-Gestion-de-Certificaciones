@@ -3,11 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlusCircle, Search, LayoutTemplate, Edit, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
-import { FirebaseTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseTemplateRepository';
+import { getTemplateRepository } from '@/lib/container';
 import { CertificateTemplate } from '@/lib/domain/entities/Template';
 
 export default function TemplatesPage() {
   const router = useRouter();
+  const repository = getTemplateRepository();
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +16,6 @@ export default function TemplatesPage() {
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
-        const repository = new FirebaseTemplateRepository();
         const data = await repository.list(true); // Active only
         setTemplates(data);
       } catch (err) {
@@ -33,7 +33,6 @@ export default function TemplatesPage() {
     if (!confirm('¿Estás seguro de eliminar esta plantilla?')) return;
     
     try {
-        const repository = new FirebaseTemplateRepository();
         await repository.delete(id);
         setTemplates(prev => prev.filter(t => t.id !== id));
     } catch (err) {

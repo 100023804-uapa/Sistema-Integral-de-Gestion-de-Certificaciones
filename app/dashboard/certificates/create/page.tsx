@@ -4,13 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeft, User, FileText, Calendar, Save, CheckCircle, AlertCircle } from 'lucide-react';
-import { FirebaseCertificateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
-import { FirebaseStudentRepository } from '@/lib/infrastructure/repositories/FirebaseStudentRepository';
-import { GenerateFolio } from '@/lib/application/use-cases/GenerateFolio';
-import { CreateCertificate } from '@/lib/application/use-cases/CreateCertificate';
+import { getCreateCertificateUseCase, getTemplateRepository } from '@/lib/container';
 import { CertificateType } from '@/lib/domain/entities/Certificate';
 
-import { FirebaseTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseTemplateRepository';
 import { CertificateTemplate } from '@/lib/domain/entities/Template';
 import { LayoutTemplate } from 'lucide-react';
 
@@ -37,7 +33,7 @@ export default function CreateCertificatePage() {
   useEffect(() => {
     const fetchTemplates = async () => {
         try {
-            const repo = new FirebaseTemplateRepository();
+            const repo = getTemplateRepository();
             const data = await repo.list(true);
             setTemplates(data);
         } catch (err) {
@@ -58,13 +54,7 @@ export default function CreateCertificatePage() {
     setError(null);
     
     try {
-        const repository = new FirebaseCertificateRepository();
-        const studentRepository = new FirebaseStudentRepository(); // Instanciar repo de estudiantes
-        const generateFolio = new GenerateFolio(repository);
-        
-        // Inyectar studentRepository
-        const createCertificate = new CreateCertificate(repository, studentRepository, generateFolio);
-
+        const createCertificate = getCreateCertificateUseCase();
         await createCertificate.execute({
             ...formData,
             issueDate: new Date(formData.issueDate),

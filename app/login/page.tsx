@@ -11,25 +11,20 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { APP_VERSION } from '@/lib/config/changelog';
 import { ChangelogModal } from '@/components/ui/ChangelogModal';
-import { FirebaseAccessRepository } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
+import { getAccessRepository } from '@/lib/container';
 
 type LoginRole = 'admin' | 'student';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const accessRepo = new FirebaseAccessRepository();
+  const accessRepo = getAccessRepository();
   const [role, setRole] = useState<LoginRole>('student');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
-
-  const setSessionCookie = () => {
-    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-    document.cookie = `session=1; Path=/; Max-Age=43200; SameSite=Lax${secure}`;
-  };
 
   const getRedirectPath = () => {
     const nextPath = searchParams.get('next');
@@ -71,7 +66,18 @@ export default function LoginPage() {
       // Para administradores, procedemos con autenticaciÃ³n
       const credential = await signInWithEmailAndPassword(auth, email, password);
       await ensureAdminAccess(credential);
-      setSessionCookie();
+
+      const idToken = await credential.user.getIdToken();
+      const sessionRes = await fetch('/api/auth/session/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!sessionRes.ok) {
+        throw new Error('session-create-failed');
+      }
+
       router.push(getRedirectPath());
     } catch (err: any) {
       console.error(err);
@@ -81,6 +87,8 @@ export default function LoginPage() {
         setError('Esta cuenta no tiene permisos administrativos.');
       } else if (err.code === 'auth/too-many-requests') {
         setError('Demasiados intentos. Espere unos minutos.');
+      } else if (err.message === 'session-create-failed') {
+        setError('No fue posible crear la sesión. Inténtelo de nuevo.');
       } else {
         setError('Error al iniciar sesión. Inténtelo de nuevo.');
       }
@@ -99,12 +107,25 @@ export default function LoginPage() {
     try {
       const credential = await signInWithPopup(auth, provider);
       await ensureAdminAccess(credential);
-      setSessionCookie();
+
+      const idToken = await credential.user.getIdToken();
+      const sessionRes = await fetch('/api/auth/session/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!sessionRes.ok) {
+        throw new Error('session-create-failed');
+      }
+
       router.push(getRedirectPath());
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/not-authorized') {
         setError('Esta cuenta no tiene permisos administrativos.');
+      } else if (err.message === 'session-create-failed') {
+        setError('No fue posible crear la sesión. Inténtelo de nuevo.');
       } else {
         setError('No se pudo iniciar sesión con Google.');
       }

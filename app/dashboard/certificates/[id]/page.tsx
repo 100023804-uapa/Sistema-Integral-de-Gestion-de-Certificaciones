@@ -15,8 +15,7 @@ import {
     Award,
     QrCode
 } from 'lucide-react';
-import { FirebaseCertificateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
-import { FirebaseTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseTemplateRepository';
+import { getCertificateRepository, getTemplateRepository } from '@/lib/container';
 import { Certificate } from '@/lib/domain/entities/Certificate';
 import { generateCertificatePDF } from '@/lib/application/utils/pdf-generator';
 import { QRCodeSVG } from 'qrcode.react';
@@ -26,6 +25,9 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
   const router = useRouter();
   // Unwrap params using React.use() for Next.js 15+
   const { id } = React.use(params) as { id: string };
+
+  const certificateRepository = getCertificateRepository();
+  const templateRepository = getTemplateRepository();
   
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,8 +38,7 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
   useEffect(() => {
     const fetchCertificate = async () => {
       try {
-        const repository = new FirebaseCertificateRepository();
-        const data = await repository.findById(id);
+        const data = await certificateRepository.findById(id);
         
         if (!data) {
             setError("Certificado no encontrado.");
@@ -65,8 +66,7 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
     try {
         let template = null;
         if (certificate.templateId) {
-            const templateRepo = new FirebaseTemplateRepository();
-            template = await templateRepo.findById(certificate.templateId);
+            template = await templateRepository.findById(certificate.templateId);
         }
 
         const pdfBlob = await generateCertificatePDF(certificate, template);
