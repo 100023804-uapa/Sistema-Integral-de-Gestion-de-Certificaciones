@@ -14,10 +14,14 @@ export async function POST(request: NextRequest) {
 
         const adminAuth = getAdminAuth();
 
+        console.log('🔍 About to create session cookie with idToken length:', idToken.length);
+
         // Verificar el idToken y crear session cookie
         const sessionCookie = await adminAuth.createSessionCookie(idToken, {
             expiresIn: SESSION_MAX_AGE_SECONDS * 1000,
         });
+
+        console.log('✅ Session cookie created successfully');
 
         const response = NextResponse.json({ success: true });
 
