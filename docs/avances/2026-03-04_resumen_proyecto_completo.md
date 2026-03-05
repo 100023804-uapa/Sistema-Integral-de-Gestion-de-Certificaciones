@@ -345,5 +345,3 @@ El **Sistema Integral de Gestión de Certificaciones UAPA** representa una soluc
 ---
 
 **🏆 Sistema Integral de Gestión de Certificaciones UAPA - PROYECTO COMPLETADO CON ÉXITO** ✨
-
-*Desarrollado con ❤️ por Cascade AI - Marzo 4, 2026*
