@@ -14,11 +14,15 @@ import { Certificate } from '@/lib/domain/entities/Certificate';
 
 import { Campus, AcademicArea } from '@/lib/container';
 
+import { useAuth } from '@/lib/contexts/AuthContext';
+
 
 
 export default function CertificatesPage() {
 
   const router = useRouter();
+
+  const { hasRole } = useAuth();
 
   const repository = getCertificateRepository();
 
@@ -186,73 +190,77 @@ export default function CertificatesPage() {
 
       {/* Header */}
 
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
 
-        <div>
+              <div>
 
-          <h1 className="text-4xl font-black text-primary tracking-tighter">Certificados</h1>
+                <h1 className="text-4xl font-black text-primary tracking-tighter">Certificados</h1>
 
-          <p className="text-gray-500 font-medium">Gestiona y consulta el historial de emisiones institucionales.</p>
+                <p className="text-gray-500 font-medium">Gestiona y consulta el historial de emisiones institucionales.</p>
 
-        </div>
+              </div>
 
-        <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-3">
 
-            <button 
+                  <button 
 
-                onClick={() => {
+                      onClick={() => {
 
-                    const ws = XLSX.utils.json_to_sheet(filteredCertificates.map(c => ({
+                          const ws = XLSX.utils.json_to_sheet(filteredCertificates.map(c => ({
 
-                        Folio: c.folio,
+                              Folio: c.folio,
 
-                        Estudiante: c.studentName,
+                              Estudiante: c.studentName,
 
-                        Matricula: c.studentId,
+                              Matricula: c.studentId,
 
-                        Programa: c.academicProgram,
+                              Programa: c.academicProgram,
 
-                        Tipo: c.type,
+                              Tipo: c.type,
 
-                        Fecha: c.issueDate.toLocaleDateString(),
+                              Fecha: c.issueDate.toLocaleDateString(),
 
-                        Estado: c.status,
+                              Estado: c.status,
 
-                        Recinto: campuses.find(camp => camp.id === c.campusId)?.name || 'N/A'
+                              Recinto: campuses.find(camp => camp.id === c.campusId)?.name || 'N/A'
 
-                    })));
+                          })));
 
-                    const wb = XLSX.utils.book_new();
+                          const wb = XLSX.utils.book_new();
 
-                    XLSX.utils.book_append_sheet(wb, ws, "Certificados");
+                          XLSX.utils.book_append_sheet(wb, ws, "Certificados");
 
-                    XLSX.writeFile(wb, `SIGCE_Certificados_${new Date().toISOString().slice(0,10)}.xlsx`);
+                          XLSX.writeFile(wb, `SIGCE_Certificados_${new Date().toISOString().slice(0,10)}.xlsx`);
 
-                }}
+                      }}
 
-                className="px-4 py-3 rounded-xl bg-green-50 text-green-700 font-bold border border-green-100 hover:bg-green-100 transition-colors flex items-center gap-2"
+                      className="px-4 py-3 rounded-xl bg-green-50 text-green-700 font-bold border border-green-100 hover:bg-green-100 transition-colors flex items-center gap-2"
 
-            >
+                  >
 
-                <FileSpreadsheet size={20} /> Exportar
+                      <FileSpreadsheet size={20} /> Exportar
 
-            </button>
+                  </button>
 
-            <button 
+                  {hasRole(['administrator', 'coordinator']) && (
 
-                onClick={() => router.push('/dashboard/certificates/create')}
+                    <button 
 
-                className="px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                        onClick={() => router.push('/dashboard/certificates/create')}
 
-            >
+                        className="px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
 
-                <PlusCircle size={20} /> Nuevo Certificado
+                    >
 
-            </button>
+                        <PlusCircle size={20} /> Nuevo Certificado
 
-        </div>
+                    </button>
 
-      </div>
+                  )}
+
+              </div>
+
+            </div>
 
 
 

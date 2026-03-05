@@ -5,7 +5,6 @@ import {
   getDocs, 
   addDoc, 
   updateDoc, 
-  deleteDoc, 
   query, 
   orderBy, 
   where,
@@ -106,8 +105,7 @@ export class FirebaseCertificateTypeRepository {
   }
 
   async delete(id: string): Promise<void> {
-    const docRef = doc(db, this.collectionName, id);
-    await deleteDoc(docRef);
+    await this.softDelete(id);
   }
 
   async softDelete(id: string): Promise<void> {

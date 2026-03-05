@@ -29,8 +29,10 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 export default function CertificateTemplatesPage() {
+  const { hasRole } = useAuth();
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
   const [certificateTypes, setCertificateTypes] = useState<CertificateType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -297,16 +299,18 @@ export default function CertificateTemplatesPage() {
                         <Copy size={16} />
                         Duplicar
                       </button>
-                      <button
-                        onClick={() => {
-                          handleDelete(template);
-                          setShowActions(null);
-                        }}
-                        className="w-full px-4 py-2 text-left hover:bg-red-50 text-red-600 flex items-center gap-2"
-                      >
-                        <Trash2 size={16} />
-                        Eliminar
-                      </button>
+                      {hasRole('administrator') && (
+                        <button
+                          onClick={() => {
+                            handleDelete(template);
+                            setShowActions(null);
+                          }}
+                          className="w-full px-4 py-2 text-left hover:bg-red-50 text-red-600 flex items-center gap-2"
+                        >
+                          <Trash2 size={16} />
+                          Eliminar
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

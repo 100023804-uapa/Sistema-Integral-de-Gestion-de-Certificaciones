@@ -29,37 +29,38 @@ type MenuItem = {
   icon?: any;
   href?: string;
   text?: string;
+  allowedRoles?: string[]; // Si no se provee, todos pueden verlo
 };
 
 const menuItems: MenuItem[] = [
   // 📊 Resumen General
   { label: 'Resumen', icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Reportes', icon: BarChart3, href: '/dashboard/reports' },
+  { label: 'Reportes', icon: BarChart3, href: '/dashboard/reports', allowedRoles: ['administrator', 'coordinator'] },
   
   // 🏛️ Configuración Institucional
-  { label: 'separator', text: 'Configuración Institucional' },
-  { label: 'Recintos', icon: MapPin, href: '/dashboard/campuses' },
-  { label: 'Áreas Académicas', icon: Building, href: '/dashboard/academic-areas' },
-  { label: 'Tipos de Certificado', icon: Type, href: '/dashboard/certificate-types' },
-  { label: 'Roles y Permisos', icon: Shield, href: '/dashboard/roles' },
+  { label: 'separator', text: 'Configuración Institucional', allowedRoles: ['administrator'] },
+  { label: 'Recintos', icon: MapPin, href: '/dashboard/campuses', allowedRoles: ['administrator'] },
+  { label: 'Áreas Académicas', icon: Building, href: '/dashboard/academic-areas', allowedRoles: ['administrator'] },
+  { label: 'Tipos de Certificado', icon: Type, href: '/dashboard/certificate-types', allowedRoles: ['administrator'] },
+  { label: 'Roles y Permisos', icon: Shield, href: '/dashboard/roles', allowedRoles: ['administrator'] },
   
   // 📚 Gestión Académica
-  { label: 'separator', text: 'Gestión Académica' },
-  { label: 'Programas', icon: GraduationCap, href: '/dashboard/programs' },
-  { label: 'Participantes', icon: Users, href: '/dashboard/graduates' },
+  { label: 'separator', text: 'Gestión Académica', allowedRoles: ['administrator', 'coordinator', 'verifier'] },
+  { label: 'Programas', icon: GraduationCap, href: '/dashboard/programs', allowedRoles: ['administrator', 'coordinator'] },
+  { label: 'Participantes', icon: Users, href: '/dashboard/graduates', allowedRoles: ['administrator', 'coordinator', 'verifier'] },
   
   // 📄 Gestión de Certificados
   { label: 'separator', text: 'Gestión de Certificados' },
   { label: 'Certificados', icon: FileText, href: '/dashboard/certificates' },
   { label: 'Validar QR', icon: QrCode, href: '/dashboard/validate' },
-  { label: 'Estados', icon: Clock, href: '/dashboard/certificate-states' },
-  { label: 'Firmas Digitales', icon: PenTool, href: '/dashboard/digital-signatures' },
-  { label: 'Plantillas de Diseño', icon: Palette, href: '/dashboard/certificate-templates' },
+  { label: 'Estados', icon: Clock, href: '/dashboard/certificate-states', allowedRoles: ['administrator', 'coordinator'] },
+  { label: 'Firmas Digitales', icon: PenTool, href: '/dashboard/digital-signatures', allowedRoles: ['administrator', 'signer'] },
+  { label: 'Plantillas de Diseño', icon: Palette, href: '/dashboard/certificate-templates', allowedRoles: ['administrator', 'coordinator'] },
   
   // ⚙️ Administración
-  { label: 'separator', text: 'Administración' },
-  { label: 'Usuarios del Sistema', icon: Users, href: '/dashboard/users' },
-  { label: 'Configuración', icon: Settings, href: '/dashboard/settings' },
+  { label: 'separator', text: 'Administración', allowedRoles: ['administrator'] },
+  { label: 'Usuarios del Sistema', icon: Users, href: '/dashboard/users', allowedRoles: ['administrator'] },
+  { label: 'Configuración', icon: Settings, href: '/dashboard/settings', allowedRoles: ['administrator'] },
 ];
 
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -67,7 +68,7 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 export function Sidebar() {
   const pathname = usePathname();
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
-  const { logout } = useAuth();
+  const { logout, hasRole } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -94,6 +95,11 @@ export function Sidebar() {
         
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
           {menuItems.map((item, index) => {
+            // Verificar permisos
+            if (item.allowedRoles && !hasRole(item.allowedRoles)) {
+               return null;
+            }
+
             // Detectar si es un separador
             if (item.label === 'separator') {
               return (

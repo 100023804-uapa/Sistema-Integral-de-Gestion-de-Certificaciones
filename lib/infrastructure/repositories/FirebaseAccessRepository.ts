@@ -111,7 +111,10 @@ export class FirebaseAccessRepository {
 
     async removeAdmin(email: string): Promise<void> {
         const normalized = this.normalizeEmail(email);
-        await deleteDoc(doc(db, COLLECTION_NAME, normalized));
+        await setDoc(doc(db, COLLECTION_NAME, normalized), {
+            disabled: true,
+            updatedAt: serverTimestamp()
+        }, { merge: true });
     }
 
     // --- ACCESS REQUESTS ---
