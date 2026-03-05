@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, FileText, Calendar, Save, CheckCircle, AlertCircle } from 'lucide-react';
-import { getCreateCertificateUseCase, getTemplateRepository } from '@/lib/container';
+import { ArrowLeft, User, FileText, Calendar, Save, CheckCircle, AlertCircle, MapPin } from 'lucide-react';
+import { getCreateCertificateUseCase, getTemplateRepository, getListCampusesUseCase } from '@/lib/container';
 import { CertificateType } from '@/lib/domain/entities/Certificate';
+import { Campus } from '@/lib/container';
 
 import { CertificateTemplate } from '@/lib/domain/entities/Template';
 import { LayoutTemplate } from 'lucide-react';
@@ -16,6 +17,7 @@ export default function CreateCertificatePage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
+  const [campuses, setCampuses] = useState<Campus[]>([]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -27,20 +29,27 @@ export default function CreateCertificatePage() {
     issueDate: new Date().toISOString().split('T')[0],
     expirationDate: '',
     folioPrefix: 'sigce', // Default prefix
-    templateId: ''
+    templateId: '',
+    campusId: '', // Nuevo: obligatorio
   });
 
   useEffect(() => {
-    const fetchTemplates = async () => {
+    const fetchData = async () => {
         try {
-            const repo = getTemplateRepository();
-            const data = await repo.list(true);
-            setTemplates(data);
+            // Fetch templates
+            const templateRepo = getTemplateRepository();
+            const templateData = await templateRepo.list(true);
+            setTemplates(templateData);
+
+            // Fetch campuses
+            const listCampusesUseCase = getListCampusesUseCase();
+            const campusData = await listCampusesUseCase.execute(true); // active only
+            setCampuses(campusData);
         } catch (err) {
-            console.error("Error loading templates", err);
+            console.error("Error loading data", err);
         }
     };
-    fetchTemplates();
+    fetchData();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -61,7 +70,8 @@ export default function CreateCertificatePage() {
             prefix: formData.folioPrefix || undefined,
             cedula: formData.cedula,
             studentEmail: '', // Podríamos agregar campo email al form si se desea
-            templateId: formData.templateId || undefined
+            templateId: formData.templateId || undefined,
+            campusId: formData.campusId, // Nuevo: obligatorio
         });
 
         setSuccess(true);
@@ -124,6 +134,30 @@ export default function CreateCertificatePage() {
         >
             <form onSubmit={handleSubmit} className="space-y-6">
             
+            {/* Campus Selection - OBLIGATORIO */}
+            <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <MapPin size={16} /> Recinto Institucional *
+                </label>
+                <select 
+                    name="campusId"
+                    value={formData.campusId} 
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white"
+                >
+                    <option value="">Selecciona un recinto</option>
+                    {campuses.map(campus => (
+                        <option key={campus.id} value={campus.id}>
+                            {campus.name} ({campus.code})
+                        </option>
+                    ))}
+                </select>
+                <p className="text-xs text-red-500">
+                    * Campo obligatorio. El certificado debe estar asociado a un recinto.
+                </p>
+            </div>
+
             {/* Template Selection */}
             <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">

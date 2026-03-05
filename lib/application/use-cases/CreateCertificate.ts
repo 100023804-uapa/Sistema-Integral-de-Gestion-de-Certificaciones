@@ -14,6 +14,8 @@ export interface CreateCertificateInput {
     metadata?: Record<string, any>;
     studentEmail?: string; // Added for student creation
     templateId?: string;
+    campusId: string; // Nuevo: obligatorio
+    academicAreaId?: string; // Nuevo: opcional por ahora
 }
 
 export class CreateCertificate {
@@ -49,10 +51,15 @@ export class CreateCertificate {
             await this.studentRepository.update(studentId, { cedula: input.cedula });
         }
 
-        // 2. Generar Folio
+        // 2. Validar campusId obligatorio
+        if (!input.campusId || input.campusId.trim() === '') {
+            throw new Error("El ID del recinto (campusId) es obligatorio para crear un certificado.");
+        }
+
+        // 3. Generar Folio
         const folio = await this.generateFolio.execute(input.type, input.prefix);
 
-        // 3. Preparar datos (DTO)
+        // 4. Preparar datos (DTO)
         const certificateData: CreateCertificateDTO = {
             folio,
             studentName: input.studentName,
@@ -63,9 +70,11 @@ export class CreateCertificate {
             status: 'active' as CertificateStatus,
             metadata: input.metadata || {},
             templateId: input.templateId,
+            campusId: input.campusId,
+            academicAreaId: input.academicAreaId,
         };
 
-        // 4. Guardar en repositorio de certificados
+        // 5. Guardar en repositorio de certificados
         const savedCertificate = await this.certificateRepository.create(certificateData);
 
         return savedCertificate;

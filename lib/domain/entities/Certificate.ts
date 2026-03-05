@@ -14,6 +14,9 @@ export interface Certificate {
   templateId?: string; // ID de la plantilla utilizada
   qrCodeUrl: string; // URL pública de validación
   pdfUrl?: string; // URL del archivo en Storage
+  campusId: string; // ID del recinto (obligatorio)
+  academicAreaId?: string; // ID del área académica (obligatorio en futuro)
+  certificateTypeId?: string; // ID del tipo de certificado (opcional por ahora)
   metadata: Record<string, any>; // Para datos extra flexibles
   createdAt: Date;
   updatedAt: Date;
