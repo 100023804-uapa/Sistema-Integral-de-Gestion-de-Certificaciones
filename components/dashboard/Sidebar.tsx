@@ -45,7 +45,7 @@ export function Sidebar() {
 
   return (
     <>
-      <div className="hidden md:flex flex-col h-screen w-64 bg-primary text-white sticky top-0 border-r border-white/5 shadow-2xl">
+      <div className="flex flex-col h-screen w-64 bg-primary text-white sticky top-0 border-r border-white/5 shadow-2xl">
         <div className="p-8 flex items-center gap-3">
           <div className="bg-accent p-2 rounded-xl">
             <GraduationCap size={24} />
