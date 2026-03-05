@@ -6,6 +6,7 @@ import { FirebaseCampusRepository } from './infrastructure/repositories/Firebase
 import { FirebaseAcademicAreaRepository } from './infrastructure/repositories/FirebaseAcademicAreaRepository';
 import { FirebaseCertificateTypeRepository } from './infrastructure/repositories/FirebaseCertificateTypeRepository';
 import { FirebaseRoleRepository } from './infrastructure/repositories/FirebaseRoleRepository';
+import { FirebaseCertificateStateRepository } from './infrastructure/repositories/FirebaseCertificateStateRepository';
 import { CreateCertificate } from './application/use-cases/CreateCertificate';
 import { GenerateFolio } from './application/use-cases/GenerateFolio';
 import { CreateCampusUseCase } from './usecases/campus/CreateCampusUseCase';
@@ -25,6 +26,9 @@ import { ListRolesUseCase } from './usecases/role/ListRolesUseCase';
 import { UpdateRoleUseCase } from './usecases/role/UpdateRoleUseCase';
 import { DeleteRoleUseCase } from './usecases/role/DeleteRoleUseCase';
 import { AssignRoleUseCase } from './usecases/role/AssignRoleUseCase';
+import { CreateCertificateStateUseCase } from './usecases/certificateState/CreateCertificateStateUseCase';
+import { TransitionStateUseCase } from './usecases/certificateState/TransitionStateUseCase';
+import { GetStateHistoryUseCase } from './usecases/certificateState/GetStateHistoryUseCase';
 import { QueryDocumentSnapshot } from 'firebase/firestore';
 
 // Re-exportar tipos para evitar imports de infraestructura en app/
@@ -33,6 +37,7 @@ export type { Campus } from './types/campus';
 export type { AcademicArea } from './types/academicArea';
 export type { CertificateType } from './types/certificateType';
 export type { Role, UserRole, RoleValue } from './types/role';
+export type { CertificateState, CertificateStateValue, StateHistory, StateTransition } from './types/certificateState';
 
 export function getAccessRepository() {
     return new FirebaseAccessRepository();
@@ -64,6 +69,10 @@ export function getCertificateTypeRepository() {
 
 export function getRoleRepository() {
     return new FirebaseRoleRepository();
+}
+
+export function getCertificateStateRepository() {
+    return new FirebaseCertificateStateRepository();
 }
 
 // Campus Use Cases
@@ -136,6 +145,19 @@ export function getDeleteRoleUseCase() {
 
 export function getAssignRoleUseCase() {
     return new AssignRoleUseCase(getRoleRepository());
+}
+
+// Certificate State Use Cases
+export function getCreateCertificateStateUseCase() {
+    return new CreateCertificateStateUseCase(getCertificateStateRepository());
+}
+
+export function getTransitionStateUseCase() {
+    return new TransitionStateUseCase(getCertificateStateRepository());
+}
+
+export function getGetStateHistoryUseCase() {
+    return new GetStateHistoryUseCase(getCertificateStateRepository());
 }
 
 export function getGenerateFolioUseCase() {

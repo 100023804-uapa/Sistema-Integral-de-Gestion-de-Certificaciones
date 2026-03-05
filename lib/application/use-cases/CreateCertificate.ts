@@ -2,6 +2,7 @@ import { ICertificateRepository } from '../../domain/repositories/ICertificateRe
 import { GenerateFolio } from './GenerateFolio';
 import { Certificate, CertificateType, CertificateStatus, CreateCertificateDTO } from '../../domain/entities/Certificate';
 import { IStudentRepository } from '../../domain/repositories/IStudentRepository';
+import { getCreateCertificateStateUseCase } from '../../container';
 
 export interface CreateCertificateInput {
     studentName: string;
@@ -16,6 +17,7 @@ export interface CreateCertificateInput {
     templateId?: string;
     campusId: string; // Nuevo: obligatorio
     academicAreaId?: string; // Nuevo: opcional por ahora
+    createdBy: string; // Nuevo: ID del usuario que crea el certificado
 }
 
 export class CreateCertificate {
@@ -56,10 +58,15 @@ export class CreateCertificate {
             throw new Error("El ID del recinto (campusId) es obligatorio para crear un certificado.");
         }
 
-        // 3. Generar Folio
+        // 3. Validar createdBy
+        if (!input.createdBy || input.createdBy.trim() === '') {
+            throw new Error("El ID del usuario que crea el certificado es obligatorio.");
+        }
+
+        // 4. Generar Folio
         const folio = await this.generateFolio.execute(input.type, input.prefix);
 
-        // 4. Preparar datos (DTO)
+        // 5. Preparar datos (DTO)
         const certificateData: CreateCertificateDTO = {
             folio,
             studentName: input.studentName,
@@ -74,8 +81,16 @@ export class CreateCertificate {
             academicAreaId: input.academicAreaId,
         };
 
-        // 5. Guardar en repositorio de certificados
+        // 6. Guardar en repositorio de certificados
         const savedCertificate = await this.certificateRepository.create(certificateData);
+
+        // 7. Crear estado inicial del certificado
+        const createCertificateStateUseCase = getCreateCertificateStateUseCase();
+        await createCertificateStateUseCase.execute(
+            savedCertificate.id,
+            'draft', // Estado inicial
+            input.createdBy
+        );
 
         return savedCertificate;
     }

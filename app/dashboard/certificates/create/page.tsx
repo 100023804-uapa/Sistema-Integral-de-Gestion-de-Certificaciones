@@ -72,6 +72,7 @@ export default function CreateCertificatePage() {
             studentEmail: '', // Podríamos agregar campo email al form si se desea
             templateId: formData.templateId || undefined,
             campusId: formData.campusId, // Nuevo: obligatorio
+            createdBy: 'current-user-id', // TODO: Obtener del contexto de autenticación
         });
 
         setSuccess(true);
