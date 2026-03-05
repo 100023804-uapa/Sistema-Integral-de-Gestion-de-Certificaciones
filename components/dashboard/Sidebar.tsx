@@ -19,7 +19,9 @@ import {
   Shield,
   Clock,
   PenTool,
-  Palette
+  Palette,
+  BarChart3,
+  QrCode
 } from 'lucide-react';
 
 type MenuItem = {
@@ -32,13 +34,14 @@ type MenuItem = {
 const menuItems: MenuItem[] = [
   // 📊 Resumen General
   { label: 'Resumen', icon: LayoutDashboard, href: '/dashboard' },
+  { label: 'Reportes', icon: BarChart3, href: '/dashboard/reports' },
   
   // 🏛️ Configuración Institucional
   { label: 'separator', text: 'Configuración Institucional' },
   { label: 'Recintos', icon: MapPin, href: '/dashboard/campuses' },
   { label: 'Áreas Académicas', icon: Building, href: '/dashboard/academic-areas' },
   { label: 'Tipos de Certificado', icon: Type, href: '/dashboard/certificate-types' },
-  { label: 'Roles', icon: Shield, href: '/dashboard/roles' },
+  { label: 'Roles y Permisos', icon: Shield, href: '/dashboard/roles' },
   
   // 📚 Gestión Académica
   { label: 'separator', text: 'Gestión Académica' },
@@ -48,12 +51,14 @@ const menuItems: MenuItem[] = [
   // 📄 Gestión de Certificados
   { label: 'separator', text: 'Gestión de Certificados' },
   { label: 'Certificados', icon: FileText, href: '/dashboard/certificates' },
+  { label: 'Validar QR', icon: QrCode, href: '/dashboard/validate' },
   { label: 'Estados', icon: Clock, href: '/dashboard/certificate-states' },
   { label: 'Firmas Digitales', icon: PenTool, href: '/dashboard/digital-signatures' },
-  { label: 'Plantillas de Certificado', icon: Palette, href: '/dashboard/certificate-templates' },
+  { label: 'Plantillas de Diseño', icon: Palette, href: '/dashboard/certificate-templates' },
   
   // ⚙️ Administración
   { label: 'separator', text: 'Administración' },
+  { label: 'Usuarios del Sistema', icon: Users, href: '/dashboard/users' },
   { label: 'Configuración', icon: Settings, href: '/dashboard/settings' },
 ];
 
