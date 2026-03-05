@@ -3,6 +3,7 @@ import { GenerateFolio } from './GenerateFolio';
 import { Certificate, CertificateType, CertificateStatus, CreateCertificateDTO } from '../../domain/entities/Certificate';
 import { IStudentRepository } from '../../domain/repositories/IStudentRepository';
 import { getCreateCertificateStateUseCase } from '../../container';
+import crypto from 'crypto';
 
 export interface CreateCertificateInput {
     studentName: string;
@@ -66,9 +67,13 @@ export class CreateCertificate {
         // 4. Generar Folio
         const folio = await this.generateFolio.execute(input.type, input.prefix);
 
-        // 5. Preparar datos (DTO)
-        const certificateData: CreateCertificateDTO = {
+        // 5. Generar Código de Verificación Público (Hash US-13)
+        const publicVerificationCode = crypto.randomBytes(8).toString('hex').toUpperCase();
+
+        // 6. Preparar datos (DTO)
+        const certificateData: CreateCertificateDTO & { publicVerificationCode: string } = {
             folio,
+            publicVerificationCode,
             studentName: input.studentName,
             studentId: studentId,
             type: input.type,
@@ -81,8 +86,8 @@ export class CreateCertificate {
             academicAreaId: input.academicAreaId,
         };
 
-        // 6. Guardar en repositorio de certificados
-        const savedCertificate = await this.certificateRepository.create(certificateData);
+        // 7. Guardar en repositorio de certificados
+        const savedCertificate = await this.certificateRepository.create(certificateData as any);
 
         // 7. Crear estado inicial del certificado
         const createCertificateStateUseCase = getCreateCertificateStateUseCase();

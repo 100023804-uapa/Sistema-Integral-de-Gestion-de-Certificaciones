@@ -20,13 +20,22 @@ export default async function CertificateDetailsPage({ params }: PageProps) {
   // Try finding by ID first
   let certificate = await repository.findById(id);
 
-  // If not found, try finding by Folio (case insensitive check)
+  // If not found, try finding by Folio
   if (!certificate) {
       certificate = await repository.findByFolio(id);
       
-      // Fallback: Try uppercase if not found (e.g. sigce -> SIGCE)
+      // Try uppercase folio
       if (!certificate) {
           certificate = await repository.findByFolio(id.toUpperCase());
+      }
+  }
+
+  // If still not found, try finding by publicVerificationCode (Hash US-13)
+  if (!certificate) {
+      certificate = await repository.findByVerificationCode(id);
+      
+      if (!certificate) {
+          certificate = await repository.findByVerificationCode(id.toUpperCase());
       }
   }
 
@@ -80,9 +89,17 @@ export default async function CertificateDetailsPage({ params }: PageProps) {
             </div>
 
             <div className="mt-8 pt-8 border-t border-gray-100 flex justify-between items-end">
-              <div className="text-left">
-                <p className="text-[10px] text-gray-400 uppercase">ID del Certificado</p>
-                <p className="text-xs font-mono text-gray-600 font-medium">{certificate.id}</p>
+              <div className="text-left space-y-2">
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase">ID del Certificado</p>
+                  <p className="text-xs font-mono text-gray-600 font-medium">{certificate.id}</p>
+                </div>
+                {certificate.publicVerificationCode && (
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase">Código de Verificación (Hash)</p>
+                    <p className="text-xs font-mono text-accent font-bold tracking-wider">{certificate.publicVerificationCode}</p>
+                  </div>
+                )}
               </div>
               {/* QR Code */}
               <div className="bg-white p-1 rounded shadow-sm border border-gray-100">

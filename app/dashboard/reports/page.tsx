@@ -2,9 +2,11 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, BarChart3, Loader2, Download, FileText, CheckCircle2, AlertTriangle, Clock3 } from 'lucide-react';
-import { getCertificateRepository } from '@/lib/container';
+import { ArrowLeft, BarChart3, Loader2, Download, FileText, CheckCircle2, AlertTriangle, Clock3, Filter } from 'lucide-react';
+import { getCertificateRepository, getListCampusesUseCase, getListAcademicAreasUseCase } from '@/lib/container';
 import { Certificate } from '@/lib/domain/entities/Certificate';
+import { Campus } from '@/lib/container';
+import { AcademicArea } from '@/lib/container';
 
 interface MonthlyPoint {
   label: string;
@@ -16,25 +18,78 @@ export default function ReportsPage() {
   const certRepo = getCertificateRepository();
   const [loading, setLoading] = useState(true);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [campuses, setCampuses] = useState<Campus[]>([]);
+  const [areas, setAreas] = useState<AcademicArea[]>([]);
   const [error, setError] = useState('');
 
+  // Filtros
+  const [filters, setFilters] = useState({
+    campusId: '',
+    academicAreaId: '',
+    status: '',
+    type: ''
+  });
+
   useEffect(() => {
-    void loadData();
+    void loadInitialData();
   }, []);
 
-  const loadData = async () => {
+  useEffect(() => {
+    void loadCertificates();
+  }, [filters]);
+
+  const loadInitialData = async () => {
+    try {
+      const campusUseCase = getListCampusesUseCase();
+      const areaUseCase = getListAcademicAreasUseCase();
+      
+      const [campusData, areaData] = await Promise.all([
+        campusUseCase.execute(true),
+        areaUseCase.execute()
+      ]);
+
+      setCampuses(campusData);
+      setAreas(areaData);
+    } catch (err) {
+      console.error('Error loading initial report data:', err);
+    }
+  };
+
+  const loadCertificates = async () => {
     try {
       setLoading(true);
       setError('');
-      // Evitar full scan: usar paginación y límite razonable
-      const result = await certRepo.listPaginated(undefined, 100);
-      setCertificates(result.data);
+      
+      // Nota: En una app real, el repo debería soportar estos filtros server-side
+      // Para este MVP/Hito, filtramos en cliente sobre los primeros 500 registros
+      const result = await certRepo.listPaginated(undefined, 500);
+      let filtered = result.data;
+
+      if (filters.campusId) {
+        filtered = filtered.filter(c => c.campusId === filters.campusId);
+      }
+      if (filters.academicAreaId) {
+        filtered = filtered.filter(c => c.academicAreaId === filters.academicAreaId);
+      }
+      if (filters.status) {
+        filtered = filtered.filter(c => c.status === filters.status);
+      }
+      if (filters.type) {
+        filtered = filtered.filter(c => c.type === filters.type);
+      }
+
+      setCertificates(filtered);
     } catch (err) {
       console.error('Error loading reports data:', err);
       setError('No se pudieron cargar los datos para reportes.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
   };
 
   const report = useMemo(() => buildReport(certificates), [certificates]);
@@ -80,6 +135,70 @@ export default function ReportsPage() {
         >
           <Download className="h-4 w-4" /> Exportar CSV
         </button>
+      </div>
+
+      {/* Filtros */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-4 text-gray-700 font-bold">
+          <Filter className="h-4 w-4" /> Filtros de Reporte
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase">Recinto</label>
+            <select
+              name="campusId"
+              value={filters.campusId}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
+            >
+              <option value="">Todos los Recintos</option>
+              {campuses.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase">Área Académica</label>
+            <select
+              name="academicAreaId"
+              value={filters.academicAreaId}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
+            >
+              <option value="">Todas las Áreas</option>
+              {areas.map(a => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase">Estado</label>
+            <select
+              name="status"
+              value={filters.status}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
+            >
+              <option value="">Todos los Estados</option>
+              <option value="active">Activo</option>
+              <option value="revoked">Revocado</option>
+              <option value="expired">Expirado</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase">Tipo</label>
+            <select
+              name="type"
+              value={filters.type}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
+            >
+              <option value="">Todos los Tipos</option>
+              <option value="CAP">CAP</option>
+              <option value="PROFUNDO">PROFUNDO</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {error && (

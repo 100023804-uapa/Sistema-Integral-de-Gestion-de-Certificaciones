@@ -1,6 +1,8 @@
+// Container simple para la Fase 4.1 - Solo lo necesario para el panel del estudiante
+
 import { FirebaseAccessRepository, AccessUser, AccessRequest } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
 import { FirebaseCertificateRepository, ProgramStat } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
-import { FirebaseStudentRepository } from '@/lib/infrastructure/repositories/FirebaseStudentCertificateRepository';
+import { FirebaseStudentRepository } from '@/lib/infrastructure/repositories/FirebaseStudentRepository';
 import { FirebaseCampusRepository } from './infrastructure/repositories/FirebaseCampusRepository';
 import { FirebaseAcademicAreaRepository } from './infrastructure/repositories/FirebaseAcademicAreaRepository';
 import { FirebaseCertificateTypeRepository } from './infrastructure/repositories/FirebaseCertificateTypeRepository';
@@ -95,6 +97,10 @@ export function getCertificateStateRepository() {
 
 export function getDigitalSignatureRepository() {
     return new FirebaseDigitalSignatureRepository();
+}
+
+export function getCertificateTemplateRepository() {
+    return new FirebaseCertificateTemplateRepository();
 }
 
 // Campus Use Cases

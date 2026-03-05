@@ -86,7 +86,7 @@ export default function DashboardPage() {
     <div className="px-4 py-8 md:px-8 md:py-12 space-y-10" onClick={() => setShowNotifications(false)}>
       
       {/* Header Section */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6 md:gap-0">
         <div>
           <p className="text-gray-500 font-medium mb-1">Bienvenido de nuevo,</p>
           <h1 className="text-3xl md:text-5xl font-black text-primary tracking-tighter">
@@ -148,7 +148,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -168,7 +168,7 @@ export default function DashboardPage() {
           transition={{ delay: 0.2 }}
         >
           <StatsCard 
-            title="Pendientes de Validación"
+            title="Pendientes (Firma/Rev.)"
             value={stats?.pendingValidation || '0'}
             icon={FileText}
           />
@@ -185,14 +185,61 @@ export default function DashboardPage() {
             icon={BarChart3}
           />
         </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <StatsCard 
+            title="Bloqueados / Revocados"
+            value={stats?.blockedCertificates || '0'}
+            icon={AlertCircle}
+          />
+        </motion.div>
       </div>
+
+      {/* Progress Bars for Macro Analysis */}
+      {stats && (stats.totalIssued > 0 || stats.blockedCertificates > 0) && (
+        <section className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">
+            Distribución por Tipo de Programa
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between text-sm font-bold text-gray-700 mb-1">
+                <span>Certificado de Aprobación (CAP)</span>
+                <span>{stats.byType?.CAP || 0}</span>
+              </div>
+              <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary" 
+                  style={{ width: `${(stats.byType?.CAP || 0) / Math.max(1, (stats.byType?.CAP || 0) + (stats.byType?.PROFUNDO || 0)) * 100}%` }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-sm font-bold text-gray-700 mb-1">
+                <span>Diplomado Avanzado (PROFUNDO)</span>
+                <span>{stats.byType?.PROFUNDO || 0}</span>
+              </div>
+              <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-accent" 
+                  style={{ width: `${(stats.byType?.PROFUNDO || 0) / Math.max(1, (stats.byType?.CAP || 0) + (stats.byType?.PROFUNDO || 0)) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Quick Actions */}
       <section className="space-y-6">
         <h2 className="text-xl font-black text-primary uppercase tracking-wider italic">
           Acciones Rápidas
         </h2>
-        <div className="flex flex-wrap gap-4 md:gap-8 justify-between">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           <QuickAction 
             label="Nuevo Certificado" 
             icon={PlusCircle} 

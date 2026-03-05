@@ -43,10 +43,12 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
     }
 
     async save(data: CreateCertificateDTO): Promise<Certificate> {
-        const qrCodeUrl = `${APP_URL}/verify/${data.folio}`;
+        const verificationCode = (data as any).publicVerificationCode || data.folio;
+        const qrCodeUrl = `${APP_URL}/verify/${verificationCode}`;
         const certificateData = {
             ...data,
             qrCodeUrl,
+            publicVerificationCode: verificationCode,
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
             issueDate: Timestamp.fromDate(new Date(data.issueDate)),
@@ -60,6 +62,7 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
         return {
             id: docRef.id,
             ...data,
+            publicVerificationCode: verificationCode,
             qrCodeUrl,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -79,6 +82,17 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
 
     async findByFolio(folio: string): Promise<Certificate | null> {
         const q = query(collection(db, COLLECTION_NAME), where('folio', '==', folio), limit(1));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            return null;
+        }
+
+        return this.mapDocToEntity(querySnapshot.docs[0]);
+    }
+
+    async findByVerificationCode(code: string): Promise<Certificate | null> {
+        const q = query(collection(db, COLLECTION_NAME), where('publicVerificationCode', '==', code), limit(1));
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {

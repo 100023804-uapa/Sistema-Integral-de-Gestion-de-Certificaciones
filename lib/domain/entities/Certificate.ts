@@ -13,6 +13,7 @@ export interface Certificate {
   status: CertificateStatus;
   templateId?: string; // ID de la plantilla utilizada
   qrCodeUrl: string; // URL pública de validación
+  publicVerificationCode?: string; // Código hash único (US-13)
   pdfUrl?: string; // URL del archivo en Storage
   campusId: string; // ID del recinto (obligatorio)
   academicAreaId?: string; // ID del área académica (obligatorio en futuro)
@@ -30,4 +31,4 @@ export interface CertificateHistoryItem {
   details?: string;
 }
 
-export type CreateCertificateDTO = Omit<Certificate, 'id' | 'createdAt' | 'updatedAt' | 'qrCodeUrl' | 'pdfUrl'>;
+export type CreateCertificateDTO = Omit<Certificate, 'id' | 'createdAt' | 'updatedAt' | 'qrCodeUrl' | 'pdfUrl' | 'publicVerificationCode'>;

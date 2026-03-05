@@ -8,8 +8,6 @@ import { FirebaseRoleRepository } from './infrastructure/repositories/FirebaseRo
 import { FirebaseCertificateStateRepository } from './infrastructure/repositories/FirebaseCertificateStateRepository';
 import { FirebaseDigitalSignatureRepository } from './infrastructure/repositories/FirebaseDigitalSignatureRepository';
 import { FirebaseCertificateTemplateRepository } from './infrastructure/repositories/FirebaseCertificateTemplateRepository';
-
-// Use Cases existentes
 import { CreateCampusUseCase } from './usecases/campus/CreateCampusUseCase';
 import { ListCampusesUseCase } from './usecases/campus/ListCampusesUseCase';
 import { UpdateCampusUseCase } from './usecases/campus/UpdateCampusUseCase';
@@ -39,15 +37,10 @@ import { ListTemplatesUseCase } from './usecases/certificateTemplate/ListTemplat
 import { UpdateTemplateUseCase } from './usecases/certificateTemplate/UpdateTemplateUseCase';
 import { DeleteTemplateUseCase } from './usecases/certificateTemplate/DeleteTemplateUseCase';
 import { GenerateCertificateUseCase } from './usecases/certificateTemplate/GenerateCertificateUseCase';
-import { GenerateFolio } from './application/use-cases/GenerateFolio';
-
-// Use Cases nuevos para Estudiantes (US-12)
-import { GetStudentCertificatesUseCase } from './usecases/student/GetStudentCertificatesUseCase';
-import { GetCertificateDetailsUseCase } from './usecases/student/GetCertificateDetailsUseCase';
-import { DownloadCertificateUseCase } from './usecases/student/DownloadCertificateUseCase';
+import { QueryDocumentSnapshot } from 'firebase/firestore';
 
 // Re-exportar tipos para evitar imports de infraestructura en app/
-export type { ProgramStat, AccessUser, AccessRequest };
+export type { ProgramStat, AccessUser, AccessRequest, QueryDocumentSnapshot };
 export type { Campus } from './types/campus';
 export type { AcademicArea } from './types/academicArea';
 export type { CertificateType } from './types/certificateType';
@@ -56,7 +49,6 @@ export type { CertificateState, CertificateStateValue, StateHistory, StateTransi
 export type { DigitalSignature, SignatureRequest, SignatureTemplate, SignatureStatus } from './types/digitalSignature';
 export type { CertificateTemplate, GeneratedCertificate, TemplateType } from './types/certificateTemplate';
 
-// Repositorios
 export function getAccessRepository() {
     return new FirebaseAccessRepository();
 }
@@ -97,6 +89,10 @@ export function getDigitalSignatureRepository() {
     return new FirebaseDigitalSignatureRepository();
 }
 
+export function getCertificateTemplateRepository() {
+    return new FirebaseCertificateTemplateRepository();
+}
+
 // Campus Use Cases
 export function getCreateCampusUseCase() {
     return new CreateCampusUseCase(getCampusRepository());
@@ -128,7 +124,7 @@ export function getUpdateAcademicAreaUseCase() {
 }
 
 export function getDeleteAcademicAreaUseCase() {
-    return new DeleteAcademicAreaUseCase(getAcademicAreaRepository(), getCampusRepository());
+    return new DeleteAcademicAreaUseCase(getAcademicAreaRepository());
 }
 
 // Certificate Type Use Cases
@@ -224,16 +220,19 @@ export function getGenerateFolioUseCase() {
     return new GenerateFolio(getCertificateRepository());
 }
 
-// Certificate Use Cases
 export function getCreateCertificateUseCase() {
     const certificateRepository = getCertificateRepository();
     const studentRepository = getStudentRepository();
-    const generateFolio = new GenerateFolio(getCertificateRepository());
+    const generateFolio = new GenerateFolio(certificateRepository);
 
     return new CreateCertificate(certificateRepository, studentRepository, generateFolio);
 }
 
 // Use Cases para Estudiantes (US-12)
+export function getStudentRepository() {
+    return new FirebaseStudentCertificateRepository();
+}
+
 export function getGetStudentCertificatesUseCase() {
     return new GetStudentCertificatesUseCase(getStudentRepository());
 }

@@ -76,8 +76,8 @@ export function Sidebar() {
 
   return (
     <>
-      <div className="flex flex-col h-screen w-64 bg-primary text-white sticky top-0 border-r border-white/5 shadow-2xl">
-        <div className="p-8 flex items-center gap-3">
+      <div className="hidden md:flex flex-col h-screen w-64 bg-primary text-white sticky top-0 border-r border-white/5 shadow-2xl shrink-0">
+        <div className="p-8 flex items-center gap-3 shrink-0">
           <div className="bg-accent p-2 rounded-xl">
             <GraduationCap size={24} />
           </div>
@@ -87,7 +87,7 @@ export function Sidebar() {
           </div>
         </div>
         
-        <nav className="flex-1 px-4 py-8 space-y-1">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
           {menuItems.map((item, index) => {
             // Detectar si es un separador
             if (item.label === 'separator') {

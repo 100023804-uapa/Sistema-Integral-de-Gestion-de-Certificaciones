@@ -1,4 +1,4 @@
-export const APP_VERSION = "0.5.0";
+export const APP_VERSION = "1.0.0";
 
 export interface Release {
     version: string;
@@ -12,6 +12,21 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+    {
+        version: "1.0.0",
+        date: "2026-03-05",
+        title: "Release Candidate 1 - Sistema Institucional Completo",
+        description: "Lanzamiento oficial de la versión 1.0.0. Implementación exitosa de las fases 1 a la 4, incluyendo gobernanza, ciclo de vida, firmas digitales y analíticas avanzadas.",
+        details: [
+            { type: 'feature', text: 'Gobernanza Institucional (Fase 1): Gestión de recintos, áreas académicas y tipos de certificado.' },
+            { type: 'feature', text: 'Ciclo de Vida (Fase 2): Sistema de estados, trazabilidad e integración de firma digital.' },
+            { type: 'feature', text: 'Diseño y PDF (Fase 3): Editor de plantillas dinámicas y generación de certificados en alta calidad.' },
+            { type: 'feature', text: 'Analíticas y Auditoría (Fase 4): Dashboard macro, métricas por recinto, reportes exportables a Excel/CSV.' },
+            { type: 'feature', text: 'Seguridad (US-13): Implementación de Código Hash Público de 16 caracteres para validación irrefutable.' },
+            { type: 'improvement', text: 'UI/UX Responsiva: Optimización de la interfaz en todas las pantallas (Scrollbars personalizados, Grids dinámicos).' },
+            { type: 'fix', text: 'Core: Resolución de dependencias Node.js filtradas al cliente (error firebase-admin).' }
+        ]
+    },
     {
         version: "0.5.0",
         date: "2026-02-19",

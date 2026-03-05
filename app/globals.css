@@ -51,8 +51,28 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Utilities */
-.text-gradient {
-  background: linear-gradient(135deg, var(--color-primary) 0%, #2563EB 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+/* Custom Scrollbar for Sidebar and Panels */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 27, 72, 0.3); /* Navy Blue (Primary) with transparency */
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-accent); /* System Orange */
+  border-radius: 10px;
+  border: 1px solid rgba(255, 130, 0, 0.1);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #E67600; /* Slightly darker orange */
+}
+
+/* For Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-accent) rgba(0, 27, 72, 0.3);
 }
