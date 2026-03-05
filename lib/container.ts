@@ -7,6 +7,7 @@ import { FirebaseAcademicAreaRepository } from './infrastructure/repositories/Fi
 import { FirebaseCertificateTypeRepository } from './infrastructure/repositories/FirebaseCertificateTypeRepository';
 import { FirebaseRoleRepository } from './infrastructure/repositories/FirebaseRoleRepository';
 import { FirebaseCertificateStateRepository } from './infrastructure/repositories/FirebaseCertificateStateRepository';
+import { FirebaseDigitalSignatureRepository } from './infrastructure/repositories/FirebaseDigitalSignatureRepository';
 import { CreateCertificate } from './application/use-cases/CreateCertificate';
 import { GenerateFolio } from './application/use-cases/GenerateFolio';
 import { CreateCampusUseCase } from './usecases/campus/CreateCampusUseCase';
@@ -29,6 +30,10 @@ import { AssignRoleUseCase } from './usecases/role/AssignRoleUseCase';
 import { CreateCertificateStateUseCase } from './usecases/certificateState/CreateCertificateStateUseCase';
 import { TransitionStateUseCase } from './usecases/certificateState/TransitionStateUseCase';
 import { GetStateHistoryUseCase } from './usecases/certificateState/GetStateHistoryUseCase';
+import { CreateSignatureRequestUseCase } from './usecases/digitalSignature/CreateSignatureRequestUseCase';
+import { SignCertificateUseCase } from './usecases/digitalSignature/SignCertificateUseCase';
+import { RejectSignatureUseCase } from './usecases/digitalSignature/RejectSignatureUseCase';
+import { GetSignatureRequestsUseCase } from './usecases/digitalSignature/GetSignatureRequestsUseCase';
 import { QueryDocumentSnapshot } from 'firebase/firestore';
 
 // Re-exportar tipos para evitar imports de infraestructura en app/
@@ -38,6 +43,7 @@ export type { AcademicArea } from './types/academicArea';
 export type { CertificateType } from './types/certificateType';
 export type { Role, UserRole, RoleValue } from './types/role';
 export type { CertificateState, CertificateStateValue, StateHistory, StateTransition } from './types/certificateState';
+export type { DigitalSignature, SignatureRequest, SignatureTemplate, SignatureStatus } from './types/digitalSignature';
 
 export function getAccessRepository() {
     return new FirebaseAccessRepository();
@@ -73,6 +79,10 @@ export function getRoleRepository() {
 
 export function getCertificateStateRepository() {
     return new FirebaseCertificateStateRepository();
+}
+
+export function getDigitalSignatureRepository() {
+    return new FirebaseDigitalSignatureRepository();
 }
 
 // Campus Use Cases
@@ -158,6 +168,23 @@ export function getTransitionStateUseCase() {
 
 export function getGetStateHistoryUseCase() {
     return new GetStateHistoryUseCase(getCertificateStateRepository());
+}
+
+// Digital Signature Use Cases
+export function getCreateSignatureRequestUseCase() {
+    return new CreateSignatureRequestUseCase(getDigitalSignatureRepository());
+}
+
+export function getSignCertificateUseCase() {
+    return new SignCertificateUseCase(getDigitalSignatureRepository());
+}
+
+export function getRejectSignatureUseCase() {
+    return new RejectSignatureUseCase(getDigitalSignatureRepository());
+}
+
+export function getGetSignatureRequestsUseCase() {
+    return new GetSignatureRequestsUseCase(getDigitalSignatureRepository());
 }
 
 export function getGenerateFolioUseCase() {
