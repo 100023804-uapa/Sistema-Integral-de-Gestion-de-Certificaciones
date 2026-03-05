@@ -26,7 +26,7 @@ export default function CreateTemplatePage() {
   const [certificateTypes, setCertificateTypes] = useState<CertificateType[]>([]);
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [activeTab, setActiveTab] = useState<'basic' | 'layout' | 'placeholders'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'layout' | 'placeholders' | 'code'>('basic');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -284,7 +284,8 @@ export default function CreateTemplatePage() {
           {[
             { id: 'basic', label: 'Información Básica', icon: <Settings size={16} /> },
             { id: 'layout', label: 'Diseño y Layout', icon: <Grid3x3 size={16} /> },
-            { id: 'placeholders', label: 'Placeholders', icon: <Type size={16} /> }
+            { id: 'placeholders', label: 'Placeholders', icon: <Type size={16} /> },
+            { id: 'code', label: 'Código HTML/CSS', icon: <File size={16} /> }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -625,6 +626,559 @@ export default function CreateTemplatePage() {
             </div>
           </div>
         )}
+
+        {/* Tab de Código HTML/CSS */}
+        {activeTab === 'code' && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <File size={20} />
+                Editor de Código HTML/CSS
+              </h3>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <h4 className="font-medium text-blue-900 mb-2">Placeholders Disponibles:</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}studentName{'}{'}'}</code>
+                    <span className="text-gray-700">Nombre completo del estudiante</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}programName{'}{'}'}</code>
+                    <span className="text-gray-700">Nombre del programa académico</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}folio{'}{'}'}</code>
+                    <span className="text-gray-700">Número de folio del certificado</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}issueDate{'}{'}'}</code>
+                    <span className="text-gray-700">Fecha de emisión</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}expirationDate{'}{'}'}</code>
+                    <span className="text-gray-700">Fecha de vencimiento</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}description{'}{'}'}</code>
+                    <span className="text-gray-700">Descripción adicional</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}campusName{'}{'}'}</code>
+                    <span className="text-gray-700">Nombre del campus</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}academicArea{'}{'}'}</code>
+                    <span className="text-gray-700">Área académica</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}signerName{'}{'}'}</code>
+                    <span className="text-gray-700">Nombre del firmante</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}signerTitle{'}{'}'}</code>
+                    <span className="text-gray-700">Título del firmante</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}qrCode{'}{'}'}</code>
+                    <span className="text-gray-700">Código QR de verificación</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}certificateType{'}{'}'}</code>
+                    <span className="text-gray-700">Tipo de certificado</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}grade{'}{'}'}</code>
+                    <span className="text-gray-700">Calificación o nivel</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}duration{'}{'}'}</code>
+                    <span className="text-gray-700">Duración del programa</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}verificationUrl{'}{'}'}</code>
+                    <span className="text-gray-700">URL de verificación</span>
+                  </div>
+                </div>
+              </div>
+              <p className="text-gray-600 mb-4">
+                Usa estos placeholders en tu código HTML. Se reemplazarán automáticamente con los datos del certificado al generar.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Editor HTML */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Código HTML
+                </label>
+                <textarea
+                  value={formData.htmlContent}
+                  onChange={(e) => setFormData({ ...formData, htmlContent: e.target.value })}
+                  placeholder={`<!DOCTYPE html>
+<html>
+<head>
+  <title>Certificado</title>
+</head>
+<body>
+  <div class="certificate">
+    <h1>CERTIFICADO</h1>
+    <p>Se otorga a: <strong>{{studentName}}</strong></p>
+    <p>Por haber completado: <strong>{{programName}}</strong></p>
+    <div class="footer">
+      <p>Folio: {{folio}}</p>
+      <p>Fecha: {{issueDate}}</p>
+    </div>
+  </div>
+</body>
+</html>`}
+                  className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  spellCheck={false}
+                />
+              </div>
+
+              {/* Editor CSS */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Código CSS
+                </label>
+                <textarea
+                  value={formData.cssStyles}
+                  onChange={(e) => setFormData({ ...formData, cssStyles: e.target.value })}
+                  placeholder={`body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+}
+
+.certificate {
+  width: 297mm;
+  height: 210mm;
+  border: 2px solid #333;
+  padding: 20px;
+  text-align: center;
+}
+
+h1 {
+  color: #1e40af;
+  font-size: 24px;
+  margin-bottom: 30px;
+}
+
+.footer {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  text-align: left;
+  font-size: 12px;
+  color: #666;
+}`}
+                  className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  spellCheck={false}
+                />
+              </div>
+            </div>
+
+            {/* Plantillas Predefinidas */}
+            <div>
+              <h4 className="text-md font-medium text-gray-900 mb-3">Plantillas Predefinidas</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData({
+                      ...formData,
+                      htmlContent: `<!DOCTYPE html>
+<html>
+<head>
+  <title>Certificado Horizontal</title>
+</head>
+<body>
+  <div class="certificate">
+    <header class="header">
+      <h1>CERTIFICADO DE FINALIZACIÓN</h1>
+    </header>
+    <main class="content">
+      <p>Se otorga a:</p>
+      <h2 class="student-name">{{studentName}}</h2>
+      <p>Por haber completado satisfactoriamente:</p>
+      <h3 class="program-name">{{programName}}</h3>
+      <p class="description">{{description}}</p>
+    </main>
+    <footer class="footer">
+      <div class="info">
+        <p>Folio: {{folio}}</p>
+        <p>Fecha: {{issueDate}}</p>
+      </div>
+      <div class="signature">
+        <div class="signature-line"></div>
+        <p>{{signerName}}</p>
+        <p>{{signerTitle}}</p>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>`,
+                      cssStyles: `body {
+  margin: 0;
+  padding: 20px;
+  font-family: 'Arial', sans-serif;
+}
+
+.certificate {
+  width: 297mm;
+  height: 210mm;
+  border: 3px solid #1e40af;
+  padding: 30px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.header h1 {
+  color: #1e40af;
+  font-size: 28px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.content {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.student-name {
+  font-size: 24px;
+  font-weight: bold;
+  color: #1f2937;
+  margin: 20px 0;
+}
+
+.program-name {
+  font-size: 20px;
+  color: #374151;
+  margin: 15px 0;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 40px;
+}
+
+.info p {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 5px 0;
+}
+
+.signature {
+  text-align: center;
+}
+
+.signature-line {
+  width: 150px;
+  height: 2px;
+  border-bottom: 2px solid #374151;
+  margin-bottom: 5px;
+}`
+                    });
+                  }}
+                  className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-left"
+                >
+                  <h5 className="font-medium text-gray-900">Horizontal Azul</h5>
+                  <p className="text-sm text-gray-600">Diseño horizontal con gradientes</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData({
+                      ...formData,
+                      htmlContent: `<!DOCTYPE html>
+<html>
+<head>
+  <title>Certificado Vertical</title>
+</head>
+<body>
+  <div class="certificate">
+    <div class="header">
+      <h1>CERTIFICADO</h1>
+      <div class="logo"></div>
+    </div>
+    <div class="content">
+      <h2>DE {{certificateType}}</h2>
+      <p class="recipient">A nombre de:</p>
+      <h3 class="name">{{studentName}}</h3>
+      <p class="program">{{programName}}</p>
+      <p class="date">{{issueDate}}</p>
+    </div>
+    <div class="footer">
+      <div class="qr-placeholder"></div>
+      <div class="signatures">
+        <div class="signature">
+          <div class="line"></div>
+          <p>{{signerName}}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`,
+                      cssStyles: `body {
+  margin: 0;
+  padding: 20px;
+  font-family: 'Georgia', serif;
+}
+
+.certificate {
+  width: 210mm;
+  height: 297mm;
+  border: 2px solid #d4af37;
+  padding: 40px;
+  box-sizing: border-box;
+  background: #fff;
+  position: relative;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.header h1 {
+  color: #d4af37;
+  font-size: 32px;
+  font-weight: bold;
+  margin: 0;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+.content {
+  text-align: center;
+  margin: 40px 0;
+}
+
+.name {
+  font-size: 28px;
+  font-weight: bold;
+  color: #1f2937;
+  margin: 20px 0;
+  border-bottom: 2px solid #d4af37;
+  display: inline-block;
+  padding-bottom: 10px;
+}
+
+.footer {
+  position: absolute;
+  bottom: 40px;
+  left: 40px;
+  right: 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.qr-placeholder {
+  width: 60px;
+  height: 60px;
+  border: 2px dashed #d4af37;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4af37;
+  font-size: 10px;
+  text-align: center;
+}`
+                    });
+                  }}
+                  className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-left"
+                >
+                  <h5 className="font-medium text-gray-900">Vertical Dorado</h5>
+                  <p className="text-sm text-gray-600">Diseño vertical elegante</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData({
+                      ...formData,
+                      htmlContent: `<!DOCTYPE html>
+<html>
+<head>
+  <title>Certificado Institucional</title>
+</head>
+<body>
+  <div class="certificate">
+    <div class="header">
+      <div class="institution">
+        <h1>UNIVERSIDAD AUTÓNOMA DE PUEBLA</h1>
+        <h2>SISTEMA INTEGRAL DE GESTIÓN DE CERTIFICADOS</h2>
+      </div>
+    </div>
+    <div class="content">
+      <h3>CERTIFICADO</h3>
+      <p>Que el suscrito Rector de la Universidad Autónoma de Puebla,</p>
+      <h4 class="name">{{studentName}}</h4>
+      <p>ha completado satisfactoriamente:</p>
+      <h5 class="program">{{programName}}</h5>
+      <p class="details">{{description}}</p>
+      <p class="date">Expedido en {{campusName}}, a los {{issueDate}}</p>
+    </div>
+    <div class="footer">
+      <div class="seal">
+        <div class="seal-circle"></div>
+        <p>SELLO INSTITUCIONAL</p>
+      </div>
+      <div class="signatures">
+        <div class="signature">
+          <div class="line"></div>
+          <p>{{rectorName}}</p>
+          <p>Rector</p>
+        </div>
+        <div class="signature">
+          <div class="line"></div>
+          <p>{{secretaryName}}</p>
+          <p>Secretario Académico</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`,
+                      cssStyles: `body {
+  margin: 0;
+  padding: 20px;
+  font-family: 'Times New Roman', serif;
+}
+
+.certificate {
+  width: 420mm;
+  height: 297mm;
+  border: 5px solid #8b0000;
+  padding: 50px;
+  box-sizing: border-box;
+  background: #fafafa;
+  position: relative;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+  border-bottom: 3px solid #8b0000;
+  padding-bottom: 20px;
+}
+
+.institution h1 {
+  color: #8b0000;
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.institution h2 {
+  color: #1f2937;
+  font-size: 16px;
+  margin: 10px 0 0 0;
+}
+
+.content {
+  text-align: center;
+  margin: 40px 0;
+}
+
+.content h3 {
+  color: #8b0000;
+  font-size: 36px;
+  font-weight: bold;
+  margin: 0 0 30px 0;
+}
+
+.name {
+  font-size: 32px;
+  font-weight: bold;
+  color: #1f2937;
+  margin: 25px 0;
+  text-transform: uppercase;
+}
+
+.footer {
+  position: absolute;
+  bottom: 50px;
+  left: 50px;
+  right: 50px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.seal {
+  text-align: center;
+}
+
+.seal-circle {
+  width: 80px;
+  height: 80px;
+  border: 3px solid #8b0000;
+  border-radius: 50%;
+  margin: 0 auto 10px;
+}
+
+.signatures {
+  display: flex;
+  gap: 40px;
+}
+
+.signature {
+  text-align: center;
+}
+
+.signature .line {
+  width: 200px;
+  height: 2px;
+  border-bottom: 2px solid #1f2937;
+  margin-bottom: 5px;
+}`
+                    });
+                  }}
+                  className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-left"
+                >
+                  <h5 className="font-medium text-gray-900">Institucional Macro</h5>
+                  <p className="text-sm text-gray-600">Formato oficial A3</p>
+                </button>
+              </div>
+            </div>
+
+            {/* Botones de acción */}
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setFormData({
+                    ...formData,
+                    htmlContent: '',
+                    cssStyles: ''
+                  });
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              >
+                Limpiar Código
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPreview(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Vista Previa del Código
+              </button>
+            </div>
+          </div>
+        )}
       </form>
 
       {/* Modal de Vista Previa */}
@@ -641,13 +1195,74 @@ export default function CreateTemplatePage() {
               </button>
             </div>
             
-            <div className="bg-gray-100 rounded-lg p-8 min-h-[400px] flex items-center justify-center">
-              <div className="text-center">
-                <Palette className="mx-auto text-gray-400 mb-4" size={48} />
-                <p className="text-gray-600">Vista previa en desarrollo...</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  {formData.name || 'Nueva Plantilla'} - {formData.type}
-                </p>
+            <div className="bg-gray-100 rounded-lg p-4 min-h-[400px]">
+              <div 
+                className="bg-white shadow-lg mx-auto relative"
+                style={{
+                  width: `${Math.min(layout.width, 600)}px`,
+                  height: `${Math.min(layout.height, 400)}px`,
+                  transform: `scale(${Math.min(600 / layout.width, 400 / layout.height)})`,
+                  transformOrigin: 'top center'
+                }}
+              >
+                {/* Header */}
+                <div 
+                  className="border-b-2 border-gray-800 flex items-center justify-center p-4"
+                  style={{ backgroundColor: '#1e40af', color: '#ffffff' }}
+                >
+                  <h1 className="text-xl font-bold">CERTIFICADO</h1>
+                </div>
+                
+                {/* Body */}
+                <div className="p-6 text-center">
+                  <h2 className="text-2xl font-bold mb-4">CERTIFICADO DE {formData.type?.toUpperCase() || 'FINALIZACIÓN'}</h2>
+                  <p className="text-lg mb-2">Se otorga a:</p>
+                  <p className="text-xl font-semibold mb-4">[Nombre del Estudiante]</p>
+                  <p className="text-gray-600 mb-2">Por haber completado satisfactoriamente:</p>
+                  <p className="text-lg font-medium">[Programa Académico]</p>
+                </div>
+                
+                {/* Footer */}
+                <div className="border-t mt-auto p-4 flex justify-between items-center">
+                  <div className="text-left">
+                    <p className="text-sm text-gray-600">Folio: [FOLIO]</p>
+                    <p className="text-sm text-gray-600">Fecha: [FECHA]</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="w-24 h-12 border-2 border-dashed border-gray-400 flex items-center justify-center">
+                      <span className="text-xs text-gray-500">FIRMA</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* QR Code Placeholder */}
+                <div className="absolute bottom-4 right-4 w-16 h-16 bg-gray-200 border-2 border-gray-300 flex items-center justify-center">
+                  <QrCode size={24} className="text-gray-500" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-semibold text-blue-900 mb-2">Configuración Actual:</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Nombre:</span> {formData.name || 'Sin nombre'}
+                </div>
+                <div>
+                  <span className="font-medium">Tipo:</span> {formData.type}
+                </div>
+                <div>
+                  <span className="font-medium">Dimensiones:</span> {layout.width}×{layout.height}mm
+                </div>
+                <div>
+                  <span className="font-medium">Orientación:</span> {layout.orientation}
+                </div>
+                <div>
+                  <span className="font-medium">Secciones:</span> {layout.sections?.length || 0}
+                </div>
+                <div>
+                  <span className="font-medium">Placeholders:</span> {placeholders.length}
+                </div>
               </div>
             </div>
             

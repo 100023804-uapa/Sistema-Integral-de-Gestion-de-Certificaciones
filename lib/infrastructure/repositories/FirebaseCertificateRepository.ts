@@ -218,14 +218,23 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
 
     private mapDocToEntity(docSnap: any): Certificate {
         const data = docSnap.data();
+        
+        // Función segura para convertir fechas
+        const safeToDate = (timestamp: any): Date => {
+            if (!timestamp) return new Date();
+            if (timestamp.toDate) return timestamp.toDate();
+            if (typeof timestamp === 'string' || typeof timestamp === 'number') return new Date(timestamp);
+            return new Date();
+        };
+
         return {
             id: docSnap.id,
             ...data,
             qrCodeUrl: data.qrCodeUrl || `${APP_URL}/verify/${data.folio}`,
-            issueDate: data.issueDate?.toDate ? data.issueDate.toDate() : new Date(data.issueDate),
-            expirationDate: data.expirationDate?.toDate ? data.expirationDate.toDate() : (data.expirationDate ? new Date(data.expirationDate) : undefined),
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || Date.now()),
-            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : new Date(data.updatedAt || Date.now()),
+            issueDate: safeToDate(data.issueDate),
+            expirationDate: data.expirationDate ? safeToDate(data.expirationDate) : undefined,
+            createdAt: safeToDate(data.createdAt),
+            updatedAt: safeToDate(data.updatedAt),
         } as Certificate;
     }
 }

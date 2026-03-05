@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeft, User, FileText, Calendar, Save, CheckCircle, AlertCircle, MapPin } from 'lucide-react';
-import { getCreateCertificateUseCase, getTemplateRepository, getListCampusesUseCase } from '@/lib/container';
+import { getCreateCertificateUseCase, getCertificateTemplateRepository, getListCampusesUseCase } from '@/lib/container';
 import { CertificateType } from '@/lib/domain/entities/Certificate';
 import { Campus } from '@/lib/container';
 
-import { CertificateTemplate } from '@/lib/domain/entities/Template';
+import { CertificateTemplate } from '@/lib/types/certificateTemplate';
 import { LayoutTemplate } from 'lucide-react';
 
 export default function CreateCertificatePage() {
@@ -36,8 +36,8 @@ export default function CreateCertificatePage() {
   useEffect(() => {
     const fetchData = async () => {
         try {
-            // Fetch templates
-            const templateRepo = getTemplateRepository();
+            // Fetch templates sin filtrar por formData.type para que salgan todas
+            const templateRepo = getCertificateTemplateRepository();
             const templateData = await templateRepo.list(true);
             setTemplates(templateData);
 
@@ -50,7 +50,10 @@ export default function CreateCertificatePage() {
         }
     };
     fetchData();
-  }, []);
+  }, [formData.type]); // ← Se actualiza cuando cambia el tipo
+
+  // Las plantillas ya vienen filtradas desde el backend
+  const filteredTemplates = templates;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -171,7 +174,7 @@ export default function CreateCertificatePage() {
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white"
                 >
                     <option value="">Predeterminada (Sistema)</option>
-                    {templates.map(t => (
+                    {filteredTemplates.map(t => (
                         <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                 </select>

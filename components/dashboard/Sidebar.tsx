@@ -13,7 +13,6 @@ import {
   Settings, 
   LogOut,
   GraduationCap,
-  LayoutTemplate,
   MapPin,
   Building,
   Type,
@@ -23,20 +22,38 @@ import {
   Palette
 } from 'lucide-react';
 
-const menuItems = [
+type MenuItem = {
+  label: string;
+  icon?: any;
+  href?: string;
+  text?: string;
+};
+
+const menuItems: MenuItem[] = [
+  // 📊 Resumen General
   { label: 'Resumen', icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Certificados', icon: FileText, href: '/dashboard/certificates' },
-  { label: 'Programas', icon: GraduationCap, href: '/dashboard/programs' },
-  { label: 'Plantillas', icon: LayoutTemplate, href: '/dashboard/templates' },
-  { label: 'Participantes', icon: Users, href: '/dashboard/graduates' },
+  
+  // 🏛️ Configuración Institucional
+  { label: 'separator', text: 'Configuración Institucional' },
   { label: 'Recintos', icon: MapPin, href: '/dashboard/campuses' },
   { label: 'Áreas Académicas', icon: Building, href: '/dashboard/academic-areas' },
   { label: 'Tipos de Certificado', icon: Type, href: '/dashboard/certificate-types' },
   { label: 'Roles', icon: Shield, href: '/dashboard/roles' },
+  
+  // 📚 Gestión Académica
+  { label: 'separator', text: 'Gestión Académica' },
+  { label: 'Programas', icon: GraduationCap, href: '/dashboard/programs' },
+  { label: 'Participantes', icon: Users, href: '/dashboard/graduates' },
+  
+  // 📄 Gestión de Certificados
+  { label: 'separator', text: 'Gestión de Certificados' },
+  { label: 'Certificados', icon: FileText, href: '/dashboard/certificates' },
   { label: 'Estados', icon: Clock, href: '/dashboard/certificate-states' },
   { label: 'Firmas Digitales', icon: PenTool, href: '/dashboard/digital-signatures' },
   { label: 'Plantillas de Certificado', icon: Palette, href: '/dashboard/certificate-templates' },
-  { label: 'Usuarios', icon: Users, href: '/dashboard/users' },
+  
+  // ⚙️ Administración
+  { label: 'separator', text: 'Administración' },
   { label: 'Configuración', icon: Settings, href: '/dashboard/settings' },
 ];
 
@@ -70,10 +87,23 @@ export function Sidebar() {
           </div>
         </div>
         
-        <nav className="flex-1 px-4 py-8 space-y-2">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
+        <nav className="flex-1 px-4 py-8 space-y-1">
+          {menuItems.map((item, index) => {
+            // Detectar si es un separador
+            if (item.label === 'separator') {
+              return (
+                <div key={`separator-${index}`} className="pt-4">
+                  <div className="px-4 py-2">
+                    <div className="text-xs font-semibold text-blue-300 uppercase tracking-wider opacity-70">
+                      {item.text}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            
             const isActive = pathname === item.href;
+            const Icon = item.icon;
             
             return (
               <Link 

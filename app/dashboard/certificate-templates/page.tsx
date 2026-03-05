@@ -3,25 +3,31 @@
 import { useState, useEffect } from 'react';
 import { CertificateTemplate, CertificateType } from '@/lib/container';
 import { 
-  FileText, 
-  Plus, 
-  Edit, 
-  Trash2, 
+  ArrowLeft, 
+  Save, 
   Eye, 
-  Download,
-  Copy,
-  Layout,
-  Monitor,
+  Palette, 
+  Layout, 
+  Monitor, 
   File,
-  Filter,
-  Search,
-  MoreVertical,
-  Palette,
+  Plus,
+  Trash2,
   Settings,
+  Grid3x3,
+  Type,
+  Image,
+  QrCode,
+  PenTool,
+  Search,
+  Filter,
+  MoreVertical,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  Edit,
+  Copy
 } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 export default function CertificateTemplatesPage() {
@@ -193,13 +199,13 @@ export default function CertificateTemplatesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Plantillas de Certificado</h1>
           <p className="text-gray-600">Diseña y gestiona las plantillas para generar certificados</p>
         </div>
-        <button
-          onClick={handleCreate}
+        <Link
+          href="/dashboard/certificate-templates/create"
           className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 flex items-center gap-2"
         >
           <Plus size={20} />
           Nueva Plantilla
-        </button>
+        </Link>
       </div>
 
       {/* Filtros y Búsqueda */}
@@ -399,13 +405,13 @@ export default function CertificateTemplatesPage() {
           <p className="text-gray-600 mb-4">
             Crea tu primera plantilla para empezar a generar certificados
           </p>
-          <button
-            onClick={handleCreate}
+          <Link
+            href="/dashboard/certificate-templates/create"
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 flex items-center gap-2 mx-auto"
           >
             <Plus size={20} />
             Crear Plantilla
-          </button>
+          </Link>
         </div>
       )}
 
@@ -594,21 +600,125 @@ function CreateTemplateModal({
   );
 }
 
-// Placeholder para los otros modales (se implementarán completamente)
+// Modal de Edición Completo
 function EditTemplateModal({ template, onClose, onSuccess, certificateTypes }: any) {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: template.name || '',
+    description: template.description || '',
+    type: template.type || 'horizontal',
+    certificateTypeId: template.certificateTypeId || '',
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/admin/certificate-templates/${template.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        onSuccess();
+      } else {
+        alert('Error al actualizar plantilla');
+      }
+    } catch (error) {
+      alert('Error al actualizar plantilla');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
+      <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Editar Plantilla</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">×</button>
         </div>
-        <p className="text-gray-600">Editor de plantillas en desarrollo...</p>
-        <div className="mt-6 flex justify-end">
-          <button onClick={onClose} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90">
-            Cerrar
-          </button>
-        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nombre *
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Descripción
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tipo *
+            </label>
+            <select
+              required
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="horizontal">Horizontal</option>
+              <option value="vertical">Vertical</option>
+              <option value="institutional_macro">Institucional Macro</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tipo de Certificado *
+            </label>
+            <select
+              required
+              value={formData.certificateTypeId}
+              onChange={(e) => setFormData({ ...formData, certificateTypeId: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Seleccionar...</option>
+              {certificateTypes.map((type: any) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex gap-4 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50"
+            >
+              {loading ? 'Actualizando...' : 'Actualizar Plantilla'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -622,11 +732,83 @@ function PreviewTemplateModal({ template, onClose }: any) {
           <h2 className="text-xl font-bold">Vista Previa</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">×</button>
         </div>
-        <div className="bg-gray-100 rounded-lg p-8 min-h-[400px] flex items-center justify-center">
-          <p className="text-gray-600">Vista previa de la plantilla en desarrollo...</p>
+        
+        <div className="bg-gray-100 rounded-lg p-4 min-h-[400px]">
+          <div 
+            className="bg-white shadow-lg mx-auto relative"
+            style={{
+              width: `${Math.min(template.layout?.width || 297, 600)}px`,
+              height: `${Math.min(template.layout?.height || 210, 400)}px`,
+              transform: `scale(${Math.min(600 / (template.layout?.width || 297), 400 / (template.layout?.height || 210))})`,
+              transformOrigin: 'top center'
+            }}
+          >
+            {/* Header */}
+            <div 
+              className="border-b-2 border-gray-800 flex items-center justify-center p-4"
+              style={{ backgroundColor: '#1e40af', color: '#ffffff' }}
+            >
+              <h1 className="text-xl font-bold">CERTIFICADO</h1>
+            </div>
+            
+            {/* Body */}
+            <div className="p-6 text-center">
+              <h2 className="text-2xl font-bold mb-4">CERTIFICADO DE {template.type?.toUpperCase() || 'FINALIZACIÓN'}</h2>
+              <p className="text-lg mb-2">Se otorga a:</p>
+              <p className="text-xl font-semibold mb-4">[Nombre del Estudiante]</p>
+              <p className="text-gray-600 mb-2">Por haber completado satisfactoriamente:</p>
+              <p className="text-lg font-medium">[Programa Académico]</p>
+            </div>
+            
+            {/* Footer */}
+            <div className="border-t mt-auto p-4 flex justify-between items-center">
+              <div className="text-left">
+                <p className="text-sm text-gray-600">Folio: [FOLIO]</p>
+                <p className="text-sm text-gray-600">Fecha: [FECHA]</p>
+              </div>
+              <div className="text-right">
+                <div className="w-24 h-12 border-2 border-dashed border-gray-400 flex items-center justify-center">
+                  <span className="text-xs text-gray-500">FIRMA</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* QR Code Placeholder */}
+            <div className="absolute bottom-4 right-4 w-16 h-16 bg-gray-200 border-2 border-gray-300 flex items-center justify-center">
+              <QrCode size={24} className="text-gray-500" />
+            </div>
+          </div>
         </div>
+        
+        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+          <h3 className="font-semibold text-blue-900 mb-2">Información de la Plantilla:</h3>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="font-medium">Nombre:</span> {template.name}
+            </div>
+            <div>
+              <span className="font-medium">Tipo:</span> {template.type}
+            </div>
+            <div>
+              <span className="font-medium">Dimensiones:</span> {template.layout?.width || 297}×{template.layout?.height || 210}mm
+            </div>
+            <div>
+              <span className="font-medium">Orientación:</span> {template.layout?.orientation || 'landscape'}
+            </div>
+            <div>
+              <span className="font-medium">Secciones:</span> {template.layout?.sections?.length || 0}
+            </div>
+            <div>
+              <span className="font-medium">Placeholders:</span> {template.placeholders?.length || 0}
+            </div>
+          </div>
+        </div>
+        
         <div className="mt-6 flex justify-end">
-          <button onClick={onClose} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+          >
             Cerrar
           </button>
         </div>
