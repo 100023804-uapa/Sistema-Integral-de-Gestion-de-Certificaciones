@@ -1,19 +1,14 @@
-import { NextResponse } from 'next/server';
-import { getAdminAuth } from '@/lib/firebaseAdmin';
+import { NextResponse, NextRequest } from 'next/server';
 
-const SESSION_COOKIE = 'session';
-
-export async function POST() {
+export async function POST(request: NextRequest) {
     try {
-        const adminAuth = getAdminAuth();
-        
-        // Opcional: revocar todos los tokens del usuario si se desea
-        // await adminAuth.revokeRefreshTokens(uid);
+        // TEMPORAL: Logout simple sin Firebase Admin
+        console.log('⚠️ Logout temporal sin Firebase Admin');
 
         const response = NextResponse.json({ success: true });
 
-        // Borrar cookie
-        response.cookies.set(SESSION_COOKIE, '', {
+        // Eliminar cookie
+        response.cookies.set('session', '', {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
@@ -22,8 +17,12 @@ export async function POST() {
         });
 
         return response;
+
     } catch (error) {
         console.error('Logout session error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json(
+            { error: 'No fue posible cerrar la sesión. Inténtelo de nuevo.' },
+            { status: 500 }
+        );
     }
 }

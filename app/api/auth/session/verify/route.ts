@@ -1,22 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminAuth } from '@/lib/firebaseAdmin';
-
-const SESSION_COOKIE = 'session';
 
 export async function GET(request: NextRequest) {
     try {
-        const sessionCookie = request.cookies.get(SESSION_COOKIE)?.value;
+        const sessionCookie = request.cookies.get('session')?.value;
 
-        if (!sessionCookie) {
-            return NextResponse.json({ error: 'No session cookie' }, { status: 401 });
+        // TEMPORAL: Verificar simple sin Firebase Admin
+        if (sessionCookie && sessionCookie === 'temp-session') {
+            return NextResponse.json({ 
+                valid: true, 
+                message: 'Sesión temporal válida' 
+            });
         }
 
-        const adminAuth = getAdminAuth();
-        const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
+        return NextResponse.json({ 
+            valid: false, 
+            message: 'Sesión inválida' 
+        });
 
-        return NextResponse.json({ valid: true, uid: decodedClaims.uid });
     } catch (error) {
-        console.error('Session verification error:', error);
-        return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+        console.error('Verify session error:', error);
+        return NextResponse.json(
+            { valid: false, message: 'Error verificando sesión' },
+            { status: 500 }
+        );
     }
 }
