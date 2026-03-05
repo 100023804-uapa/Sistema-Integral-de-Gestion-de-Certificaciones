@@ -8,6 +8,7 @@ import { FirebaseCertificateTypeRepository } from './infrastructure/repositories
 import { FirebaseRoleRepository } from './infrastructure/repositories/FirebaseRoleRepository';
 import { FirebaseCertificateStateRepository } from './infrastructure/repositories/FirebaseCertificateStateRepository';
 import { FirebaseDigitalSignatureRepository } from './infrastructure/repositories/FirebaseDigitalSignatureRepository';
+import { FirebaseCertificateTemplateRepository } from './infrastructure/repositories/FirebaseCertificateTemplateRepository';
 import { CreateCertificate } from './application/use-cases/CreateCertificate';
 import { GenerateFolio } from './application/use-cases/GenerateFolio';
 import { CreateCampusUseCase } from './usecases/campus/CreateCampusUseCase';
@@ -34,6 +35,11 @@ import { CreateSignatureRequestUseCase } from './usecases/digitalSignature/Creat
 import { SignCertificateUseCase } from './usecases/digitalSignature/SignCertificateUseCase';
 import { RejectSignatureUseCase } from './usecases/digitalSignature/RejectSignatureUseCase';
 import { GetSignatureRequestsUseCase } from './usecases/digitalSignature/GetSignatureRequestsUseCase';
+import { CreateTemplateUseCase } from './usecases/certificateTemplate/CreateTemplateUseCase';
+import { ListTemplatesUseCase } from './usecases/certificateTemplate/ListTemplatesUseCase';
+import { UpdateTemplateUseCase } from './usecases/certificateTemplate/UpdateTemplateUseCase';
+import { DeleteTemplateUseCase } from './usecases/certificateTemplate/DeleteTemplateUseCase';
+import { GenerateCertificateUseCase } from './usecases/certificateTemplate/GenerateCertificateUseCase';
 import { QueryDocumentSnapshot } from 'firebase/firestore';
 
 // Re-exportar tipos para evitar imports de infraestructura en app/
@@ -44,6 +50,7 @@ export type { CertificateType } from './types/certificateType';
 export type { Role, UserRole, RoleValue } from './types/role';
 export type { CertificateState, CertificateStateValue, StateHistory, StateTransition } from './types/certificateState';
 export type { DigitalSignature, SignatureRequest, SignatureTemplate, SignatureStatus } from './types/digitalSignature';
+export type { CertificateTemplate, GeneratedCertificate, TemplateType } from './types/certificateTemplate';
 
 export function getAccessRepository() {
     return new FirebaseAccessRepository();
@@ -83,6 +90,10 @@ export function getCertificateStateRepository() {
 
 export function getDigitalSignatureRepository() {
     return new FirebaseDigitalSignatureRepository();
+}
+
+export function getCertificateTemplateRepository() {
+    return new FirebaseCertificateTemplateRepository();
 }
 
 // Campus Use Cases
@@ -185,6 +196,27 @@ export function getRejectSignatureUseCase() {
 
 export function getGetSignatureRequestsUseCase() {
     return new GetSignatureRequestsUseCase(getDigitalSignatureRepository());
+}
+
+// Certificate Template Use Cases
+export function getCreateTemplateUseCase() {
+    return new CreateTemplateUseCase(getCertificateTemplateRepository());
+}
+
+export function getListTemplatesUseCase() {
+    return new ListTemplatesUseCase(getCertificateTemplateRepository());
+}
+
+export function getUpdateTemplateUseCase() {
+    return new UpdateTemplateUseCase(getCertificateTemplateRepository());
+}
+
+export function getDeleteTemplateUseCase() {
+    return new DeleteTemplateUseCase(getCertificateTemplateRepository());
+}
+
+export function getGenerateCertificateUseCase() {
+    return new GenerateCertificateUseCase(getCertificateTemplateRepository());
 }
 
 export function getGenerateFolioUseCase() {
