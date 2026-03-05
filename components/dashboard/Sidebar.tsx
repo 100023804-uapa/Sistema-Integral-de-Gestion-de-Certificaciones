@@ -13,7 +13,8 @@ import {
   Settings, 
   LogOut,
   GraduationCap,
-  LayoutTemplate
+  LayoutTemplate,
+  MapPin
 } from 'lucide-react';
 
 const menuItems = [
@@ -22,6 +23,7 @@ const menuItems = [
   { label: 'Programas', icon: GraduationCap, href: '/dashboard/programs' },
   { label: 'Plantillas', icon: LayoutTemplate, href: '/dashboard/templates' },
   { label: 'Participantes', icon: Users, href: '/dashboard/graduates' },
+  { label: 'Recintos', icon: MapPin, href: '/dashboard/campuses' },
   { label: 'Usuarios', icon: Users, href: '/dashboard/users' },
   { label: 'Configuración', icon: Settings, href: '/dashboard/settings' },
 ];
