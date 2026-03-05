@@ -19,7 +19,8 @@ import {
   Type,
   Shield,
   Clock,
-  PenTool
+  PenTool,
+  Palette
 } from 'lucide-react';
 
 const menuItems = [
@@ -34,6 +35,7 @@ const menuItems = [
   { label: 'Roles', icon: Shield, href: '/dashboard/roles' },
   { label: 'Estados', icon: Clock, href: '/dashboard/certificate-states' },
   { label: 'Firmas Digitales', icon: PenTool, href: '/dashboard/digital-signatures' },
+  { label: 'Plantillas de Certificado', icon: Palette, href: '/dashboard/certificate-templates' },
   { label: 'Usuarios', icon: Users, href: '/dashboard/users' },
   { label: 'Configuración', icon: Settings, href: '/dashboard/settings' },
 ];
