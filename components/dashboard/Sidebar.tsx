@@ -15,7 +15,8 @@ import {
   GraduationCap,
   LayoutTemplate,
   MapPin,
-  Building
+  Building,
+  Type
 } from 'lucide-react';
 
 const menuItems = [
@@ -26,6 +27,7 @@ const menuItems = [
   { label: 'Participantes', icon: Users, href: '/dashboard/graduates' },
   { label: 'Recintos', icon: MapPin, href: '/dashboard/campuses' },
   { label: 'Áreas Académicas', icon: Building, href: '/dashboard/academic-areas' },
+  { label: 'Tipos de Certificado', icon: Type, href: '/dashboard/certificate-types' },
   { label: 'Usuarios', icon: Users, href: '/dashboard/users' },
   { label: 'Configuración', icon: Settings, href: '/dashboard/settings' },
 ];
