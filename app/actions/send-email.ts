@@ -1,6 +1,6 @@
 'use server';
 
-import nodemailer from 'nodemailer';
+import { getEmailService } from '@/lib/container';
 
 interface SendCertificateEmailParams {
   to: string;
@@ -11,26 +11,9 @@ interface SendCertificateEmailParams {
 
 export async function sendCertificateEmail({ to, studentName, certificateUrl, folio }: SendCertificateEmailParams) {
   try {
-    const user = process.env.GMAIL_USER;
-    const pass = process.env.GMAIL_APP_PASSWORD;
-
-    if (!user || !pass) {
-      throw new Error('Variables de entorno GMAIL_USER y GMAIL_APP_PASSWORD no definidas');
-    }
-
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user,
-        pass,
-      },
-    });
-
-    const mailOptions = {
-      from: `"SIGCE UAPA" <${user}>`,
-      to,
-      subject: `Tu Certificado UAPA está listo - Folio: ${folio}`,
-      html: `
+    const emailService = getEmailService();
+    
+    const html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
           <h1 style="color: #003366;">Hola, ${studentName}</h1>
           <p>Tu certificado del programa de educación continua ha sido generado exitosamente.</p>
@@ -51,16 +34,24 @@ export async function sendCertificateEmail({ to, studentName, certificateUrl, fo
             Universidad Abierta para Adultos (UAPA)
           </p>
         </div>
-      `,
-    };
+    `;
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Email sent: ", info.messageId);
+    const result = await emailService.sendEmail({
+      to,
+      subject: `Tu Certificado UAPA está listo - Folio: ${folio}`,
+      html
+    });
 
-    return { success: true, messageId: info.messageId };
+    if (result.success) {
+        console.log("Email sent: ", result.messageId);
+    } else {
+        console.error("Email failed: ", result.error);
+    }
+
+    return result;
 
   } catch (error) {
-    console.error('SERVER ACTION ERROR (Nodemailer):', error);
+    console.error('SERVER ACTION ERROR (Email Service):', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -73,28 +64,16 @@ interface SendAdminRequestParams {
 
 export async function sendAdminRequestEmail({ email, name, reason }: SendAdminRequestParams) {
   try {
-    const user = process.env.GMAIL_USER;
-    const pass = process.env.GMAIL_APP_PASSWORD;
     const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
-    if (!user || !pass || !adminEmail) {
-      console.warn('Missing email configuration. Request saved but email not sent.');
-      return { success: false, error: 'Email configuration missing' };
+    if (!adminEmail) {
+      console.warn('Missing Admin Email configuration. Request saved but email not sent.');
+      return { success: false, error: 'Admin Email configuration missing' };
     }
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user,
-        pass,
-      },
-    });
+    const emailService = getEmailService();
 
-    const mailOptions = {
-      from: `"SIGCE System" <${user}>`,
-      to: adminEmail,
-      subject: `Solicitud de Acceso Admin - SIGCE`,
-      html: `
+    const html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
           <h2 style="color: #003366;">Nueva Solicitud de Acceso</h2>
           <p>Un usuario ha solicitado acceso administrativo al sistema.</p>
@@ -106,20 +85,28 @@ export async function sendAdminRequestEmail({ email, name, reason }: SendAdminRe
             <p style="white-space: pre-wrap;">${reason}</p>
           </div>
 
-          <p>Para otorgar acceso, por favor ve al Dashboard > Usuarios y agrega este correo manualmente.</p>
+          <p>Para otorgar acceso, por favor ve al Dashboard > Usuarios y evalúa esta solicitud.</p>
           
           <hr style="border: 1px solid #eee; margin: 30px 0;" />
           <p style="font-size: 12px; color: #666;">
             Sistema Integral de Gestión de Certificaciones (SIGCE)
           </p>
         </div>
-      `,
-    };
+    `;
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Admin Request Email sent: ", info.messageId);
+    const result = await emailService.sendEmail({
+      to: adminEmail,
+      subject: `Solicitud de Acceso Admin - SIGCE`,
+      html
+    });
 
-    return { success: true, messageId: info.messageId };
+    if (result.success) {
+        console.log("Admin Request Email sent: ", result.messageId);
+    } else {
+        console.error("Admin Request Email failed: ", result.error);
+    }
+
+    return result;
 
   } catch (error) {
     console.error('SERVER ACTION ERROR (Admin Request):', error);

@@ -8,8 +8,11 @@ import { FirebaseRoleRepository } from './infrastructure/repositories/FirebaseRo
 import { FirebaseCertificateStateRepository } from './infrastructure/repositories/FirebaseCertificateStateRepository';
 import { FirebaseDigitalSignatureRepository } from './infrastructure/repositories/FirebaseDigitalSignatureRepository';
 import { FirebaseCertificateTemplateRepository } from './infrastructure/repositories/FirebaseCertificateTemplateRepository';
+import { FirebaseSystemSettingsRepository } from './infrastructure/repositories/FirebaseSystemSettingsRepository';
+import { NodemailerEmailService } from './infrastructure/services/NodemailerEmailService';
 
 // Use Cases existentes
+import { CreateCertificate } from './application/use-cases/CreateCertificate';
 import { CreateCampusUseCase } from './usecases/campus/CreateCampusUseCase';
 import { ListCampusesUseCase } from './usecases/campus/ListCampusesUseCase';
 import { UpdateCampusUseCase } from './usecases/campus/UpdateCampusUseCase';
@@ -95,6 +98,14 @@ export function getCertificateStateRepository() {
 
 export function getDigitalSignatureRepository() {
     return new FirebaseDigitalSignatureRepository();
+}
+
+export function getSystemSettingsRepository() {
+    return new FirebaseSystemSettingsRepository();
+}
+
+export function getEmailService() {
+    return new NodemailerEmailService(getSystemSettingsRepository());
 }
 
 // Campus Use Cases

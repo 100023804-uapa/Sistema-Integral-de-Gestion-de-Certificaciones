@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.0.0";
+export const APP_VERSION = "1.1.0";
 
 export interface Release {
     version: string;
@@ -12,6 +12,18 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+    {
+        version: "1.1.0",
+        date: "2026-03-05",
+        title: "Arquitectura de Correo Desacoplada y Asignación de Roles",
+        description: "Se implementó un servidor de correos centralizado configurable por interfaz y se refinó la asignación dinámica de roles.",
+        details: [
+            { type: 'feature', text: 'Email Centralizado: Nuevo panel de configuración para credenciales de correo institucionales.' },
+            { type: 'feature', text: 'Arquitectura Desacoplada: Creación del `IEmailService` para aislar Nodemailer del frontend.' },
+            { type: 'improvement', text: 'Onboarding Dinámico: Modal interactivo para asignar cargos específicos (Ej: Verificador) durante la aprobación de usuarios.' },
+            { type: 'improvement', text: 'Auditoría Total: Panel de usuarios expandido para mostrar a todos los usuarios activos y sus roles.' }
+        ]
+    },
     {
         version: "1.0.0",
         date: "2026-03-05",
