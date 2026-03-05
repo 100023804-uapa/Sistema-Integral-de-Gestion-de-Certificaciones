@@ -1,11 +1,16 @@
 import { GeneratedCertificate } from '@/lib/types/certificateTemplate';
 import { FirebaseCertificateTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateTemplateRepository';
 import { getCertificateRepository } from '@/lib/container';
+import { CertificateGenerationService } from '@/lib/services/CertificateGenerationService';
 
 export class GenerateCertificateUseCase {
   constructor(
     private templateRepository: FirebaseCertificateTemplateRepository
-  ) {}
+  ) {
+    this.certificateService = CertificateGenerationService.getInstance();
+  }
+
+  private certificateService: CertificateGenerationService;
 
   async execute(
     certificateId: string,
@@ -48,90 +53,28 @@ export class GenerateCertificateUseCase {
       throw new Error('El certificado especificado no existe');
     }
 
-    // Generar HTML con los datos del certificado
-    const htmlContent = this.processTemplate(template.htmlContent, certificate, options);
-
-    // Generar PDF
-    const pdfBuffer = await this.generatePDF(htmlContent, template.cssStyles, options.quality || 'medium');
-
-    // Generar código QR si es necesario
-    let qrCodeUrl = '';
-    if (options.includeQR !== false) {
-      qrCodeUrl = await this.generateQRCode(certificateId);
-    }
-
-    // Subir PDF a storage
-    const pdfUrl = await this.uploadPDF(pdfBuffer, certificateId, templateId);
-
-    // Guardar registro del certificado generado
-    const generatedCertificate = await this.templateRepository.saveGeneratedCertificate({
-      certificateId,
-      templateId,
-      pdfUrl,
-      qrCodeUrl,
-      generatedBy,
-      metadata: {
-        fileSize: pdfBuffer.length,
-        pageCount: 1,
-        templateVersion: '1.0'
-      }
-    });
-
-    return generatedCertificate;
-  }
-
-  private processTemplate(htmlTemplate: string, certificate: any, options: any): string {
-    let processedHtml = htmlTemplate;
-
-    // Reemplazar placeholders con datos del certificado
-    const placeholders = {
-      '{{studentName}}': certificate.studentName || '',
-      '{{academicProgram}}': certificate.academicProgram || '',
-      '{{folio}}': certificate.folio || '',
-      '{{issueDate}}': certificate.issueDate ? new Date(certificate.issueDate).toLocaleDateString('es-ES') : '',
-      '{{campusName}}': certificate.campusName || '',
-      '{{academicAreaName}}': certificate.academicAreaName || '',
-      '{{certificateType}}': certificate.type || '',
-      '{{duration}}': certificate.duration || '',
-      '{{logo}}': options.includeLogo ? '<img src="/logo.png" alt="Logo" />' : '',
-      '{{seal}}': options.includeSeal ? '<div class="seal">SELO</div>' : '',
-      '{{digitalSignature}}': options.includeSignature ? '<img src="/signature.png" alt="Firma" />' : '',
-      '{{verificationQR}}': options.includeQR ? '<img src="/qr.png" alt="QR" />' : '',
-      '{{signatureDate}}': new Date().toLocaleDateString('es-ES')
+    // Generar certificado usando el servicio
+    const certificateData = {
+      id: certificate.id,
+      folio: certificate.folio || '',
+      studentName: certificate.studentName || '',
+      academicProgram: certificate.academicProgram || '',
+      issueDate: certificate.issueDate || new Date(),
+      campusName: 'Campus Principal', // TODO: Obtener del campusId
+      academicAreaName: '', // TODO: Obtener del academicAreaId
+      certificateType: certificate.type || '',
+      duration: '40 horas', // TODO: Calcular según programa
+      digitalSignature: '', // TODO: Obtener de la firma
+      signatureDate: new Date().toISOString() // TODO: Obtener de la firma
     };
 
-    // Reemplazar todos los placeholders
-    for (const [placeholder, value] of Object.entries(placeholders)) {
-      processedHtml = processedHtml.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value);
-    }
+    const generatedCertificate = await this.certificateService.generateCertificate(
+      template,
+      certificateData,
+      options,
+      generatedBy
+    );
 
-    return processedHtml;
-  }
-
-  private async generatePDF(htmlContent: string, cssStyles: string, quality: string): Promise<Buffer> {
-    // TODO: Implementar generación de PDF usando puppeteer o similar
-    // Por ahora, simulamos la generación
-    const htmlWithCSS = htmlContent.replace('{{cssStyles}}', cssStyles);
-    
-    // Simulación de generación PDF
-    const pdfContent = Buffer.from(htmlWithCSS, 'utf-8');
-    
-    return pdfContent;
-  }
-
-  private async generateQRCode(certificateId: string): Promise<string> {
-    // TODO: Implementar generación de código QR
-    // Por ahora, simulamos la URL del QR
-    const verificationUrl = `https://certificados.uapa.edu/verify/${certificateId}`;
-    
-    return verificationUrl;
-  }
-
-  private async uploadPDF(pdfBuffer: Buffer, certificateId: string, templateId: string): Promise<string> {
-    // TODO: Implementar subida a Firebase Storage o similar
-    // Por ahora, simulamos la URL
-    const pdfUrl = `https://storage.googleapis.com/certificates/${certificateId}_${templateId}.pdf`;
-    
-    return pdfUrl;
+    return generatedCertificate;
   }
 }
