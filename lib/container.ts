@@ -8,8 +8,6 @@ import { FirebaseRoleRepository } from './infrastructure/repositories/FirebaseRo
 import { FirebaseCertificateStateRepository } from './infrastructure/repositories/FirebaseCertificateStateRepository';
 import { FirebaseDigitalSignatureRepository } from './infrastructure/repositories/FirebaseDigitalSignatureRepository';
 import { FirebaseCertificateTemplateRepository } from './infrastructure/repositories/FirebaseCertificateTemplateRepository';
-import { FirebaseSystemSettingsRepository } from './infrastructure/repositories/FirebaseSystemSettingsRepository';
-import { NodemailerEmailService } from './infrastructure/services/NodemailerEmailService';
 
 // Use Cases existentes
 import { CreateCertificate } from './application/use-cases/CreateCertificate';
