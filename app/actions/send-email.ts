@@ -1,6 +1,6 @@
 'use server';
 
-import { getEmailService } from '@/lib/container';
+import { getServerEmailService } from '@/lib/server-container';
 
 interface SendCertificateEmailParams {
   to: string;
@@ -11,7 +11,7 @@ interface SendCertificateEmailParams {
 
 export async function sendCertificateEmail({ to, studentName, certificateUrl, folio }: SendCertificateEmailParams) {
   try {
-    const emailService = getEmailService();
+    const emailService = getServerEmailService();
     
     const html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
@@ -71,7 +71,7 @@ export async function sendAdminRequestEmail({ email, name, reason }: SendAdminRe
       return { success: false, error: 'Admin Email configuration missing' };
     }
 
-    const emailService = getEmailService();
+    const emailService = getServerEmailService();
 
     const html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">

@@ -1,11 +1,11 @@
 'use server';
 
-import { getSystemSettingsRepository } from '@/lib/container';
+import { getServerSystemSettingsRepository } from '@/lib/server-container';
 import { EmailConfig } from '@/lib/types/systemSettings';
 
 export async function getEmailSettings() {
     try {
-        const repo = getSystemSettingsRepository();
+        const repo = getServerSystemSettingsRepository();
         const settings = await repo.getSettings();
         return { success: true, data: settings?.emailConfig || null };
     } catch (error) {
@@ -16,7 +16,7 @@ export async function getEmailSettings() {
 
 export async function saveEmailSettings(config: EmailConfig) {
     try {
-        const repo = getSystemSettingsRepository();
+        const repo = getServerSystemSettingsRepository();
         const settings = await repo.getSettings();
         
         await repo.saveSettings({

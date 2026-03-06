@@ -98,14 +98,6 @@ export function getDigitalSignatureRepository() {
     return new FirebaseDigitalSignatureRepository();
 }
 
-export function getSystemSettingsRepository() {
-    return new FirebaseSystemSettingsRepository();
-}
-
-export function getEmailService() {
-    return new NodemailerEmailService(getSystemSettingsRepository());
-}
-
 // Campus Use Cases
 export function getCreateCampusUseCase() {
     return new CreateCampusUseCase(getCampusRepository());
