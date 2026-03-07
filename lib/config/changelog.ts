@@ -15,110 +15,105 @@ export const CHANGELOG: Release[] = [
     {
         version: "1.2.0",
         date: "2026-03-07",
-        title: "Estabilizacion operativa, catalogos academicos y dashboard movil",
-        description: "Se consolido un bloque transversal con estabilizacion de build para Next 15, programas academicos integrados al flujo de certificados, portabilidad de Firebase y una mejora fuerte de la experiencia del dashboard en escritorio y movil.",
+        title: "Mejoras operativas y experiencia movil",
+        description: "Se agilizo el trabajo diario con nuevos apoyos para certificados, participantes y navegacion del panel.",
         details: [
-            { type: 'fix', text: 'Estabilizacion tecnica: build, lint y typecheck quedaron alineados con Next 15 y se corrigieron regresiones en contenedor, rutas dinamicas y tipos.' },
-            { type: 'feature', text: 'Programas academicos: el catalogo ya participa en la creacion e importacion de certificados y deja de depender de texto libre como unica fuente.' },
-            { type: 'feature', text: 'Operacion asistida: nueva busqueda de participantes por nombre, matricula o cedula con autocompletado dentro del formulario de certificados.' },
-            { type: 'improvement', text: 'Dashboard UX: navegacion centralizada entre Sidebar y BottomNav, menu movil Mas y lupa central sin superposiciones sobre otras opciones.' },
-            { type: 'improvement', text: 'Consistencia visual: se normalizaron espaciados, headers y paddings en modulos administrativos para mejorar lectura en desktop y movil.' },
-            { type: 'feature', text: 'Portabilidad Firebase: indices compuestos y plantilla de configuracion quedaron versionados para migrar el proyecto a otra cuenta sin depender de enlaces manuales.' },
-            { type: 'improvement', text: 'Operacion y desarrollo: prefijos de folio por tipo de certificado, seeder selectivo en dev tools y validacion de duplicados de participantes por matricula y cedula.' }
+            { type: 'feature', text: 'Nueva busqueda de participantes para completar certificados mas rapido y con menos errores.' },
+            { type: 'feature', text: 'Ahora se puede anular un certificado y abrir una correccion con los datos ya precargados.' },
+            { type: 'feature', text: 'Los participantes ya cuentan con vista y formulario de edicion desde su perfil.' },
+            { type: 'improvement', text: 'La navegacion movil quedo mas clara, con accesos rapidos y un menu adicional para el resto de opciones.' },
+            { type: 'improvement', text: 'Se mejoro el espaciado y la organizacion visual en varias pantallas administrativas.' },
+            { type: 'improvement', text: 'Los tipos de certificado y los programas academicos ayudan a completar formularios de forma mas guiada.' },
+            { type: 'feature', text: 'La gestion de usuarios ahora permite habilitar o deshabilitar accesos de forma mas clara.' }
         ]
     },
     {
         version: "1.1.0",
         date: "2026-03-05",
-        title: "Arquitectura de Correo Desacoplada y Asignación de Roles",
-        description: "Se implementó un servidor de correos centralizado configurable por interfaz y se refinó la asignación dinámica de roles.",
+        title: "Correo institucional y gestion de usuarios",
+        description: "Se mejoro la administracion de usuarios y la configuracion del correo del sistema desde la propia interfaz.",
         details: [
-            { type: 'feature', text: 'Email Centralizado: Nuevo panel de configuración para credenciales de correo institucionales.' },
-            { type: 'feature', text: 'Arquitectura Desacoplada: Creación del `IEmailService` para aislar Nodemailer del frontend.' },
-            { type: 'improvement', text: 'Onboarding Dinámico: Modal interactivo para asignar cargos específicos (Ej: Verificador) durante la aprobación de usuarios.' },
-            { type: 'improvement', text: 'Auditoría Total: Panel de usuarios expandido para mostrar a todos los usuarios activos y sus roles.' }
+            { type: 'feature', text: 'Nuevo panel para definir el correo emisor que usa el sistema en sus notificaciones.' },
+            { type: 'feature', text: 'Las solicitudes de acceso ahora pueden aprobarse con asignacion directa del rol correspondiente.' },
+            { type: 'improvement', text: 'La vista de usuarios muestra mejor el estado actual de cada acceso y sus roles.' },
+            { type: 'improvement', text: 'El flujo de alta de usuarios quedo mas claro para administradores y responsables.' }
         ]
     },
     {
         version: "1.0.0",
         date: "2026-03-05",
-        title: "Release Candidate 1 - Sistema Institucional Completo",
-        description: "Lanzamiento oficial de la versión 1.0.0. Implementación exitosa de las fases 1 a la 4, incluyendo gobernanza, ciclo de vida, firmas digitales y analíticas avanzadas.",
+        title: "Version institucional completa",
+        description: "La plataforma ya cubre el flujo principal de emision, validacion y seguimiento de certificados.",
         details: [
-            { type: 'feature', text: 'Gobernanza Institucional (Fase 1): Gestión de recintos, áreas académicas y tipos de certificado.' },
-            { type: 'feature', text: 'Ciclo de Vida (Fase 2): Sistema de estados, trazabilidad e integración de firma digital.' },
-            { type: 'feature', text: 'Diseño y PDF (Fase 3): Editor de plantillas dinámicas y generación de certificados en alta calidad.' },
-            { type: 'feature', text: 'Analíticas y Auditoría (Fase 4): Dashboard macro, métricas por recinto, reportes exportables a Excel/CSV.' },
-            { type: 'feature', text: 'Seguridad (US-13): Implementación de Código Hash Público de 16 caracteres para validación irrefutable.' },
-            { type: 'improvement', text: 'UI/UX Responsiva: Optimización de la interfaz en todas las pantallas (Scrollbars personalizados, Grids dinámicos).' },
-            { type: 'fix', text: 'Core: Resolución de dependencias Node.js filtradas al cliente (error firebase-admin).' }
+            { type: 'feature', text: 'Gestion completa de recintos, areas academicas y tipos de certificado.' },
+            { type: 'feature', text: 'Seguimiento del estado de cada certificado durante su proceso.' },
+            { type: 'feature', text: 'Plantillas visuales para generar certificados con mejor presentacion.' },
+            { type: 'feature', text: 'Panel general con reportes y resumen de actividad.' },
+            { type: 'feature', text: 'Validacion publica mas confiable para confirmar la autenticidad del documento.' },
+            { type: 'improvement', text: 'Mejor experiencia de uso en distintas pantallas y resoluciones.' }
         ]
     },
     {
         version: "0.5.0",
         date: "2026-02-19",
-        title: "Integración de Correo y PDFs Estables",
-        description: "Implementación de envío de certificados por correo electrónico (Gmail) y solución definitiva a problemas de generación de PDF.",
+        title: "Envio de certificados y documentos mas estables",
+        description: "Se facilito la entrega de certificados y se mejoro la consistencia al generar los documentos.",
         details: [
-            { type: 'feature', text: 'Envío de Email: Envío real de certificados usando Gmail/Nodemailer.' },
-            { type: 'fix', text: 'Corrección PDF: Solución a PDFs en blanco asegurando carga de recursos.' },
-            { type: 'feature', text: 'Documentación: Guía de límites de recursos y estrategias de escalado (MVP).' },
-            { type: 'improvement', text: 'UI: Ajustes en botones de acción y feedback visual de carga.' }
+            { type: 'feature', text: 'Envio de certificados por correo directamente desde el sistema.' },
+            { type: 'fix', text: 'Se corrigieron fallos que afectaban la generacion correcta del documento final.' },
+            { type: 'improvement', text: 'Mejor retroalimentacion visual en acciones de descarga y envio.' },
+            { type: 'improvement', text: 'Se reforzo la estabilidad general del flujo de emision.' }
         ]
     },
     {
         version: "0.4.0",
         date: "2026-02-19",
-        title: "Plantillas, PDF y Mejoras Visuales",
-        description: "Integración completa de generación de PDFs con plantillas, mejoras significativas en la interfaz de usuario y corrección de errores de despliegue.",
+        title: "Plantillas y mejoras visuales",
+        description: "Se fortalecio la presentacion de los certificados y se mejoro la apariencia general del sistema.",
         details: [
-            { type: 'feature', text: 'Generación de PDF: Descarga de certificados con diseño dinámico (plantilla o defecto) y códigos QR.' },
-            { type: 'feature', text: 'Gestión de Plantillas: Selección de diseño al crear nuevos certificados.' },
-            { type: 'feature', text: 'Página "Sobre Nosotros": Nueva sección informativa del equipo.' },
-            { type: 'improvement', text: 'Dashboard UI: Header rediseñado (Avatar y Notificaciones más grandes).' },
-            { type: 'improvement', text: 'Perfil de Usuario: Carga y actualización de foto de perfil con feedback visual.' },
-            { type: 'fix', text: 'Corrección de CORS en Firebase Storage para visualización de imágenes.' },
-            { type: 'fix', text: 'Solución a error 404 en patrón de fondo (grid-pattern).' }
+            { type: 'feature', text: 'Descarga de certificados con plantilla visual y codigo QR.' },
+            { type: 'feature', text: 'Seleccion de diseno al crear nuevos certificados.' },
+            { type: 'feature', text: 'Nueva pagina informativa sobre el proyecto y el equipo.' },
+            { type: 'improvement', text: 'Dashboard y perfil de usuario con una presentacion mas cuidada.' },
+            { type: 'fix', text: 'Se corrigieron problemas visuales que afectaban imagenes y fondos.' }
         ]
     },
     {
         version: "0.3.0",
         date: "2026-02-19",
-        title: "Gestión Avanzada de Participantes y Consulta Pública",
-        description: "Implementación completa de la consulta pública de certificados, gestión manual de participantes y herramientas de carga masiva.",
+        title: "Participantes y consulta publica",
+        description: "Se amplio el control sobre participantes y se hizo mas util la consulta publica de certificados.",
         details: [
-            { type: 'feature', text: 'Consulta Pública: Nueva pantalla de búsqueda de certificados por Matrícula o Folio.' },
-            { type: 'feature', text: 'Gestión de Participantes: Creación manual y edición de participantes.' },
-            { type: 'feature', text: 'Plantillas de Carga Masiva: Descarga de plantillas Excel personalizadas para participantes y certificados.' },
-            { type: 'improvement', text: 'Importación Inteligente: Detección automática de carga de certificados vs solo participantes.' },
-            { type: 'improvement', text: 'UI Login: Rediseño enfocado en la consulta pública.' },
-            { type: 'fix', text: 'Corrección en validación de tipos de usuario en login.' }
+            { type: 'feature', text: 'Consulta publica de certificados por matricula o folio.' },
+            { type: 'feature', text: 'Creacion y edicion manual de participantes.' },
+            { type: 'feature', text: 'Descarga de plantillas para cargas masivas de participantes y certificados.' },
+            { type: 'improvement', text: 'Importacion mas flexible para distintos tipos de carga.' },
+            { type: 'improvement', text: 'Pantalla de acceso mas clara y orientada a la consulta publica.' }
         ]
     },
     {
         version: "0.2.0",
         date: "2026-02-18",
-        title: "Mejoras de UX y Correcciones",
-        description: "Optimización del editor de plantillas, corrección de estilos y resolución de errores de compilación.",
+        title: "Mejoras de uso y correcciones",
+        description: "Se pulieron flujos existentes para que el sistema fuera mas comodo y confiable desde el dia a dia.",
         details: [
-            { type: 'feature', text: 'Mejora en precisión Drag & Drop para editor de plantillas.' },
-            { type: 'improvement', text: 'Estandarización de estilos en configuración de prefijos.' },
-            { type: 'fix', text: 'Resolución de errores de compilación en Next.js 15 (Params y Tipos).' },
-            { type: 'fix', text: 'Corrección en validación de certificados por folio.' },
-            { type: 'improvement', text: 'Nueva modal de historial de cambios y versiones.' },
-            { type: 'feature', text: 'Indicador de estado en botón "Nuevo Estudiante".' }
+            { type: 'improvement', text: 'Mayor precision al mover elementos dentro del editor de plantillas.' },
+            { type: 'improvement', text: 'Presentacion mas consistente en formularios y opciones de configuracion.' },
+            { type: 'fix', text: 'Correcciones en validaciones y comportamientos del sistema.' },
+            { type: 'improvement', text: 'Nuevo historial de cambios visible desde la interfaz.' },
+            { type: 'feature', text: 'Indicadores mas claros en acciones relacionadas con participantes.' }
         ]
     },
     {
         version: "0.1.0",
         date: "2026-02-15",
-        title: "Lanzamiento Inicial",
-        description: "Versión inicial de la plataforma SIGCE para gestión de certificados.",
+        title: "Lanzamiento inicial",
+        description: "Primera version funcional de SIGCE para administrar certificados y participantes desde un mismo panel.",
         details: [
-            { type: 'feature', text: 'Gestión de Certificados (Crear, Listar).' },
-            { type: 'feature', text: 'Base de datos de Graduados.' },
-            { type: 'feature', text: 'Autenticación con Firebase y Roles.' },
-            { type: 'feature', text: 'Dashboard con estadísticas en tiempo real.' },
+            { type: 'feature', text: 'Creacion y consulta de certificados.' },
+            { type: 'feature', text: 'Base de participantes centralizada.' },
+            { type: 'feature', text: 'Acceso de usuarios con distintos permisos.' },
+            { type: 'feature', text: 'Panel inicial con informacion general del sistema.' }
         ]
     }
 ];
