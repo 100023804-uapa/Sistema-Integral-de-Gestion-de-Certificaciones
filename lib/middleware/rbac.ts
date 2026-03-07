@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FirebaseRoleRepository } from '@/lib/infrastructure/repositories/FirebaseRoleRepository';
-import { RoleValue } from '@/lib/types/role';
+import { RoleValue, Role } from '@/lib/types/role';
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: {
@@ -78,7 +78,7 @@ export class RBACMiddleware {
         const userRoles = await this.roleRepository.getUserRoles(user.id);
         const permissions = await Promise.all(
           userRoles.map(async (userRole) => {
-            const role = await this.roleRepository.findById(userRole.roleId);
+            const role = await this.roleRepository.findById(userRole.roleId) as any;
             return role?.permissions || [];
           })
         );

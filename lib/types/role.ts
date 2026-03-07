@@ -1,4 +1,5 @@
 export type ScopeType = 'global' | 'campus' | 'area' | 'personal';
+export type RoleValue = 'administrator' | 'signer' | 'verifier' | 'coordinator' | string;
 
 export interface Role {
   id: string;
@@ -7,6 +8,7 @@ export interface Role {
   description?: string;
   menuPermissions: string[]; // Lista de IDs de menús (ej: '/dashboard', '/dashboard/certificates')
   capabilities: string[];    // Lista de acciones (ej: 'can_sign', 'can_verify')
+  permissions?: Permission[]; // Compatible con middleware RBAC legacy
   scopeType: ScopeType;      // Define el alcance de la visión del rol
   isActive: boolean;
   createdAt: Date;

@@ -50,7 +50,10 @@ export const useAuth = () => useContext(AuthContext);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userRoles, setUserRoles] = useState<string[]>([]);
-  const [permissions, setPermissions] = useState({ menus: [], capabilities: [] });
+  const [permissions, setPermissions] = useState<{
+    menus: string[];
+    capabilities: string[];
+  }>({ menus: [], capabilities: [] });
   const [scope, setScope] = useState<{
     type: ScopeType;
     campusIds: string[];
