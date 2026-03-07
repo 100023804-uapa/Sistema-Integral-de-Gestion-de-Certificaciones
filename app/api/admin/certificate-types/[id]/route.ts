@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUpdateCertificateTypeUseCase, getDeleteCertificateTypeUseCase, getCertificateTypeRepository } from '@/lib/container';
+
+import { requireAdminSession } from '@/lib/auth/admin-session';
+import {
+  getUpdateCertificateTypeUseCase,
+  getDeleteCertificateTypeUseCase,
+  getCertificateTypeRepository,
+} from '@/lib/container';
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAdminSession(request);
+    if (!authResult.ok) return authResult.response;
+
     const { id } = await context.params;
     const certificateTypeRepository = getCertificateTypeRepository();
     const certificateType = await certificateTypeRepository.findById(id);
@@ -17,11 +26,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      data: certificateType 
+    return NextResponse.json({
+      success: true,
+      data: certificateType,
     });
-
   } catch (error) {
     console.error('Error fetching certificate type:', error);
     return NextResponse.json(
@@ -36,16 +44,18 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAdminSession(request);
+    if (!authResult.ok) return authResult.response;
+
     const { id } = await context.params;
     const body = await request.json();
     const updateCertificateTypeUseCase = getUpdateCertificateTypeUseCase();
     const certificateType = await updateCertificateTypeUseCase.execute(id, body);
 
-    return NextResponse.json({ 
-      success: true, 
-      data: certificateType 
+    return NextResponse.json({
+      success: true,
+      data: certificateType,
     });
-
   } catch (error) {
     console.error('Error updating certificate type:', error);
     return NextResponse.json(
@@ -60,15 +70,17 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAdminSession(request);
+    if (!authResult.ok) return authResult.response;
+
     const { id } = await context.params;
     const deleteCertificateTypeUseCase = getDeleteCertificateTypeUseCase();
     await deleteCertificateTypeUseCase.execute(id);
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Tipo de certificado eliminado correctamente' 
+    return NextResponse.json({
+      success: true,
+      message: 'Tipo de certificado eliminado correctamente',
     });
-
   } catch (error) {
     console.error('Error deleting certificate type:', error);
     return NextResponse.json(

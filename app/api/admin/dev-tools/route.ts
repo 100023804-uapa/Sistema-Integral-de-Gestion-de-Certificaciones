@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminSession } from '@/lib/auth/admin-session';
 import { db } from '@/lib/firebase';
 import {
     collection, getDocs, deleteDoc, doc, addDoc, writeBatch, query, limit, setDoc
@@ -26,7 +27,10 @@ async function clearCollection(collectionName: string): Promise<number> {
 }
 
 // ─── GET: devuelve estado de colecciones ─────────────────────────────────
-export async function GET() {
+export async function GET(request: NextRequest) {
+    const authResult = await requireAdminSession(request);
+    if (!authResult.ok) return authResult.response;
+
     if (!isDev) return NextResponse.json({ error: 'Solo disponible en desarrollo' }, { status: 403 });
 
     const counts: Record<string, number> = {};
@@ -48,6 +52,9 @@ export async function GET() {
 
 // ─── POST: ejecutar acción (clear o seed) ────────────────────────────────
 export async function POST(request: NextRequest) {
+    const authResult = await requireAdminSession(request);
+    if (!authResult.ok) return authResult.response;
+
     if (!isDev) return NextResponse.json({ error: 'Solo disponible en desarrollo' }, { status: 403 });
 
     const body = await request.json();

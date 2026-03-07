@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+import { requireAdminSession } from '@/lib/auth/admin-session';
 import { getUpdateCampusUseCase, getDeleteCampusUseCase, getCampusRepository } from '@/lib/container';
 
 export async function GET(
@@ -6,6 +8,9 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAdminSession(request);
+    if (!authResult.ok) return authResult.response;
+
     const { id } = await context.params;
     const campusRepository = getCampusRepository();
     const campus = await campusRepository.findById(id);
@@ -17,11 +22,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      data: campus 
+    return NextResponse.json({
+      success: true,
+      data: campus,
     });
-
   } catch (error) {
     console.error('Error fetching campus:', error);
     return NextResponse.json(
@@ -36,16 +40,18 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAdminSession(request);
+    if (!authResult.ok) return authResult.response;
+
     const { id } = await context.params;
     const body = await request.json();
     const updateCampusUseCase = getUpdateCampusUseCase();
     const campus = await updateCampusUseCase.execute(id, body);
 
-    return NextResponse.json({ 
-      success: true, 
-      data: campus 
+    return NextResponse.json({
+      success: true,
+      data: campus,
     });
-
   } catch (error) {
     console.error('Error updating campus:', error);
     return NextResponse.json(
@@ -60,15 +66,17 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAdminSession(request);
+    if (!authResult.ok) return authResult.response;
+
     const { id } = await context.params;
     const deleteCampusUseCase = getDeleteCampusUseCase();
     await deleteCampusUseCase.execute(id);
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Recinto eliminado correctamente' 
+    return NextResponse.json({
+      success: true,
+      message: 'Recinto eliminado correctamente',
     });
-
   } catch (error) {
     console.error('Error deleting campus:', error);
     return NextResponse.json(

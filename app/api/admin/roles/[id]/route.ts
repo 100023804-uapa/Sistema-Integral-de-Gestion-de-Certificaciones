@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+import { requireAdminSession } from '@/lib/auth/admin-session';
 import { getUpdateRoleUseCase, getDeleteRoleUseCase, getRoleRepository } from '@/lib/container';
 
 export async function GET(
@@ -6,6 +8,9 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAdminSession(request);
+    if (!authResult.ok) return authResult.response;
+
     const { id } = await context.params;
     const roleRepository = getRoleRepository();
     const role = await roleRepository.findById(id);
@@ -17,11 +22,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      data: role 
+    return NextResponse.json({
+      success: true,
+      data: role,
     });
-
   } catch (error) {
     console.error('Error fetching role:', error);
     return NextResponse.json(
@@ -36,16 +40,18 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAdminSession(request);
+    if (!authResult.ok) return authResult.response;
+
     const { id } = await context.params;
     const body = await request.json();
     const updateRoleUseCase = getUpdateRoleUseCase();
     const role = await updateRoleUseCase.execute(id, body);
 
-    return NextResponse.json({ 
-      success: true, 
-      data: role 
+    return NextResponse.json({
+      success: true,
+      data: role,
     });
-
   } catch (error) {
     console.error('Error updating role:', error);
     return NextResponse.json(
@@ -60,15 +66,17 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAdminSession(request);
+    if (!authResult.ok) return authResult.response;
+
     const { id } = await context.params;
     const deleteRoleUseCase = getDeleteRoleUseCase();
     await deleteRoleUseCase.execute(id);
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Rol eliminado correctamente' 
+    return NextResponse.json({
+      success: true,
+      message: 'Rol eliminado correctamente',
     });
-
   } catch (error) {
     console.error('Error deleting role:', error);
     return NextResponse.json(

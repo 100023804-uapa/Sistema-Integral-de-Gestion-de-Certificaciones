@@ -77,11 +77,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (authUser) {
         try {
           const idToken = await authUser.getIdToken();
-          await fetch('/api/auth/session/login', {
+          const sessionResponse = await fetch('/api/auth/session/login', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ idToken }),
           });
+
+          if (!sessionResponse.ok) {
+            const sessionError = new Error('session-create-failed');
+            (sessionError as Error & { status?: number }).status = sessionResponse.status;
+            throw sessionError;
+          }
 
           const rolesSet = new Set<string>();
           const menusSet = new Set<string>();
@@ -155,7 +161,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         } catch (error) {
           console.error('Error fetching user roles or session:', error);
+          const sessionError = error as Error & { status?: number };
+          if (sessionError.status === 401 || sessionError.status === 403) {
+            try {
+              await signOut(auth);
+            } catch (signOutError) {
+              console.error('Error signing out after rejected server session:', signOutError);
+            }
+          }
           setUserRoles([]);
+          setPermissions({ menus: [], capabilities: [] });
+          setScope({ type: 'personal', campusIds: [], academicAreaIds: [], signerIds: [] });
         }
       } else {
         setUserRoles([]);

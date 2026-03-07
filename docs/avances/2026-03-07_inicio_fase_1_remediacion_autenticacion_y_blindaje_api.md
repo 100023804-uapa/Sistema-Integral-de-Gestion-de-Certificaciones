@@ -1,9 +1,10 @@
 # Avance: Inicio de Fase 1 de Remediacion - Autenticacion Real y Blindaje Inicial de APIs
 
 **Fecha:** 2026-03-07  
-**Estado:** Planificado, pendiente de ejecucion  
+**Estado:** Planificado y aprobado para implementacion  
 **Tipo:** Documento de arranque de fase  
 **Referencia principal:** `docs/plan_remediacion_seguridad_y_control_operativo_2026-03-07.md`
+**Diseno tecnico asociado:** `docs/diseno_tecnico_fase_1_sesion_guard_y_blindaje_inicial_2026-03-07.md`
 
 ---
 
@@ -165,15 +166,23 @@ La fase 1 se considerara cerrada cuando:
 - [x] Restriccion de arquitectura confirmada: sin Firebase Admin
 - [x] Restriccion de archivos confirmada: UploadThing como principal
 - [x] Orden de remediacion definido
-- [ ] Contrato de cookie de sesion aprobado
-- [ ] Primer lote exacto de rutas aprobado
-- [ ] Estrategia de compatibilidad UI validada
+- [x] Contrato de cookie de sesion aprobado
+- [x] Primer lote exacto de rutas aprobado
+- [x] Estrategia de compatibilidad UI validada
 
 ---
 
 ## Resultado de esta sesion
 
 En esta sesion se deja lista la fase 1 a nivel de plan y decision tecnica. No se hicieron cambios de codigo funcional. El objetivo fue asegurar que la ejecucion comience con contexto persistente, un orden correcto y sin improvisacion.
+
+Adicionalmente, ya quedaron cerradas y documentadas estas decisiones:
+
+- identidad canonica inicial basada en `uid`
+- cookie propia `sigce_session`
+- validacion local de sesion en middleware
+- guard reutilizable para APIs
+- primer lote exacto de rutas administrativas a blindar
 
 ---
 
