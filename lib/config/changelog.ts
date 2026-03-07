@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.1.0";
+export const APP_VERSION = "1.2.0";
 
 export interface Release {
     version: string;
@@ -12,6 +12,21 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+    {
+        version: "1.2.0",
+        date: "2026-03-07",
+        title: "Estabilizacion operativa, catalogos academicos y dashboard movil",
+        description: "Se consolido un bloque transversal con estabilizacion de build para Next 15, programas academicos integrados al flujo de certificados, portabilidad de Firebase y una mejora fuerte de la experiencia del dashboard en escritorio y movil.",
+        details: [
+            { type: 'fix', text: 'Estabilizacion tecnica: build, lint y typecheck quedaron alineados con Next 15 y se corrigieron regresiones en contenedor, rutas dinamicas y tipos.' },
+            { type: 'feature', text: 'Programas academicos: el catalogo ya participa en la creacion e importacion de certificados y deja de depender de texto libre como unica fuente.' },
+            { type: 'feature', text: 'Operacion asistida: nueva busqueda de participantes por nombre, matricula o cedula con autocompletado dentro del formulario de certificados.' },
+            { type: 'improvement', text: 'Dashboard UX: navegacion centralizada entre Sidebar y BottomNav, menu movil Mas y lupa central sin superposiciones sobre otras opciones.' },
+            { type: 'improvement', text: 'Consistencia visual: se normalizaron espaciados, headers y paddings en modulos administrativos para mejorar lectura en desktop y movil.' },
+            { type: 'feature', text: 'Portabilidad Firebase: indices compuestos y plantilla de configuracion quedaron versionados para migrar el proyecto a otra cuenta sin depender de enlaces manuales.' },
+            { type: 'improvement', text: 'Operacion y desarrollo: prefijos de folio por tipo de certificado, seeder selectivo en dev tools y validacion de duplicados de participantes por matricula y cedula.' }
+        ]
+    },
     {
         version: "1.1.0",
         date: "2026-03-05",
