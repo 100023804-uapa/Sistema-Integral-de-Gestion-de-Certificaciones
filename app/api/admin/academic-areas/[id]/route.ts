@@ -1,26 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUpdateAcademicAreaUseCase, getDeleteAcademicAreaUseCase, getAcademicAreaRepository } from '@/lib/container';
+import { getAcademicAreaRepository, getCampusRepository, getUpdateAcademicAreaUseCase, getDeleteAcademicAreaUseCase } from '@/lib/container';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const academicAreaRepository = getAcademicAreaRepository();
-    const academicArea = await academicAreaRepository.findById(params.id);
-
-    if (!academicArea) {
+    const params = await context.params;
+    const { id } = params;
+    
+    const repository = getAcademicAreaRepository();
+    const area = await repository.findById(id);
+    
+    if (!area) {
       return NextResponse.json(
         { success: false, error: 'Área académica no encontrada' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      data: academicArea 
-    });
-
+    return NextResponse.json({ success: true, data: area });
   } catch (error) {
     console.error('Error fetching academic area:', error);
     return NextResponse.json(
@@ -32,18 +31,17 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
+    const { id } = params;
     const body = await request.json();
-    const updateAcademicAreaUseCase = getUpdateAcademicAreaUseCase();
-    const academicArea = await updateAcademicAreaUseCase.execute(params.id, body);
+    
+    const updateUseCase = getUpdateAcademicAreaUseCase();
+    const area = await updateUseCase.execute(id, body);
 
-    return NextResponse.json({ 
-      success: true, 
-      data: academicArea 
-    });
-
+    return NextResponse.json({ success: true, data: area });
   } catch (error) {
     console.error('Error updating academic area:', error);
     return NextResponse.json(
@@ -55,17 +53,16 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const deleteAcademicAreaUseCase = getDeleteAcademicAreaUseCase();
-    await deleteAcademicAreaUseCase.execute(params.id);
+    const params = await context.params;
+    const { id } = params;
+    
+    const deleteUseCase = getDeleteAcademicAreaUseCase();
+    await deleteUseCase.execute(id);
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Área académica eliminada correctamente' 
-    });
-
+    return NextResponse.json({ success: true, message: 'Área académica eliminada correctamente' });
   } catch (error) {
     console.error('Error deleting academic area:', error);
     return NextResponse.json(
@@ -74,3 +71,4 @@ export async function DELETE(
     );
   }
 }
+
