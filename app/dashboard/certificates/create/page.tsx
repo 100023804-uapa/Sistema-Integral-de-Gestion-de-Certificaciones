@@ -42,6 +42,27 @@ export default function CreateCertificatePage() {
   });
 
   useEffect(() => {
+    // Prepoblar datos si venimos de "Anular y Corregir"
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const studentId = params.get('studentId');
+      const studentName = params.get('studentName');
+      const cedula = params.get('cedula');
+      const program = params.get('program');
+      const type = params.get('type');
+      
+      setFormData(prev => ({
+          ...prev,
+          ...(studentId && { studentId }),
+          ...(studentName && { studentName }),
+          ...(cedula && { cedula }),
+          ...(program && { academicProgram: program }),
+          ...(type && { type: type as CertificateType }),
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
     const fetchData = async () => {
         try {
             const templateRepo = getCertificateTemplateRepository();

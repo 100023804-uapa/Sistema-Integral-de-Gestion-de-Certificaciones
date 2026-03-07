@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -22,10 +22,6 @@ export function BottomNav() {
   const pathname = usePathname();
   const { hasRole } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
 
   const visibleLinks = useMemo(
     () =>
@@ -109,6 +105,7 @@ export function BottomNav() {
                     <Link
                       key={item.href}
                       href={item.href}
+                      onClick={() => setMenuOpen(false)}
                       className={cn(
                         "mb-1 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all",
                         isActive
@@ -138,6 +135,7 @@ export function BottomNav() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => setMenuOpen(false)}
                   className={cn(
                     "flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-2xl px-1 text-center transition-colors",
                     isActive ? "text-accent" : "text-slate-400 hover:text-primary"
@@ -162,6 +160,7 @@ export function BottomNav() {
               <Link
                 href="/dashboard/validate"
                 aria-label="Buscar o validar certificado"
+                onClick={() => setMenuOpen(false)}
                 className={cn(
                   "-mt-8 flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-accent text-white shadow-xl shadow-orange-500/35 transition-transform active:scale-95",
                   pathname === "/dashboard/validate" && "scale-105"
@@ -174,6 +173,7 @@ export function BottomNav() {
             {rightPrimaryLink ? (
               <Link
                 href={rightPrimaryLink.href}
+                onClick={() => setMenuOpen(false)}
                 className={cn(
                   "flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-2xl px-1 text-center transition-colors",
                   pathname === rightPrimaryLink.href

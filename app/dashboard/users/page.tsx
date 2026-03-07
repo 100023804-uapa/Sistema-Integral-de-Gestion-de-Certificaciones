@@ -6,7 +6,7 @@ import { Role } from '@/lib/types/role';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Loader2, CheckCircle, XCircle, Shield, Clock, Trash2, Edit } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Shield, Clock, Trash2, Edit, UserCheck, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -124,16 +124,29 @@ export default function UsersPage() {
     }
   };
 
-  const handleDeleteUser = async (u: AccessUser) => {
-    if(!confirm(`¿Eliminar acceso al sistema a ${u.email}?`)) return;
-    setProcessingId(u.email);
+  const handleToggleStatus = async (usr: AccessUser) => {
+    if (!user) return;
+    if (usr.email === user.email) {
+        toast.error("No puedes cambiar tu propio estado");
+        return;
+    }
+    
+    const actionDesc = usr.disabled ? 'HABILITAR' : 'DESHABILITAR';
+    if(!window.confirm(`¿Estás seguro de que deseas ${actionDesc} a ${usr.email}?`)) return;
+    
+    setProcessingId(usr.email);
     try {
-      await accessRepo.removeAdmin(u.email); // Usando Soft Delete configurado en Fase 2
-      toast.success("Usuario desactivado");
+      if (usr.disabled) {
+          await accessRepo.enableAdmin(usr.email);
+          toast.success("Usuario habilitado");
+      } else {
+          await accessRepo.removeAdmin(usr.email);
+          toast.success("Usuario deshabilitado");
+      }
       await loadData();
     } catch (error) {
       console.error(error);
-      toast.error("Error al desactivar");
+      toast.error(`Error al ${actionDesc.toLowerCase()}`);
     } finally {
       setProcessingId(null);
     }
@@ -234,6 +247,7 @@ export default function UsersPage() {
                     <tr>
                         <th className="px-6 py-4">Usuario (Email)</th>
                         <th className="px-6 py-4">Rol Asignado</th>
+                        <th className="px-6 py-4">Estado</th>
                         <th className="px-6 py-4">Fecha Alta</th>
                         <th className="px-6 py-4 text-right">Acciones</th>
                     </tr>
@@ -254,6 +268,17 @@ export default function UsersPage() {
                                 </span>
                             </td>
                             <td className="px-6 py-4">
+                                {u.disabled ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">
+                                        <UserX className="w-3 h-3" /> Inactivo
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                        <UserCheck className="w-3 h-3" /> Activo
+                                    </span>
+                                )}
+                            </td>
+                            <td className="px-6 py-4">
                                 {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-'}
                             </td>
                             <td className="px-6 py-4 text-right">
@@ -270,11 +295,12 @@ export default function UsersPage() {
                                     <Button 
                                         variant="ghost" 
                                         size="sm" 
-                                        className="text-red-400 hover:text-red-600 hover:bg-red-50"
-                                        onClick={() => handleDeleteUser(u)}
+                                        className={u.disabled ? "text-green-500 hover:text-green-600 hover:bg-green-50" : "text-red-400 hover:text-red-600 hover:bg-red-50"}
+                                        onClick={() => handleToggleStatus(u)}
                                         disabled={!!processingId}
+                                        title={u.disabled ? "Habilitar usuario" : "Deshabilitar usuario"}
                                     >
-                                        <Trash2 className="w-4 h-4" />
+                                        {u.disabled ? <UserCheck className="w-4 h-4" /> : <UserX className="w-4 h-4" />}
                                     </Button>
                                 )}
                             </td>

@@ -21,6 +21,7 @@ export interface AccessUser {
     createdAt: Date | null;
     createdBy?: string;
     updatedAt: Date | null;
+    disabled?: boolean;
 }
 
 export interface AccessRequest {
@@ -49,6 +50,7 @@ export class FirebaseAccessRepository {
             createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null,
             createdBy: data.createdBy,
             updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : null,
+            disabled: data.disabled || false,
         };
     }
 
@@ -113,6 +115,14 @@ export class FirebaseAccessRepository {
         const normalized = this.normalizeEmail(email);
         await setDoc(doc(db, COLLECTION_NAME, normalized), {
             disabled: true,
+            updatedAt: serverTimestamp()
+        }, { merge: true });
+    }
+
+    async enableAdmin(email: string): Promise<void> {
+        const normalized = this.normalizeEmail(email);
+        await setDoc(doc(db, COLLECTION_NAME, normalized), {
+            disabled: false,
             updatedAt: serverTimestamp()
         }, { merge: true });
     }

@@ -57,6 +57,22 @@ export class FirebaseStudentRepository implements IStudentRepository {
     }
 
     async update(id: string, data: Partial<Student>): Promise<void> {
+        // Validación de duplicado por Cédula (si aplica y si cambió)
+        if (data.cedula && data.cedula.trim() !== '') {
+            const cedulaQuery = query(
+                collection(db, this.collectionName),
+                where('cedula', '==', data.cedula.trim())
+            );
+            const cedulaSnap = await getDocs(cedulaQuery);
+            if (!cedulaSnap.empty) {
+                // Verificar que el documento con esta cédula no sea el mismo que se está editando
+                const existingDoc = cedulaSnap.docs[0];
+                if (existingDoc.id !== id) {
+                    throw new Error(`Ya existe otro participante registrado con la cédula ${data.cedula}`);
+                }
+            }
+        }
+
         const docRef = doc(db, this.collectionName, id);
         await setDoc(docRef, {
             ...data,

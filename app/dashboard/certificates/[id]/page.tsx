@@ -13,7 +13,9 @@ import {
     FileText, 
     Calendar, 
     Award,
-    QrCode
+    QrCode,
+    RefreshCcw,
+    AlertTriangle
 } from 'lucide-react';
 import { getCertificateRepository, getTemplateRepository } from '@/lib/container';
 import { Certificate } from '@/lib/domain/entities/Certificate';
@@ -32,6 +34,7 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isRevoking, setIsRevoking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const qrRef = useRef<HTMLDivElement>(null);
 
@@ -85,6 +88,48 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
         toast.error("Error al generar el PDF");
     } finally {
         setIsDownloading(false);
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (!certificate || certificate.status !== 'active') return;
+    if (!window.confirm('¿Estás seguro de que deseas ANULAR este certificado? Esta acción no se puede deshacer y el código QR dejará de ser válido.')) return;
+    
+    setIsRevoking(true);
+    try {
+        await certificateRepository.updateStatus(certificate.id, 'revoked');
+        setCertificate({ ...certificate, status: 'revoked' });
+        toast.success("Certificado anulado correctamente");
+    } catch (err) {
+        console.error("Error revoking certificate:", err);
+        toast.error("Error al anular el certificado");
+    } finally {
+        setIsRevoking(false);
+    }
+  };
+
+  const handleRevokeAndCorrect = async () => {
+    if (!certificate || certificate.status !== 'active') return;
+    if (!window.confirm('¿Estás seguro de que deseas ANULAR este certificado y generar uno nuevo? El certificado actual será revocado.')) return;
+    
+    setIsRevoking(true);
+    try {
+        await certificateRepository.updateStatus(certificate.id, 'revoked');
+        setCertificate({ ...certificate, status: 'revoked' });
+        toast.success("Certificado anulado. Redirigiendo a corrección...");
+        
+        const params = new URLSearchParams({
+            studentId: certificate.studentId,
+            studentName: certificate.studentName,
+            program: certificate.academicProgram,
+            type: certificate.type,
+        });
+        
+        router.push(`/dashboard/certificates/create?${params.toString()}`);
+    } catch (err) {
+        console.error("Error revoking certificate:", err);
+        toast.error("Error al iniciar la corrección");
+        setIsRevoking(false);
     }
   };
 
@@ -146,6 +191,26 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
                     <button className="p-2 text-gray-500 hover:text-primary transition-colors rounded-lg hover:bg-gray-50">
                         <Share2 size={20} />
                     </button>
+                    {certificate.status === 'active' && (
+                        <>
+                            <button 
+                                onClick={handleRevokeAndCorrect}
+                                disabled={isRevoking}
+                                className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors shadow-sm disabled:opacity-50"
+                            >
+                                <RefreshCcw size={18} />
+                                <span className="font-medium hidden sm:inline">Anular y Corregir</span>
+                            </button>
+                            <button 
+                                onClick={handleRevoke}
+                                disabled={isRevoking}
+                                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition-colors shadow-sm disabled:opacity-50"
+                            >
+                                <XCircle size={18} />
+                                <span className="font-medium hidden md:inline">Anular</span>
+                            </button>
+                        </>
+                    )}
                     <button 
                         onClick={handleDownload}
                         disabled={isDownloading}
