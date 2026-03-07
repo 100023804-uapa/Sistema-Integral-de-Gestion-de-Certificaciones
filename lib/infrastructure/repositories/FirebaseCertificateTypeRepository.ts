@@ -1,16 +1,16 @@
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  query, 
-  orderBy, 
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  query,
+  orderBy,
   where,
   limit,
   Timestamp,
-  DocumentData 
+  DocumentData
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CertificateType, CreateCertificateTypeRequest, UpdateCertificateTypeRequest } from '@/lib/types/certificateType';
@@ -31,7 +31,7 @@ export class FirebaseCertificateTypeRepository {
 
     const docRef = await addDoc(collection(db, this.collectionName), certificateTypeData);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) {
       throw new Error('Failed to create certificate type');
     }
@@ -42,7 +42,7 @@ export class FirebaseCertificateTypeRepository {
   async findById(id: string): Promise<CertificateType | null> {
     const docRef = doc(db, this.collectionName, id);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) {
       return null;
     }
@@ -55,7 +55,7 @@ export class FirebaseCertificateTypeRepository {
       collection(db, this.collectionName),
       orderBy('createdAt', 'desc')
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(this.mapToCertificateType);
   }
@@ -66,7 +66,7 @@ export class FirebaseCertificateTypeRepository {
       where('isActive', '==', true),
       orderBy('name', 'asc')
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(this.mapToCertificateType);
   }
@@ -78,7 +78,7 @@ export class FirebaseCertificateTypeRepository {
       where('isActive', '==', true),
       limit(1)
     );
-    
+
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
       return null;
@@ -95,7 +95,7 @@ export class FirebaseCertificateTypeRepository {
     };
 
     await updateDoc(docRef, updateData);
-    
+
     const updatedDoc = await getDoc(docRef);
     if (!updatedDoc.exists()) {
       throw new Error('Failed to update certificate type');
@@ -119,6 +119,7 @@ export class FirebaseCertificateTypeRepository {
       name: data.name || '',
       code: data.code || 'horizontal',
       description: data.description,
+      defaultFolioPrefix: data.defaultFolioPrefix,
       requiresSignature: data.requiresSignature ?? true,
       isActive: data.isActive ?? true,
       createdAt: data.createdAt?.toDate() || new Date(),

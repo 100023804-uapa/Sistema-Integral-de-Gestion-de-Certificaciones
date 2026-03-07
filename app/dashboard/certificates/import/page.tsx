@@ -8,6 +8,7 @@ import { getListCampusesUseCase, getCertificateTemplateRepository } from '@/lib/
 import { Campus } from '@/lib/container';
 import { CertificateTemplate } from '@/lib/types/certificateTemplate';
 import { BookOpen } from 'lucide-react';
+import { ProgramCombobox } from '@/components/ui/ProgramCombobox';
 
 export default function ImportCertificatesPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -99,7 +100,7 @@ export default function ImportCertificatesPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8 px-4 py-6 md:px-8 md:py-10">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -161,16 +162,12 @@ export default function ImportCertificatesPage() {
                 <BookOpen size={14} className="text-primary" /> Programa <span className="text-gray-400 font-normal">(opcional)</span>
               </label>
               {programs.length > 0 ? (
-                <select
+                <ProgramCombobox 
+                  programs={programs}
                   value={selectedProgramName}
-                  onChange={(e) => setSelectedProgramName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white text-sm"
-                >
-                  <option value="">Usar columna &quot;Curso&quot; del Excel</option>
-                  {programs.map(p => (
-                    <option key={p.id} value={p.name}>{p.name} ({p.code})</option>
-                  ))}
-                </select>
+                  onChange={setSelectedProgramName}
+                  placeholder="Buscar programa o dejar en blanco (opcional)"
+                />
               ) : (
                 <p className="text-xs text-gray-400 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
                   Sin programas en catálogo. Se usará la columna &quot;Curso&quot; del Excel.

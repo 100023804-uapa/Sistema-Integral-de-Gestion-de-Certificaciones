@@ -146,8 +146,8 @@ export default function UsersPage() {
   const pendingRequests = requests.filter(r => r.status === 'pending');
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="max-w-6xl mx-auto space-y-8 px-4 py-6 md:px-8 md:py-10 animate-in fade-in duration-500">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
            <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Gestión de Usuarios</h2>
            <p className="text-gray-500 mt-1">Administra los accesos y roles (RBAC) del sistema.</p>

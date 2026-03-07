@@ -3,13 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, FileText, Calendar, Save, CheckCircle, AlertCircle, MapPin } from 'lucide-react';
+import { ArrowLeft, User, FileText, Calendar, Save, CheckCircle, AlertCircle, MapPin, Search } from 'lucide-react';
 import { getCreateCertificateUseCase, getCertificateTemplateRepository, getListCampusesUseCase, getListCertificateTypesUseCase } from '@/lib/container';
 import { CertificateType } from '@/lib/domain/entities/Certificate';
 import { Campus, CertificateType as CertType } from '@/lib/container';
 import { CertificateTemplate } from '@/lib/types/certificateTemplate';
 import { LayoutTemplate } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import { StudentCombobox } from '@/components/ui/StudentCombobox';
+import { ProgramCombobox } from '@/components/ui/ProgramCombobox';
+import { Student } from '@/lib/domain/entities/Student';
 
 export default function CreateCertificatePage() {
   const router = useRouter();
@@ -28,6 +31,7 @@ export default function CreateCertificatePage() {
     studentName: '',
     studentId: '',
     cedula: '',
+    studentEmail: '',
     academicProgram: '',
     type: 'CAP' as CertificateType,
     issueDate: new Date().toISOString().split('T')[0],
@@ -183,8 +187,17 @@ export default function CreateCertificatePage() {
                 <select
                   value={selectedTemplateType}
                   onChange={(e) => {
-                    setSelectedTemplateType(e.target.value);
-                    setFormData(prev => ({ ...prev, templateId: '' })); // reset plantilla al cambiar tipo
+                    const newTypeStr = e.target.value;
+                    setSelectedTemplateType(newTypeStr);
+                    
+                    const selectedCertType = certTypes.find(ct => ct.code === newTypeStr);
+                    const newPrefix = selectedCertType?.defaultFolioPrefix || 'sigce';
+                    
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      templateId: '', 
+                      folioPrefix: newPrefix 
+                    }));
                   }}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white"
                 >
@@ -242,7 +255,30 @@ export default function CreateCertificatePage() {
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 space-y-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 space-y-0 relative">
+                
+                {/* Buscador Rápido (Ocupa las dos columnas) */}
+                <div className="md:col-span-2 space-y-2 mb-2 p-5 bg-gray-50/50 rounded-2xl border border-gray-100">
+                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <Search size={16} className="text-primary" /> Buscar Participante
+                    </label>
+                    <StudentCombobox 
+                        onSelect={(student: Student) => {
+                            setFormData(prev => ({
+                                ...prev,
+                                studentName: `${student.firstName} ${student.lastName}`.trim(),
+                                studentId: student.id,
+                                cedula: student.cedula || prev.cedula,
+                                studentEmail: student.email || prev.studentEmail,
+                                academicProgram: student.career || prev.academicProgram,
+                            }));
+                        }}
+                    />
+                    <p className="text-xs text-gray-500">
+                        Busca y selecciona un participante para autocompletar los campos de abajo.
+                    </p>
+                </div>
+
                 {/* Estudiante */}
                 <div className="space-y-2">
                 <label className="block text-sm font-semibold text-gray-700">
@@ -254,8 +290,9 @@ export default function CreateCertificatePage() {
                     onChange={handleChange}
                     type="text" 
                     required
-                    placeholder="Ej. Juan Pérez"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    readOnly
+                    placeholder="Se autocompleta con la búsqueda..."
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed focus:outline-none transition-all"
                 />
                 </div>
 
@@ -269,8 +306,9 @@ export default function CreateCertificatePage() {
                     onChange={handleChange}
                     type="text" 
                     required
-                    placeholder="Ej. 2024-00123"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    readOnly
+                    placeholder="Se autocompleta con la búsqueda..."
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed focus:outline-none transition-all"
                 />
                 </div>
 
@@ -283,8 +321,9 @@ export default function CreateCertificatePage() {
                     value={formData.cedula}
                     onChange={handleChange}
                     type="text" 
-                    placeholder="Ej. 402-1234567-8"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    readOnly
+                    placeholder="Se autocompleta con la búsqueda..."
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed focus:outline-none transition-all"
                 />
                 </div>
 
@@ -293,30 +332,11 @@ export default function CreateCertificatePage() {
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                     <FileText size={16} /> Programa Académico
                 </label>
-                {programs.length > 0 ? (
-                  <select
-                    name="academicProgram"
+                <ProgramCombobox 
+                    programs={programs}
                     value={formData.academicProgram}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white"
-                  >
-                    <option value="">Selecciona un programa...</option>
-                    {programs.map(p => (
-                      <option key={p.id} value={p.name}>{p.name} ({p.code})</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    name="academicProgram"
-                    value={formData.academicProgram}
-                    onChange={handleChange}
-                    type="text"
-                    required
-                    placeholder="Ej. Diplomado en Gestión de Proyectos"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  />
-                )}
+                    onChange={(val) => setFormData(prev => ({ ...prev, academicProgram: val }))}
+                />
                 <p className="text-xs text-gray-400">
                   {programs.length === 0 ? 'Agrega programas en el módulo «Programas Académicos» para usar la lista desplegable.' : `${programs.length} programas disponibles en el catálogo.`}
                 </p>

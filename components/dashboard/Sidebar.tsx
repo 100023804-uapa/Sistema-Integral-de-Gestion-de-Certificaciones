@@ -1,76 +1,14 @@
 "use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { APP_VERSION } from '@/lib/config/changelog';
-import { ChangelogModal } from '@/components/ui/ChangelogModal';
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Users, 
-  Settings, 
-  LogOut,
-  GraduationCap,
-  MapPin,
-  Building,
-  Type,
-  Shield,
-  Clock,
-  PenTool,
-  Palette,
-  BarChart3,
-  QrCode,
-  Wrench
-} from 'lucide-react';
-
-type MenuItem = {
-  label: string;
-  icon?: any;
-  href?: string;
-  text?: string;
-  allowedRoles?: string[]; // Si no se provee, todos pueden verlo
-};
-
-const menuItems: MenuItem[] = [
-  // 📊 Resumen General
-  { label: 'Resumen', icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Reportes', icon: BarChart3, href: '/dashboard/reports', allowedRoles: ['administrator', 'coordinator'] },
-  
-  // 🏛️ Configuración Institucional
-  { label: 'separator', text: 'Configuración Institucional', allowedRoles: ['administrator'] },
-  { label: 'Recintos', icon: MapPin, href: '/dashboard/campuses', allowedRoles: ['administrator'] },
-  { label: 'Áreas Académicas', icon: Building, href: '/dashboard/academic-areas', allowedRoles: ['administrator'] },
-  { label: 'Tipos de Certificado', icon: Type, href: '/dashboard/certificate-types', allowedRoles: ['administrator'] },
-  { label: 'Roles y Permisos', icon: Shield, href: '/dashboard/roles', allowedRoles: ['administrator'] },
-  
-  // 📚 Gestión Académica
-  { label: 'separator', text: 'Gestión Académica', allowedRoles: ['administrator', 'coordinator', 'verifier'] },
-  { label: 'Programas', icon: GraduationCap, href: '/dashboard/programs', allowedRoles: ['administrator', 'coordinator'] },
-  { label: 'Participantes', icon: Users, href: '/dashboard/graduates', allowedRoles: ['administrator', 'coordinator', 'verifier'] },
-  
-  // 📄 Gestión de Certificados
-  { label: 'separator', text: 'Gestión de Certificados' },
-  { label: 'Certificados', icon: FileText, href: '/dashboard/certificates' },
-  { label: 'Validar QR', icon: QrCode, href: '/dashboard/validate' },
-  { label: 'Estados', icon: Clock, href: '/dashboard/certificate-states', allowedRoles: ['administrator', 'coordinator'] },
-  { label: 'Firmas Digitales', icon: PenTool, href: '/dashboard/digital-signatures', allowedRoles: ['administrator', 'signer'] },
-  { label: 'Plantillas de Diseño', icon: Palette, href: '/dashboard/certificate-templates', allowedRoles: ['administrator', 'coordinator'] },
-  
-  // ⚙️ Administración
-  { label: 'separator', text: 'Administración', allowedRoles: ['administrator'] },
-  { label: 'Usuarios del Sistema', icon: Users, href: '/dashboard/users', allowedRoles: ['administrator'] },
-  { label: 'Configuración', icon: Settings, href: '/dashboard/settings', allowedRoles: ['administrator'] },
-
-  // 🛠️ Herramientas de Desarrollo (solo en dev)
-  ...(process.env.NODE_ENV === 'development' ? [
-    { label: 'separator', text: 'Desarrollo', allowedRoles: ['administrator'] },
-    { label: 'Dev Tools', icon: Wrench, href: '/dashboard/dev-tools', allowedRoles: ['administrator'] },
-  ] : []),
-];
-
-import { useAuth } from '@/lib/contexts/AuthContext';
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { APP_VERSION } from "@/lib/config/changelog";
+import { ChangelogModal } from "@/components/ui/ChangelogModal";
+import { dashboardMenuItems } from "@/components/dashboard/navigation";
+import { LogOut, GraduationCap } from "lucide-react";
+import { useAuth } from "@/lib/contexts/AuthContext";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -81,7 +19,7 @@ export function Sidebar() {
   const handleLogout = async () => {
     try {
       await logout();
-      router.push('/login');
+      router.push("/login");
     } catch (error) {
       console.error("Error logging out:", error);
     }
@@ -89,83 +27,85 @@ export function Sidebar() {
 
   return (
     <>
-      <div className="hidden md:flex flex-col h-screen w-64 bg-primary text-white sticky top-0 border-r border-white/5 shadow-2xl shrink-0">
-        <div className="p-8 flex items-center gap-3 shrink-0">
-          <div className="bg-accent p-2 rounded-xl">
+      <div className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-white/5 bg-primary text-white shadow-2xl md:flex">
+        <div className="flex shrink-0 items-center gap-3 p-8">
+          <div className="rounded-xl bg-accent p-2">
             <GraduationCap size={24} />
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-xl leading-none">SIGCE</span>
-            <span className="text-[10px] text-blue-200 uppercase tracking-widest mt-1">Admin Panel</span>
+            <span className="text-xl font-bold leading-none">SIGCE</span>
+            <span className="mt-1 text-[10px] uppercase tracking-widest text-blue-200">
+              Admin Panel
+            </span>
           </div>
         </div>
-        
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
-          {menuItems.map((item, index) => {
-            // Verificar permisos
+
+        <nav className="custom-scrollbar flex-1 space-y-1 overflow-y-auto px-4 py-6">
+          {dashboardMenuItems.map((item, index) => {
             if (item.allowedRoles && !hasRole(item.allowedRoles)) {
-               return null;
+              return null;
             }
 
-            // Detectar si es un separador
-            if (item.label === 'separator') {
+            if (item.kind === "separator") {
               return (
                 <div key={`separator-${index}`} className="pt-4">
                   <div className="px-4 py-2">
-                    <div className="text-xs font-semibold text-blue-300 uppercase tracking-wider opacity-70">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-blue-300 opacity-70">
                       {item.text}
                     </div>
                   </div>
                 </div>
               );
             }
-            
-            const href = item.href ?? '/dashboard';
-            const isActive = pathname === href;
+
+            const isActive = pathname === item.href;
             const Icon = item.icon;
-            
+
             return (
-              <Link 
-                key={href}
-                href={href}
+              <Link
+                key={item.href}
+                href={item.href}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
-                  isActive 
-                    ? "bg-accent text-white shadow-lg shadow-orange-500/20" 
+                  "group flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
+                  isActive
+                    ? "bg-accent text-white shadow-lg shadow-orange-500/20"
                     : "text-blue-100 hover:bg-white/5"
                 )}
               >
-                <Icon size={20} className={cn(
-                  "transition-colors",
-                  isActive ? "text-white" : "group-hover:text-accent"
-                )} />
+                <Icon
+                  size={20}
+                  className={cn(
+                    "transition-colors",
+                    isActive ? "text-white" : "group-hover:text-accent"
+                  )}
+                />
                 <span className="font-medium">{item.label}</span>
               </Link>
             );
           })}
         </nav>
-        
-        <div className="p-4 border-t border-white/5 space-y-2">
-          <button 
+
+        <div className="space-y-2 border-t border-white/5 p-4">
+          <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 w-full text-blue-200 hover:text-white transition-colors"
+            className="flex w-full items-center gap-3 px-4 py-3 text-blue-200 transition-colors hover:text-white"
           >
             <LogOut size={20} />
-            <span className="font-medium">Cerrar Sesión</span>
+            <span className="font-medium">Cerrar Sesion</span>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => setIsChangelogOpen(true)}
-            className="w-full text-center py-2 text-[10px] text-blue-300/50 hover:text-blue-200 hover:bg-white/5 rounded-lg transition-all"
+            className="w-full rounded-lg py-2 text-center text-[10px] text-blue-300/50 transition-all hover:bg-white/5 hover:text-blue-200"
           >
-              v{APP_VERSION}
+            v{APP_VERSION}
           </button>
         </div>
       </div>
 
-      <ChangelogModal 
-        isOpen={isChangelogOpen} 
-        onClose={() => setIsChangelogOpen(false)} 
+      <ChangelogModal
+        isOpen={isChangelogOpen}
+        onClose={() => setIsChangelogOpen(false)}
       />
     </>
   );

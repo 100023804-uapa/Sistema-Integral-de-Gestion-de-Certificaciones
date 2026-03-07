@@ -206,7 +206,7 @@ export default function DevToolsPage() {
   }
 
   return (
-    <div className="p-6 space-y-8 max-w-5xl mx-auto pb-20">
+    <div className="max-w-5xl mx-auto space-y-8 px-4 py-6 pb-28 md:px-8 md:py-10 md:pb-10">
 
       {/* Header */}
       <div className="flex items-center gap-3">

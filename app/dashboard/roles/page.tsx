@@ -111,8 +111,8 @@ export default function RolesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6 px-4 py-6 md:px-8 md:py-10">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Roles del Sistema</h1>
           <p className="text-gray-600">Gestiona los roles y permisos del sistema</p>

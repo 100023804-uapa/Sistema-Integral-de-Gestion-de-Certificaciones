@@ -143,7 +143,7 @@ export default function ProgramsPage() {
   // RENDER
   // ─────────────────────────────────────────
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 px-4 py-6 md:px-8 md:py-10">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

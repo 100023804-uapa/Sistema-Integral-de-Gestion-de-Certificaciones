@@ -135,8 +135,7 @@ export default function GraduatesPage() {
                     <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
                         <tr>
                             <th className="px-6 py-4">Estudiante</th>
-                            <th className="px-6 py-4">Matrícula / Cédula</th>
-                            <th className="px-6 py-4">Carrera</th>
+                            <th className="px-6 py-4">Matrícula</th>
                             <th className="px-6 py-4">Fecha Registro</th>
                             <th className="px-6 py-4 text-right">Acciones</th>
                         </tr>
@@ -157,9 +156,6 @@ export default function GraduatesPage() {
                                 </td>
                                 <td className="px-6 py-4 font-medium text-gray-700">
                                     {student.id}
-                                </td>
-                                <td className="px-6 py-4 text-gray-500">
-                                    {student.career || 'No especificada'}
                                 </td>
                                 <td className="px-6 py-4 text-gray-400">
                                     {student.createdAt.toLocaleDateString('es-DO', { 

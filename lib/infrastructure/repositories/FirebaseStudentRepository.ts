@@ -1,5 +1,5 @@
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, setDoc, getDocs, query, limit as firestoreLimit, orderBy, Timestamp, startAfter, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, getDocs, query, limit as firestoreLimit, orderBy, Timestamp, startAfter, QueryDocumentSnapshot, where } from 'firebase/firestore';
 import { IStudentRepository } from '../../domain/repositories/IStudentRepository';
 import { Student, CreateStudentDTO } from '../../domain/entities/Student';
 
@@ -19,7 +19,26 @@ export class FirebaseStudentRepository implements IStudentRepository {
     }
 
     async create(student: CreateStudentDTO): Promise<Student> {
+        // Validación de duplicado por Matrícula (ID)
         const docRef = doc(db, this.collectionName, student.id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            throw new Error(`Ya existe un participante registrado con la matrícula ${student.id}`);
+        }
+
+        // Validación de duplicado por Cédula (si aplica)
+        if (student.cedula && student.cedula.trim() !== '') {
+            const cedulaQuery = query(
+                collection(db, this.collectionName),
+                where('cedula', '==', student.cedula.trim())
+            );
+            const cedulaSnap = await getDocs(cedulaQuery);
+            if (!cedulaSnap.empty) {
+                throw new Error(`Ya existe un participante registrado con la cédula ${student.cedula}`);
+            }
+        }
+
         const now = new Date();
 
         const newStudent: Student = {

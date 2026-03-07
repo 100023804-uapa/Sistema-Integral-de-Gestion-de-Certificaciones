@@ -99,8 +99,8 @@ export default function CertificateTypesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6 px-4 py-6 md:px-8 md:py-10">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Tipos de Certificado</h1>
           <p className="text-gray-600">Gestiona las tipologías de certificados disponibles</p>
@@ -156,6 +156,13 @@ export default function CertificateTypesPage() {
                   {certificateType.description || getTypeDescription(certificateType.code)}
                 </p>
               </div>
+
+              {certificateType.defaultFolioPrefix && (
+                <div>
+                  <span className="text-sm text-gray-500">Prefijo Folio:</span>
+                  <p className="font-medium bg-gray-100 px-2 py-0.5 rounded text-sm inline-block ml-2">{certificateType.defaultFolioPrefix}</p>
+                </div>
+              )}
               
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-500">Requiere firma:</span>
@@ -231,6 +238,7 @@ function CertificateTypeForm({
     name: certificateType?.name || '',
     code: certificateType?.code || 'horizontal',
     description: certificateType?.description || '',
+    defaultFolioPrefix: certificateType?.defaultFolioPrefix || '',
     requiresSignature: certificateType?.requiresSignature ?? true,
     isActive: certificateType?.isActive ?? true,
   });
@@ -339,6 +347,22 @@ function CertificateTypeForm({
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Prefijo Folio por Defecto (Opcional)
+            </label>
+            <input
+              type="text"
+              value={formData.defaultFolioPrefix}
+              onChange={(e) => setFormData({ ...formData, defaultFolioPrefix: e.target.value })}
+              placeholder="Ej. CAP, SIGCE, DP"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent uppercase"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Se autocompletará en el formulario al crear un certificado.
+            </p>
           </div>
 
           <div className="flex items-center">
