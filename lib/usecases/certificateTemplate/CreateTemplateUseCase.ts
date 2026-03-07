@@ -5,7 +5,7 @@ import { getListCertificateTypesUseCase } from '@/lib/container';
 export class CreateTemplateUseCase {
   constructor(
     private templateRepository: FirebaseCertificateTemplateRepository
-  ) {}
+  ) { }
 
   async execute(
     data: {
@@ -36,7 +36,7 @@ export class CreateTemplateUseCase {
       const listCertificateTypesUseCase = getListCertificateTypesUseCase();
       const certificateTypes = await listCertificateTypesUseCase.execute(true);
       const certificateTypeExists = certificateTypes.some(ct => ct.id === data.certificateTypeId);
-      
+
       if (!certificateTypeExists) {
         throw new Error('El tipo de certificado especificado no existe');
       }
@@ -48,10 +48,10 @@ export class CreateTemplateUseCase {
     // Verificar duplicados (simplificado)
     try {
       const existingTemplates = await this.templateRepository.findAll();
-      const nameExists = existingTemplates.some(template => 
+      const nameExists = existingTemplates.some(template =>
         template.name.toLowerCase() === data.name.toLowerCase() && template.isActive
       );
-      
+
       if (nameExists) {
         throw new Error('Ya existe una plantilla activa con ese nombre');
       }
@@ -227,13 +227,6 @@ export class CreateTemplateUseCase {
     const placeholders: Record<string, TemplatePlaceholder[]> = {
       horizontal: [
         {
-          id: 'logo',
-          name: 'Logo Institucional',
-          type: 'image' as const,
-          defaultValue: '',
-          required: true
-        },
-        {
           id: 'studentName',
           name: 'Nombre del Estudiante',
           type: 'text' as const,
@@ -242,45 +235,80 @@ export class CreateTemplateUseCase {
           validation: { minLength: 3, maxLength: 100 }
         },
         {
-          id: 'academicProgram',
-          name: 'Programa Académico',
+          id: 'programName',
+          name: 'Nombre del Programa',
           type: 'text' as const,
           defaultValue: '',
           required: true,
           validation: { minLength: 5, maxLength: 200 }
         },
         {
-          id: 'issueDate',
-          name: 'Fecha de Emisión',
-          type: 'date' as const,
-          defaultValue: '',
-          required: true
-        },
-        {
           id: 'folio',
-          name: 'Folio',
+          name: 'Número de Folio',
           type: 'text' as const,
           defaultValue: '',
           required: true,
           validation: { minLength: 3, maxLength: 50 }
         },
         {
+          id: 'issueDate',
+          name: 'Fecha de Emisión',
+          type: 'date' as const,
+          defaultValue: '',
+          required: false
+        },
+        {
           id: 'campusName',
           name: 'Nombre del Recinto',
           type: 'text' as const,
           defaultValue: '',
-          required: true
+          required: false
         },
         {
-          id: 'verificationQR',
-          name: 'Código QR de Verificación',
+          id: 'academicArea',
+          name: 'Área Académica',
+          type: 'text' as const,
+          defaultValue: '',
+          required: false
+        },
+        {
+          id: 'grade',
+          name: 'Calificación',
+          type: 'text' as const,
+          defaultValue: '',
+          required: false
+        },
+        {
+          id: 'duration',
+          name: 'Duración',
+          type: 'text' as const,
+          defaultValue: '',
+          required: false
+        },
+        {
+          id: 'qrCode',
+          name: 'Código QR',
           type: 'qr' as const,
           defaultValue: '',
           required: false
         },
         {
-          id: 'digitalSignature',
-          name: 'Firma Digital',
+          id: 'sealImage',
+          name: 'Sello Institucional',
+          type: 'image' as const,
+          defaultValue: '',
+          required: false
+        },
+        {
+          id: 'signer1_SignatureImage',
+          name: 'Firma 1',
+          type: 'signature' as const,
+          defaultValue: '',
+          required: false
+        },
+        {
+          id: 'signer2_SignatureImage',
+          name: 'Firma 2',
           type: 'signature' as const,
           defaultValue: '',
           required: false

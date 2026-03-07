@@ -39,7 +39,24 @@ export default function CreateCertificatePage() {
     folioPrefix: 'sigce', // Default prefix
     templateId: '',
     campusId: '', // Nuevo: obligatorio
+    signer1Id: '', // Nuevo
+    signer2Id: '', // Nuevo
   });
+
+  const [activeSigners, setActiveSigners] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchSigners = async () => {
+        try {
+            const res = await fetch('/api/admin/signers?active=true');
+            const data = await res.json();
+            if (data.success) setActiveSigners(data.data);
+        } catch (err) {
+            console.error("Error fetching signers", err);
+        }
+    };
+    fetchSigners();
+  }, []);
 
   useEffect(() => {
     // Prepoblar datos si venimos de "Anular y Corregir"
@@ -251,6 +268,47 @@ export default function CreateCertificatePage() {
                       ? `Mostrando plantillas de tipo "${selectedTemplateType}". Cambia el tipo arriba para ver otras.`
                       : 'Selecciona una plantilla visual o usa el formato estándar del sistema.'}
                 </p>
+            </div>
+
+            {/* Signers Selection */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <User size={16} /> Firmante Autorizado 1
+                    </label>
+                    <select 
+                        name="signer1Id"
+                        value={formData.signer1Id} 
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white"
+                    >
+                        <option value="">Ninguno</option>
+                        {activeSigners.map(signer => (
+                            <option key={signer.id} value={signer.id}>
+                                {signer.name} ({signer.title})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <User size={16} /> Firmante Autorizado 2
+                    </label>
+                    <select 
+                        name="signer2Id"
+                        value={formData.signer2Id} 
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white"
+                    >
+                        <option value="">Ninguno</option>
+                        {activeSigners.map(signer => (
+                            <option key={signer.id} value={signer.id}>
+                                {signer.name} ({signer.title})
+                            </option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             {/* Folio Prefix Configuration */}

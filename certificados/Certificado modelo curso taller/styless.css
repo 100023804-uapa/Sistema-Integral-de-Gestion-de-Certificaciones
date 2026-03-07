@@ -1,0 +1,183 @@
+/* Configuración Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #f0f2f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.certificate-wrapper {
+    padding: 20px;
+}
+
+.certificate-container {
+    width: 1000px;
+    height: 750px;
+    background-color: #ffffff;
+    padding: 60px;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    text-align: center;
+    color: #1a1a1a;
+}
+
+/* Cabecera */
+.logos-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 35px;
+}
+
+.logo-left, .logo-right {
+    height: 80px;
+    object-fit: contain;
+}
+
+.inst-name {
+    font-size: 22px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+.sub-name {
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-top: 5px;
+}
+
+/* Cuerpo */
+.award-text {
+    font-size: 18px;
+    margin-top: 35px;
+}
+
+.recipient-name {
+    font-family: 'Pinyon Script', cursive;
+    font-size: 72px;
+    font-weight: 400;
+    margin: 25px 0;
+    color: #000;
+}
+
+.course-intro {
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.course-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 5px 0 20px 0;
+    line-height: 1.2;
+}
+
+.academic-details {
+    font-size: 14px;
+    color: #444;
+    margin-bottom: 25px;
+}
+
+.location-date {
+    font-size: 16px;
+    line-height: 1.7;
+    margin-bottom: 45px;
+}
+
+/* Firmas, Sello y QR */
+.signatures-area {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 40px;
+    padding: 0 20px;
+}
+
+.signature-block {
+    width: 280px;
+}
+
+.signature-image-wrapper {
+    height: 75px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+}
+
+.sig-img {
+    max-height: 100%;
+    max-width: 200px;
+}
+
+.line {
+    border-top: 1.5px solid #000;
+    margin: 8px 0;
+}
+
+.signer-name {
+    font-weight: 700;
+    font-size: 15px;
+    display: block;
+}
+
+.signer-title {
+    font-size: 12px;
+    display: block;
+}
+
+/* Centro (QR y Sello) */
+.qr-and-seal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.seal-img {
+    width: 95px;
+    height: auto;
+}
+
+.qr-code {
+    width: 80px;
+    height: 80px;
+}
+
+/* Pie de página */
+.registration-footer {
+    position: absolute;
+    bottom: 30px;
+    width: 100%;
+    left: 0;
+    font-size: 12px;
+}
+
+.verify-link {
+    font-size: 10px;
+    color: #777;
+    margin-top: 5px;
+}
+
+u {
+    text-underline-offset: 3px;
+    padding: 0 4px;
+}
+
+/* Ajustes de Impresión */
+@media print {
+    body { background: none; }
+    .certificate-wrapper { padding: 0; }
+    .certificate-container { box-shadow: none; border: none; }
+}

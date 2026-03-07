@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.2.0";
+export const APP_VERSION = "1.2.1";
 
 export interface Release {
     version: string;
@@ -12,6 +12,19 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+    {
+        version: "1.2.1",
+        date: "2026-03-07",
+        title: "Potenciador del Editor de Plantillas",
+        description: "Se mejoro significativamente la experiencia de diseno y vista previa de certificados.",
+        details: [
+            { type: 'improvement', text: 'Nueva Vista Previa Inmersiva: el modal ahora ocupa el 95% de la pantalla para una visualizacion real.' },
+            { type: 'improvement', text: 'Sincronizacion de Vista Previa: la lista de plantillas ahora muestra el contenido real en lugar de bocetos.' },
+            { type: 'improvement', text: 'Placeholders Dinamicos: se estandarizo el uso de {{variable}} y se agregaron nuevos campos como Sello e Imagen de Firma.' },
+            { type: 'improvement', text: 'Interfaz Limpia: se eliminaron bordes grises y distracciones en el modo de previsualizacion.' },
+            { type: 'fix', text: 'Correccion de iconos y navegacion en las pantallas de creacion y edicion de plantillas.' }
+        ]
+    },
     {
         version: "1.2.0",
         date: "2026-03-07",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { CertificateType } from '@/lib/container';
 import { 
@@ -22,10 +22,12 @@ import {
   X
 } from 'lucide-react';
 
-export default function CreateTemplatePage() {
+export default function EditTemplatePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const { id } = use(params);
   const [certificateTypes, setCertificateTypes] = useState<CertificateType[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'layout' | 'placeholders' | 'code'>('basic');
@@ -104,7 +106,37 @@ export default function CreateTemplatePage() {
 
   useEffect(() => {
     fetchCertificateTypes();
-  }, []);
+    if (id) {
+      fetchTemplateData();
+    }
+  }, [id]);
+
+  const fetchTemplateData = async () => {
+    try {
+      const response = await fetch(`/api/admin/certificate-templates/${id}`);
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        setFormData({
+          name: data.data.name || '',
+          description: data.data.description || '',
+          type: data.data.type || 'horizontal',
+          certificateTypeId: data.data.certificateTypeId || '',
+          htmlContent: data.data.htmlContent || '',
+          cssStyles: data.data.cssStyles || ''
+        });
+        if (data.data.layout) setLayout(data.data.layout);
+        if (data.data.placeholders) setPlaceholders(data.data.placeholders);
+      } else {
+        setError(data.error || 'No se pudo cargar la plantilla');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Error al cargar la plantilla');
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
 
   const fetchCertificateTypes = async () => {
     try {
@@ -138,8 +170,8 @@ export default function CreateTemplatePage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/admin/certificate-templates', {
-        method: 'POST',
+      const response = await fetch(`/api/admin/certificate-templates/${id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -263,6 +295,14 @@ export default function CreateTemplatePage() {
     return icons[type as keyof typeof icons] || <Layout size={20} />;
   };
 
+  if (isLoadingData) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-500 font-medium">Cargando plantilla...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 px-4 py-6 md:px-8 md:py-10">
       {/* Header */}
@@ -275,8 +315,8 @@ export default function CreateTemplatePage() {
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Crear Plantilla</h1>
-            <p className="text-gray-600">Diseña una nueva plantilla de certificado</p>
+            <h1 className="text-2xl font-bold text-gray-900">Editar Plantilla</h1>
+            <p className="text-gray-600">Modifica la plantilla de certificado existente</p>
           </div>
         </div>
         
@@ -295,7 +335,7 @@ export default function CreateTemplatePage() {
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 flex items-center gap-2 disabled:opacity-50"
           >
             <Save size={20} />
-            {loading ? 'Guardando...' : 'Crear Plantilla'}
+            {loading ? 'Guardando...' : 'Actualizar Plantilla'}
           </button>
         </div>
       </div>

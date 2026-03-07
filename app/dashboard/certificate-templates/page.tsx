@@ -26,7 +26,8 @@ import {
   XCircle,
   Clock,
   Edit,
-  Copy
+  Copy,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -38,8 +39,7 @@ export default function CertificateTemplatesPage() {
   const [certificateTypes, setCertificateTypes] = useState<CertificateType[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplate | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [filter, setFilter] = useState<string>('all');
@@ -84,15 +84,6 @@ export default function CertificateTemplatesPage() {
     fetchCertificateTypes();
   }, []);
 
-  const handleCreate = () => {
-    setSelectedTemplate(null);
-    setShowCreateModal(true);
-  };
-
-  const handleEdit = (template: CertificateTemplate) => {
-    setSelectedTemplate(template);
-    setShowEditModal(true);
-  };
 
   const handlePreview = (template: CertificateTemplate) => {
     setSelectedTemplate(template);
@@ -181,6 +172,7 @@ export default function CertificateTemplatesPage() {
   };
 
   const filteredTemplates = templates.filter(template => {
+    if (!showInactive && template.isActive === false) return false;
     const matchesFilter = filter === 'all' || template.type === filter;
     const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          template.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -236,6 +228,15 @@ export default function CertificateTemplatesPage() {
             <option value="vertical">Vertical</option>
             <option value="institutional_macro">Institucional Macro</option>
           </select>
+          <label className="flex items-center gap-2 ml-4 cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={showInactive} 
+              onChange={(e) => setShowInactive(e.target.checked)} 
+              className="rounded text-primary"
+            />
+            <span className="text-sm text-gray-700">Mostrar Inactivas</span>
+          </label>
         </div>
       </div>
 
@@ -270,16 +271,13 @@ export default function CertificateTemplatesPage() {
                   
                   {showActions === template.id && (
                     <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border z-10">
-                      <button
-                        onClick={() => {
-                          handleEdit(template);
-                          setShowActions(null);
-                        }}
+                      <Link
+                        href={`/dashboard/certificate-templates/${template.id}/edit`}
                         className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
                       >
                         <Edit size={16} />
                         Editar
-                      </button>
+                      </Link>
                       <button
                         onClick={() => {
                           handlePreview(template);
@@ -384,13 +382,13 @@ export default function CertificateTemplatesPage() {
 
             {/* Acciones rápidas */}
             <div className="p-4 border-t bg-gray-50 flex gap-2">
-              <button
-                onClick={() => handleEdit(template)}
+              <Link
+                href={`/dashboard/certificate-templates/${template.id}/edit`}
                 className="flex-1 px-3 py-2 bg-primary text-white rounded hover:bg-primary/90 text-sm flex items-center justify-center gap-1"
               >
                 <Edit size={14} />
                 Editar
-              </button>
+              </Link>
               <button
                 onClick={() => handlePreview(template)}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded hover:bg-gray-50 text-sm flex items-center justify-center gap-1"
@@ -420,30 +418,7 @@ export default function CertificateTemplatesPage() {
         </div>
       )}
 
-      {/* Modal de Crear */}
-      {showCreateModal && (
-        <CreateTemplateModal
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => {
-            setShowCreateModal(false);
-            fetchTemplates();
-          }}
-          certificateTypes={certificateTypes}
-        />
-      )}
 
-      {/* Modal de Editar */}
-      {showEditModal && selectedTemplate && (
-        <EditTemplateModal
-          template={selectedTemplate}
-          onClose={() => setShowEditModal(false)}
-          onSuccess={() => {
-            setShowEditModal(false);
-            fetchTemplates();
-          }}
-          certificateTypes={certificateTypes}
-        />
-      )}
 
       {/* Modal de Vista Previa */}
       {showPreviewModal && selectedTemplate && (
@@ -731,91 +706,162 @@ function EditTemplateModal({ template, onClose, onSuccess, certificateTypes }: a
 
 function PreviewTemplateModal({ template, onClose }: any) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Vista Previa</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">×</button>
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 sm:p-6 md:p-10">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-[95vw] h-[95vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Vista Previa: {template.name}</h2>
+            <p className="text-sm text-gray-500">Visualización en tamaño real de la plantilla</p>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            title="Cerrar"
+          >
+            <X size={24} className="text-gray-500" />
+          </button>
         </div>
         
-        <div className="bg-gray-100 rounded-lg p-4 min-h-[400px]">
-          <div 
-            className="bg-white shadow-lg mx-auto relative"
-            style={{
-              width: `${Math.min(template.layout?.width || 297, 600)}px`,
-              height: `${Math.min(template.layout?.height || 210, 400)}px`,
-              transform: `scale(${Math.min(600 / (template.layout?.width || 297), 400 / (template.layout?.height || 210))})`,
-              transformOrigin: 'top center'
-            }}
-          >
-            {/* Header */}
+        {/* Content Area */}
+        <div className="flex-1 bg-gray-50 overflow-auto p-4 md:p-8 flex justify-center items-start">
+          {template.htmlContent ? (
             <div 
-              className="border-b-2 border-gray-800 flex items-center justify-center p-4"
-              style={{ backgroundColor: '#1e40af', color: '#ffffff' }}
+              className="bg-white shadow-2xl transition-transform duration-300"
+              style={{
+                width: `${template.layout?.width || 297}mm`,
+                height: `${template.layout?.height || 210}mm`,
+                position: 'relative',
+                overflow: 'hidden',
+                // Escalado dinámico basado en un ancho máximo de visualización cómodo
+                transform: `scale(${Math.min(1.2, 1000 / ((template.layout?.width || 297) * 3.78))})`,
+                transformOrigin: 'top center',
+                marginBottom: '4rem'
+              }}
             >
-              <h1 className="text-xl font-bold">CERTIFICADO</h1>
+              <iframe
+                title="Vista Previa Real"
+                srcDoc={`
+                  <!DOCTYPE html>
+                  <html>
+                    <head>
+                      <link rel="preconnect" href="https://fonts.googleapis.com">
+                      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                      <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Pinyon+Script&display=swap" rel="stylesheet">
+                      <style>
+                        ${template.cssStyles}
+                        body { margin: 0; padding: 0; }
+                      </style>
+                    </head>
+                    <body>
+                      ${template.htmlContent}
+                    </body>
+                  </html>
+                `}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  margin: 0,
+                  padding: 0
+                }}
+              />
             </div>
-            
-            {/* Body */}
-            <div className="p-6 text-center">
-              <h2 className="text-2xl font-bold mb-4">CERTIFICADO DE {template.type?.toUpperCase() || 'FINALIZACIÓN'}</h2>
-              <p className="text-lg mb-2">Se otorga a:</p>
-              <p className="text-xl font-semibold mb-4">[Nombre del Estudiante]</p>
-              <p className="text-gray-600 mb-2">Por haber completado satisfactoriamente:</p>
-              <p className="text-lg font-medium">[Programa Académico]</p>
-            </div>
-            
-            {/* Footer */}
-            <div className="border-t mt-auto p-4 flex justify-between items-center">
-              <div className="text-left">
-                <p className="text-sm text-gray-600">Folio: [FOLIO]</p>
-                <p className="text-sm text-gray-600">Fecha: [FECHA]</p>
+          ) : (
+            /* Fallback para plantillas sin contenido HTML (legacy or incomplete) */
+            <div 
+              className="bg-white shadow-2xl relative"
+              style={{
+                width: `${template.layout?.width || 297}mm`,
+                height: `${template.layout?.height || 210}mm`,
+                transform: `scale(1)`,
+                transformOrigin: 'top center',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
+              {/* Header Mock */}
+              <div 
+                className="border-b-2 border-gray-800 flex items-center justify-center p-4"
+                style={{ backgroundColor: '#1e40af', color: '#ffffff' }}
+              >
+                <h1 className="text-xl font-bold uppercase tracking-wider">Certificado Institucional</h1>
               </div>
-              <div className="text-right">
-                <div className="w-24 h-12 border-2 border-dashed border-gray-400 flex items-center justify-center">
-                  <span className="text-xs text-gray-500">FIRMA</span>
+              
+              {/* Body Mock */}
+              <div className="p-12 text-center flex-1 flex flex-col justify-center">
+                <h2 className="text-4xl font-bold mb-8 text-blue-900 leading-tight">CERTIFICADO DE FINALIZACIÓN</h2>
+                <p className="text-xl mb-4 italic text-gray-600">Se otorga con honor a:</p>
+                <p className="text-5xl font-bold mb-10 text-gray-900 font-serif underline decoration-blue-200 underline-offset-8">[Nombre del Estudiante]</p>
+                <p className="text-gray-600 mb-2 text-lg">Por haber completado satisfactoriamente el programa:</p>
+                <p className="text-2xl font-bold text-blue-800">[Programa Académico]</p>
+              </div>
+              
+              {/* Footer Mock */}
+              <div className="mt-auto p-10 flex justify-between items-end bg-gray-50 border-t">
+                <div className="text-left space-y-1">
+                  <p className="text-sm font-bold text-gray-800 uppercase tracking-tighter">Folio Interno: <span className="text-blue-600">#000000</span></p>
+                  <p className="text-sm text-gray-500">Fecha de Emisión: {new Date().toLocaleDateString()}</p>
+                </div>
+                
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-40 h-1 bg-gray-400"></div>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Firma Autorizada</span>
+                </div>
+              </div>
+              
+              {/* QR placeholder */}
+              <div className="absolute top-6 right-6 w-20 h-20 bg-white border shadow-sm flex items-center justify-center rounded">
+                <QrCode size={32} className="text-gray-300" />
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Footer Info Area */}
+        <div className="bg-white p-6 border-t">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl flex-1">
+              <h3 className="font-bold text-blue-900 text-xs uppercase tracking-widest mb-3">Especificaciones Técnicas:</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 text-sm">
+                <div>
+                  <span className="block text-blue-800 font-bold text-[10px] uppercase mb-1">Tipo</span>
+                  <span className="text-gray-700 font-medium capitalize">{template.type.replace('_', ' ')}</span>
+                </div>
+                <div>
+                  <span className="block text-blue-800 font-bold text-[10px] uppercase mb-1">Formato</span>
+                  <span className="text-gray-700 font-medium">{template.layout?.width}×{template.layout?.height}mm</span>
+                </div>
+                <div>
+                  <span className="block text-blue-800 font-bold text-[10px] uppercase mb-1">Orientación</span>
+                  <span className="text-gray-700 font-medium capitalize">{template.layout?.orientation}</span>
+                </div>
+                <div>
+                  <span className="block text-blue-800 font-bold text-[10px] uppercase mb-1">Secciones</span>
+                  <span className="text-gray-700 font-medium">{template.layout?.sections?.length || 0}</span>
+                </div>
+                <div>
+                  <span className="block text-blue-800 font-bold text-[10px] uppercase mb-1">Variables</span>
+                  <span className="text-gray-700 font-medium">{template.placeholders?.length || 0} detectadas</span>
+                </div>
+                <div>
+                  <span className="block text-blue-800 font-bold text-[10px] uppercase mb-1">Estado</span>
+                  <span className={`font-bold ${template.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                    {template.isActive ? 'ACTIVO' : 'INACTIVO'}
+                  </span>
                 </div>
               </div>
             </div>
             
-            {/* QR Code Placeholder */}
-            <div className="absolute bottom-4 right-4 w-16 h-16 bg-gray-200 border-2 border-gray-300 flex items-center justify-center">
-              <QrCode size={24} className="text-gray-500" />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onClose}
+                className="px-8 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-bold transition-all shadow-lg hover:shadow-xl active:scale-95"
+              >
+                Cerrar Vista Previa
+              </button>
             </div>
           </div>
-        </div>
-        
-        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-          <h3 className="font-semibold text-blue-900 mb-2">Información de la Plantilla:</h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium">Nombre:</span> {template.name}
-            </div>
-            <div>
-              <span className="font-medium">Tipo:</span> {template.type}
-            </div>
-            <div>
-              <span className="font-medium">Dimensiones:</span> {template.layout?.width || 297}×{template.layout?.height || 210}mm
-            </div>
-            <div>
-              <span className="font-medium">Orientación:</span> {template.layout?.orientation || 'landscape'}
-            </div>
-            <div>
-              <span className="font-medium">Secciones:</span> {template.layout?.sections?.length || 0}
-            </div>
-            <div>
-              <span className="font-medium">Placeholders:</span> {template.placeholders?.length || 0}
-            </div>
-          </div>
-        </div>
-        
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-          >
-            Cerrar
-          </button>
         </div>
       </div>
     </div>

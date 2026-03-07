@@ -7,6 +7,7 @@ import {
   Clock,
   FileText,
   GraduationCap,
+  Image as ImageIcon,
   LayoutDashboard,
   MapPin,
   Palette,
@@ -16,22 +17,23 @@ import {
   Shield,
   Type,
   Users,
+  UserCheck,
   Wrench,
 } from "lucide-react";
 
 export type DashboardMenuItem =
   | {
-      kind: "separator";
-      text: string;
-      allowedRoles?: string[];
-    }
+    kind: "separator";
+    text: string;
+    allowedRoles?: string[];
+  }
   | {
-      kind: "link";
-      label: string;
-      icon: LucideIcon;
-      href: string;
-      allowedRoles?: string[];
-    };
+    kind: "link";
+    label: string;
+    icon: LucideIcon;
+    href: string;
+    allowedRoles?: string[];
+  };
 
 export const dashboardMenuItems: DashboardMenuItem[] = [
   { kind: "link", label: "Resumen", icon: LayoutDashboard, href: "/dashboard" },
@@ -74,6 +76,20 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
     icon: Shield,
     href: "/dashboard/roles",
     allowedRoles: ["administrator"],
+  },
+  {
+    kind: "link",
+    label: "Firmantes Autorizados",
+    icon: UserCheck,
+    href: "/dashboard/signers",
+    allowedRoles: ["administrator"],
+  },
+  {
+    kind: "link",
+    label: "Gestor de Medios",
+    icon: ImageIcon,
+    href: "/dashboard/media",
+    allowedRoles: ["administrator", "coordinator"],
   },
   {
     kind: "separator",
@@ -149,19 +165,19 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
   },
   ...(process.env.NODE_ENV === "development"
     ? [
-        {
-          kind: "separator" as const,
-          text: "Desarrollo",
-          allowedRoles: ["administrator"],
-        },
-        {
-          kind: "link" as const,
-          label: "Dev Tools",
-          icon: Wrench,
-          href: "/dashboard/dev-tools",
-          allowedRoles: ["administrator"],
-        },
-      ]
+      {
+        kind: "separator" as const,
+        text: "Desarrollo",
+        allowedRoles: ["administrator"],
+      },
+      {
+        kind: "link" as const,
+        label: "Dev Tools",
+        icon: Wrench,
+        href: "/dashboard/dev-tools",
+        allowedRoles: ["administrator"],
+      },
+    ]
     : []),
 ];
 

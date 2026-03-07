@@ -11,6 +11,7 @@ import { FirebaseCertificateStateRepository } from './infrastructure/repositorie
 import { FirebaseDigitalSignatureRepository } from './infrastructure/repositories/FirebaseDigitalSignatureRepository';
 import { FirebaseCertificateTemplateRepository } from './infrastructure/repositories/FirebaseCertificateTemplateRepository';
 import { FirebaseAcademicProgramRepository } from './infrastructure/repositories/FirebaseAcademicProgramRepository';
+import { FirebaseSignerRepository } from './infrastructure/repositories/FirebaseSignerRepository';
 import { QueryDocumentSnapshot } from 'firebase/firestore';
 
 // Use Cases existentes
@@ -55,6 +56,12 @@ import { ListAcademicProgramsUseCase } from './usecases/academicProgram/ListAcad
 import { UpdateAcademicProgramUseCase } from './usecases/academicProgram/UpdateAcademicProgramUseCase';
 import { DeleteAcademicProgramUseCase } from './usecases/academicProgram/DeleteAcademicProgramUseCase';
 
+// Use Cases para Firmantes
+import { CreateSignerUseCase } from './usecases/signer/CreateSignerUseCase';
+import { ListSignersUseCase } from './usecases/signer/ListSignersUseCase';
+import { UpdateSignerUseCase } from './usecases/signer/UpdateSignerUseCase';
+import { DeleteSignerUseCase } from './usecases/signer/DeleteSignerUseCase';
+
 // Re-exportar tipos para evitar imports de infraestructura en app/
 export type { ProgramStat, AccessUser, AccessRequest, QueryDocumentSnapshot };
 export type { Campus } from './types/campus';
@@ -65,6 +72,7 @@ export type { CertificateState, CertificateStateValue, StateHistory, StateTransi
 export type { DigitalSignature, SignatureRequest, SignatureTemplate, SignatureStatus } from './types/digitalSignature';
 export type { CertificateTemplate, GeneratedCertificate, TemplateType } from './types/certificateTemplate';
 export type { AcademicProgram } from './types/academicProgram';
+export type { Signer } from './types/signer';
 
 // Repositorios
 export function getAccessRepository() {
@@ -119,6 +127,10 @@ export function getAcademicProgramRepository() {
     return new FirebaseAcademicProgramRepository();
 }
 
+export function getSignerRepository() {
+    return new FirebaseSignerRepository();
+}
+
 // Campus Use Cases
 export function getCreateCampusUseCase() {
     return new CreateCampusUseCase(getCampusRepository());
@@ -156,6 +168,23 @@ export function getDeleteAcademicAreaUseCase() {
 // Academic Program Use Cases
 export function getCreateAcademicProgramUseCase() {
     return new CreateAcademicProgramUseCase(getAcademicProgramRepository());
+}
+
+// Signer Use Cases
+export function getCreateSignerUseCase() {
+    return new CreateSignerUseCase(getSignerRepository());
+}
+
+export function getListSignersUseCase() {
+    return new ListSignersUseCase(getSignerRepository());
+}
+
+export function getUpdateSignerUseCase() {
+    return new UpdateSignerUseCase(getSignerRepository());
+}
+
+export function getDeleteSignerUseCase() {
+    return new DeleteSignerUseCase(getSignerRepository());
 }
 
 export function getListAcademicProgramsUseCase() {

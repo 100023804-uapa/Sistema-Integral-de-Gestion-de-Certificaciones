@@ -19,6 +19,8 @@ export interface CreateCertificateInput {
     campusId: string; // Nuevo: obligatorio
     academicAreaId?: string; // Nuevo: opcional por ahora
     createdBy: string; // Nuevo: ID del usuario que crea el certificado
+    signer1Id?: string;
+    signer2Id?: string;
 }
 
 export class CreateCertificate {
@@ -80,7 +82,11 @@ export class CreateCertificate {
             academicProgram: input.academicProgram,
             issueDate: input.issueDate,
             status: 'active' as CertificateStatus,
-            metadata: input.metadata || {},
+            metadata: {
+                ...input.metadata,
+                signer1Id: input.signer1Id,
+                signer2Id: input.signer2Id
+            },
             templateId: input.templateId,
             campusId: input.campusId,
             academicAreaId: input.academicAreaId,
