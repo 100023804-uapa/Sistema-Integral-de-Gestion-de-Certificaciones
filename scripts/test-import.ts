@@ -7,7 +7,7 @@ async function testImport() {
     ];
 
     console.log("Starting import test...");
-    const result = await importCertificatesFromExcel(mockData);
+    const result = await importCertificatesFromExcel(mockData, "TEST-CAMPUS-ID");
     console.log("Import result:", JSON.stringify(result, null, 2));
 }
 

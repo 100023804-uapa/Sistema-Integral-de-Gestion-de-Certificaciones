@@ -8,10 +8,10 @@ export async function GET(
   try {
     const params = await context.params;
     const { id } = params;
-    
+
     const repository = getAcademicAreaRepository();
     const area = await repository.findById(id);
-    
+
     if (!area) {
       return NextResponse.json(
         { success: false, error: 'Área académica no encontrada' },
@@ -37,7 +37,7 @@ export async function PUT(
     const params = await context.params;
     const { id } = params;
     const body = await request.json();
-    
+
     const updateUseCase = getUpdateAcademicAreaUseCase();
     const area = await updateUseCase.execute(id, body);
 
@@ -58,7 +58,7 @@ export async function DELETE(
   try {
     const params = await context.params;
     const { id } = params;
-    
+
     const deleteUseCase = getDeleteAcademicAreaUseCase();
     await deleteUseCase.execute(id);
 

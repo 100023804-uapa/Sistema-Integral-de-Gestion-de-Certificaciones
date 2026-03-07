@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGetStateHistoryUseCase, getCreateCertificateStateUseCase } from '@/lib/container';
+import { getGetStateHistoryUseCase, getCreateCertificateStateUseCase, getCertificateStateRepository } from '@/lib/container';
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,28 +7,31 @@ export async function GET(request: NextRequest) {
     const certificateId = searchParams.get('certificateId');
     const userId = searchParams.get('userId');
     const state = searchParams.get('state');
-    
+
     const getStateHistoryUseCase = getGetStateHistoryUseCase();
-    
+
     if (certificateId) {
       // Obtener historial de un certificado específico
       const history = await getStateHistoryUseCase.execute(certificateId);
-      return NextResponse.json({ 
-        success: true, 
-        data: history 
+      return NextResponse.json({
+        success: true,
+        data: history
       });
     } else if (userId) {
       // Obtener estados por usuario
       const states = await getStateHistoryUseCase.getStatesByUser(userId, state || undefined);
-      return NextResponse.json({ 
-        success: true, 
-        data: states 
+      return NextResponse.json({
+        success: true,
+        data: states
       });
     } else {
-      return NextResponse.json(
-        { success: false, error: 'Se requiere certificateId o userId' },
-        { status: 400 }
-      );
+      // Listado general — todos los CertificateState
+      const stateRepo = getCertificateStateRepository();
+      const allStates = await stateRepo.listAll(state || undefined);
+      return NextResponse.json({
+        success: true,
+        data: allStates
+      });
     }
 
   } catch (error) {
@@ -43,7 +46,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     const createCertificateStateUseCase = getCreateCertificateStateUseCase();
     const state = await createCertificateStateUseCase.execute(
       body.certificateId,
@@ -51,9 +54,9 @@ export async function POST(request: NextRequest) {
       body.changedBy
     );
 
-    return NextResponse.json({ 
-      success: true, 
-      data: state 
+    return NextResponse.json({
+      success: true,
+      data: state
     });
 
   } catch (error) {

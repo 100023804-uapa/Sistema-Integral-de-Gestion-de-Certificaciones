@@ -10,6 +10,7 @@ import { FirebaseRoleRepository } from './infrastructure/repositories/FirebaseRo
 import { FirebaseCertificateStateRepository } from './infrastructure/repositories/FirebaseCertificateStateRepository';
 import { FirebaseDigitalSignatureRepository } from './infrastructure/repositories/FirebaseDigitalSignatureRepository';
 import { FirebaseCertificateTemplateRepository } from './infrastructure/repositories/FirebaseCertificateTemplateRepository';
+import { FirebaseAcademicProgramRepository } from './infrastructure/repositories/FirebaseAcademicProgramRepository';
 import { QueryDocumentSnapshot } from 'firebase/firestore';
 
 // Use Cases existentes
@@ -49,6 +50,10 @@ import { GenerateFolio } from './application/use-cases/GenerateFolio';
 import { GetStudentCertificatesUseCase } from './usecases/student/GetStudentCertificatesUseCase';
 import { GetCertificateDetailsUseCase } from './usecases/student/GetCertificateDetailsUseCase';
 import { DownloadCertificateUseCase } from './usecases/student/DownloadCertificateUseCase';
+import { CreateAcademicProgramUseCase } from './usecases/academicProgram/CreateAcademicProgramUseCase';
+import { ListAcademicProgramsUseCase } from './usecases/academicProgram/ListAcademicProgramsUseCase';
+import { UpdateAcademicProgramUseCase } from './usecases/academicProgram/UpdateAcademicProgramUseCase';
+import { DeleteAcademicProgramUseCase } from './usecases/academicProgram/DeleteAcademicProgramUseCase';
 
 // Re-exportar tipos para evitar imports de infraestructura en app/
 export type { ProgramStat, AccessUser, AccessRequest, QueryDocumentSnapshot };
@@ -59,6 +64,7 @@ export type { Role, UserRole, RoleValue } from './types/role';
 export type { CertificateState, CertificateStateValue, StateHistory, StateTransition } from './types/certificateState';
 export type { DigitalSignature, SignatureRequest, SignatureTemplate, SignatureStatus } from './types/digitalSignature';
 export type { CertificateTemplate, GeneratedCertificate, TemplateType } from './types/certificateTemplate';
+export type { AcademicProgram } from './types/academicProgram';
 
 // Repositorios
 export function getAccessRepository() {
@@ -109,6 +115,10 @@ export function getCertificateTemplateRepository() {
     return new FirebaseCertificateTemplateRepository();
 }
 
+export function getAcademicProgramRepository() {
+    return new FirebaseAcademicProgramRepository();
+}
+
 // Campus Use Cases
 export function getCreateCampusUseCase() {
     return new CreateCampusUseCase(getCampusRepository());
@@ -141,6 +151,23 @@ export function getUpdateAcademicAreaUseCase() {
 
 export function getDeleteAcademicAreaUseCase() {
     return new DeleteAcademicAreaUseCase(getAcademicAreaRepository());
+}
+
+// Academic Program Use Cases
+export function getCreateAcademicProgramUseCase() {
+    return new CreateAcademicProgramUseCase(getAcademicProgramRepository());
+}
+
+export function getListAcademicProgramsUseCase() {
+    return new ListAcademicProgramsUseCase(getAcademicProgramRepository());
+}
+
+export function getUpdateAcademicProgramUseCase() {
+    return new UpdateAcademicProgramUseCase(getAcademicProgramRepository());
+}
+
+export function getDeleteAcademicProgramUseCase() {
+    return new DeleteAcademicProgramUseCase(getAcademicProgramRepository());
 }
 
 // Certificate Type Use Cases

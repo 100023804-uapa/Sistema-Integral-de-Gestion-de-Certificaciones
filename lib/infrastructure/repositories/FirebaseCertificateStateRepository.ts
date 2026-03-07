@@ -1,17 +1,17 @@
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
   setDoc,
-  query, 
-  orderBy, 
+  query,
+  orderBy,
   where,
   limit,
   Timestamp,
-  DocumentData 
+  DocumentData
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CertificateState, CertificateStateValue, StateHistory, StateTransition } from '@/lib/types/certificateState';
@@ -29,16 +29,16 @@ export class FirebaseCertificateStateRepository {
 
     const docRef = await addDoc(collection(db, this.collectionName), stateData);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) {
       throw new Error('Failed to create certificate state');
     }
 
     const newState = this.mapToCertificateState(docSnap);
-    
+
     // Actualizar historial
     await this.updateHistory(state.certificateId, newState);
-    
+
     return newState;
   }
 
@@ -49,7 +49,7 @@ export class FirebaseCertificateStateRepository {
       orderBy('changedAt', 'desc'),
       limit(1)
     );
-    
+
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
       return null;
@@ -61,7 +61,7 @@ export class FirebaseCertificateStateRepository {
   async getStateHistory(certificateId: string): Promise<StateHistory | null> {
     const docRef = doc(db, this.historyCollectionName, certificateId);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) {
       return null;
     }
@@ -84,7 +84,20 @@ export class FirebaseCertificateStateRepository {
         orderBy('changedAt', 'desc')
       );
     }
-    
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(this.mapToCertificateState);
+  }
+
+  async listAll(state?: string): Promise<CertificateState[]> {
+    const q = state
+      ? query(
+        collection(db, this.collectionName),
+        where('currentState', '==', state),
+        orderBy('changedAt', 'desc')
+      )
+      : query(collection(db, this.collectionName), orderBy('changedAt', 'desc'));
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(this.mapToCertificateState);
   }
@@ -92,7 +105,7 @@ export class FirebaseCertificateStateRepository {
   async getPendingActions(userRole: string): Promise<CertificateState[]> {
     // Obtener estados que requieren acción del rol del usuario
     const pendingStates: CertificateStateValue[] = this.getPendingStatesForRole(userRole);
-    
+
     if (pendingStates.length === 0) {
       return [];
     }
@@ -102,20 +115,20 @@ export class FirebaseCertificateStateRepository {
       where('currentState', 'in', pendingStates),
       orderBy('changedAt', 'asc')
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(this.mapToCertificateState);
   }
 
   async transitionState(
-    certificateId: string, 
-    newState: CertificateStateValue, 
-    changedBy: string, 
+    certificateId: string,
+    newState: CertificateStateValue,
+    changedBy: string,
     comments?: string
   ): Promise<CertificateState> {
     // Obtener estado actual
     const currentState = await this.getCurrentState(certificateId);
-    
+
     const stateData: Omit<CertificateState, 'id'> = {
       certificateId,
       currentState: newState,
@@ -126,23 +139,23 @@ export class FirebaseCertificateStateRepository {
     };
 
     const newStateRecord = await this.create(stateData);
-    
+
     // Actualizar historial
     await this.updateHistory(certificateId, newStateRecord);
-    
+
     return newStateRecord;
   }
 
   private async updateHistory(certificateId: string, newState: CertificateState): Promise<void> {
     const docRef = doc(db, this.historyCollectionName, certificateId);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       // Actualizar historial existente
       const history = this.mapToStateHistory(docSnap);
       history.transitions.push(newState);
       history.updatedAt = new Date();
-      
+
       await updateDoc(docRef, {
         transitions: history.transitions.map(t => ({
           id: t.id,
@@ -173,7 +186,7 @@ export class FirebaseCertificateStateRepository {
         createdAt: Timestamp.fromDate(new Date()),
         updatedAt: Timestamp.fromDate(new Date())
       };
-      
+
       await setDoc(docRef, historyData);
     }
   }
@@ -185,7 +198,7 @@ export class FirebaseCertificateStateRepository {
       'signer': ['pending_signature'],
       'administrator': ['draft', 'pending_review', 'verified', 'pending_signature', 'signed']
     };
-    
+
     return roleStates[userRole] || [];
   }
 

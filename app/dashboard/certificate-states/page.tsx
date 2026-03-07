@@ -16,8 +16,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { STATE_CONFIG } from '@/lib/types/certificateState';
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 export default function CertificateStatesPage() {
+  const { user, userRoles } = useAuth();
+  const currentUserRole = userRoles.find(r => ['administrator', 'coordinator', 'verifier', 'signer'].includes(r)) || 'coordinator';
   const [states, setStates] = useState<CertificateState[]>([]);
   const [pendingActions, setPendingActions] = useState<CertificateState[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,15 +32,20 @@ export default function CertificateStatesPage() {
     try {
       setLoading(true);
       
-      // Simular usuario actual - TODO: obtener de auth context
-      const currentUserRole = 'coordinator'; // Cambiar según el usuario
+      // Peticiones en paralelo: pendientes y listado general
+      const [pendingResponse, allStatesResponse] = await Promise.all([
+        fetch(`/api/admin/certificate-states/transition?pendingActions=true&userRole=${currentUserRole}`),
+        fetch(`/api/admin/certificate-states${filter !== 'all' ? `?state=${filter}` : ''}`)
+      ]);
       
-      // Obtener acciones pendientes
-      const pendingResponse = await fetch(`/api/admin/certificate-states/transition?pendingActions=true&userRole=${currentUserRole}`);
       const pendingData = await pendingResponse.json();
+      const allStatesData = await allStatesResponse.json();
       
       if (pendingData.success) {
         setPendingActions(pendingData.data);
+      }
+      if (allStatesData.success) {
+        setStates(allStatesData.data);
       }
 
     } catch (error) {
@@ -49,7 +57,7 @@ export default function CertificateStatesPage() {
 
   useEffect(() => {
     fetchStates();
-  }, []);
+  }, [user, filter]);
 
   const handleTransition = async (certificateId: string, newState: string, comments?: string) => {
     try {
@@ -61,8 +69,8 @@ export default function CertificateStatesPage() {
         body: JSON.stringify({
           certificateId,
           newState,
-          changedBy: 'current-user-id', // TODO: obtener de auth
-          userRole: 'coordinator', // TODO: obtener de auth
+          changedBy: user?.uid || 'system',
+          userRole: currentUserRole,
           comments
         }),
       });

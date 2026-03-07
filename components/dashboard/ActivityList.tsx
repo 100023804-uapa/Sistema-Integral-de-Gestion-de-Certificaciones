@@ -2,6 +2,7 @@ import React from 'react';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
 import { LucideIcon, CheckCircle2, AlertCircle, Bookmark, Printer } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export interface ActivityItem {
   id: string;
@@ -10,11 +11,13 @@ export interface ActivityItem {
   time: string;
   type: 'success' | 'warning' | 'info' | 'error';
   icon: LucideIcon;
+  href?: string; // Ruta de navegación opcional al hacer clic en el item
 }
 
 interface ActivityListProps {
   activities: ActivityItem[];
   className?: string;
+  viewAllHref?: string; // Ruta del botón "Ver todo"
 }
 
 const statusColors = {
@@ -24,14 +27,26 @@ const statusColors = {
   error: 'bg-red-100 text-red-600',
 };
 
-export function ActivityList({ activities, className }: ActivityListProps) {
+export function ActivityList({ activities, className, viewAllHref = '/dashboard/certificates' }: ActivityListProps) {
+  const router = useRouter();
+
   return (
     <Card className={cn("overflow-hidden border-none shadow-sm rounded-3xl", className)}>
       <div className="divide-y divide-gray-50">
         {activities.map((activity) => {
           const Icon = activity.icon;
+          const isClickable = !!activity.href;
           return (
-            <div key={activity.id} className="p-5 flex items-start gap-4 hover:bg-gray-50/50 transition-colors">
+            <div
+              key={activity.id}
+              className={cn(
+                "p-5 flex items-start gap-4 transition-colors",
+                isClickable
+                  ? "hover:bg-gray-50 cursor-pointer active:bg-gray-100"
+                  : "hover:bg-gray-50/50"
+              )}
+              onClick={() => activity.href && router.push(activity.href)}
+            >
               <div className={cn(
                 "p-2.5 rounded-full shrink-0",
                 statusColors[activity.type] || statusColors.info
@@ -40,7 +55,10 @@ export function ActivityList({ activities, className }: ActivityListProps) {
               </div>
               
               <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-primary truncate">
+                <h4 className={cn(
+                  "text-sm font-bold text-primary truncate",
+                  isClickable && "group-hover:underline"
+                )}>
                   {activity.title}
                 </h4>
                 <p className="text-xs text-gray-500 truncate mt-0.5">
@@ -57,7 +75,10 @@ export function ActivityList({ activities, className }: ActivityListProps) {
       </div>
       
       <div className="p-4 bg-gray-50/50 text-center border-t border-gray-50">
-        <button className="text-[var(--color-accent)] text-xs font-bold uppercase tracking-wider hover:underline">
+        <button
+          onClick={() => router.push(viewAllHref)}
+          className="text-[var(--color-accent)] text-xs font-bold uppercase tracking-wider hover:underline"
+        >
           Ver todo
         </button>
       </div>

@@ -13,6 +13,7 @@ export interface DashboardStats {
         title: string;
         description: string;
         time: string;
+        href?: string;
     }>;
 }
 
@@ -37,7 +38,7 @@ export class GetDashboardStats {
             // 4. Breakdown by Type
             const capQuery = query(certificatesRef, where("type", "==", "CAP"));
             const capSnapshot = await getCountFromServer(capQuery);
-            
+
             const profundoQuery = query(certificatesRef, where("type", "==", "PROFUNDO"));
             const profundoSnapshot = await getCountFromServer(profundoQuery);
 
@@ -52,7 +53,8 @@ export class GetDashboardStats {
                     type: data.status === 'revoked' ? 'error' : 'success',
                     title: data.status === 'revoked' ? 'Certificado Revocado' : 'Nuevo Certificado',
                     description: `Emitido a ${data.studentName || 'Estudiante'} - ${data.folio || ''}`,
-                    time: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString() : 'Reciente'
+                    time: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString() : 'Reciente',
+                    href: `/dashboard/certificates/${doc.id}`,
                 };
             });
 

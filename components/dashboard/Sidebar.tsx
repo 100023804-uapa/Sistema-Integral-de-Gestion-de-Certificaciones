@@ -21,7 +21,8 @@ import {
   PenTool,
   Palette,
   BarChart3,
-  QrCode
+  QrCode,
+  Wrench
 } from 'lucide-react';
 
 type MenuItem = {
@@ -61,6 +62,12 @@ const menuItems: MenuItem[] = [
   { label: 'separator', text: 'Administración', allowedRoles: ['administrator'] },
   { label: 'Usuarios del Sistema', icon: Users, href: '/dashboard/users', allowedRoles: ['administrator'] },
   { label: 'Configuración', icon: Settings, href: '/dashboard/settings', allowedRoles: ['administrator'] },
+
+  // 🛠️ Herramientas de Desarrollo (solo en dev)
+  ...(process.env.NODE_ENV === 'development' ? [
+    { label: 'separator', text: 'Desarrollo', allowedRoles: ['administrator'] },
+    { label: 'Dev Tools', icon: Wrench, href: '/dashboard/dev-tools', allowedRoles: ['administrator'] },
+  ] : []),
 ];
 
 import { useAuth } from '@/lib/contexts/AuthContext';

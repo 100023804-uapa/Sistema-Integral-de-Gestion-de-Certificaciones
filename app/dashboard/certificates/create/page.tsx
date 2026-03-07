@@ -4,20 +4,24 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeft, User, FileText, Calendar, Save, CheckCircle, AlertCircle, MapPin } from 'lucide-react';
-import { getCreateCertificateUseCase, getCertificateTemplateRepository, getListCampusesUseCase } from '@/lib/container';
+import { getCreateCertificateUseCase, getCertificateTemplateRepository, getListCampusesUseCase, getListCertificateTypesUseCase } from '@/lib/container';
 import { CertificateType } from '@/lib/domain/entities/Certificate';
-import { Campus } from '@/lib/container';
-
+import { Campus, CertificateType as CertType } from '@/lib/container';
 import { CertificateTemplate } from '@/lib/types/certificateTemplate';
 import { LayoutTemplate } from 'lucide-react';
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 export default function CreateCertificatePage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
+  const [certTypes, setCertTypes] = useState<CertType[]>([]);
+  const [selectedTemplateType, setSelectedTemplateType] = useState('');
+  const [programs, setPrograms] = useState<{ id: string; name: string; code: string }[]>([]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -36,24 +40,32 @@ export default function CreateCertificatePage() {
   useEffect(() => {
     const fetchData = async () => {
         try {
-            // Fetch templates sin filtrar por formData.type para que salgan todas
             const templateRepo = getCertificateTemplateRepository();
             const templateData = await templateRepo.list(true);
             setTemplates(templateData);
 
-            // Fetch campuses
             const listCampusesUseCase = getListCampusesUseCase();
-            const campusData = await listCampusesUseCase.execute(true); // active only
+            const campusData = await listCampusesUseCase.execute(true);
             setCampuses(campusData);
+
+            const listTypesUseCase = getListCertificateTypesUseCase();
+            const typesData = await listTypesUseCase.execute(true);
+            setCertTypes(typesData);
+
+            const progRes = await fetch('/api/admin/academic-programs?active=true');
+            const progData = await progRes.json();
+            if (progData.success) setPrograms(progData.data);
         } catch (err) {
             console.error("Error loading data", err);
         }
     };
     fetchData();
-  }, [formData.type]); // ← Se actualiza cuando cambia el tipo
+  }, []);
 
-  // Las plantillas ya vienen filtradas desde el backend
-  const filteredTemplates = templates;
+  // Filtrar plantillas según tipo de layout seleccionado
+  const filteredTemplates = selectedTemplateType
+    ? templates.filter(t => t.type === selectedTemplateType)
+    : templates;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -72,10 +84,10 @@ export default function CreateCertificatePage() {
             issueDate: new Date(formData.issueDate),
             prefix: formData.folioPrefix || undefined,
             cedula: formData.cedula,
-            studentEmail: '', // Podríamos agregar campo email al form si se desea
+            studentEmail: '',
             templateId: formData.templateId || undefined,
-            campusId: formData.campusId, // Nuevo: obligatorio
-            createdBy: 'current-user-id', // TODO: Obtener del contexto de autenticación
+            campusId: formData.campusId,
+            createdBy: user?.uid || 'system',
         });
 
         setSuccess(true);
@@ -162,6 +174,28 @@ export default function CreateCertificatePage() {
                 </p>
             </div>
 
+            {/* Tipo de Layout (filtro de plantillas) */}
+            {certTypes.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <LayoutTemplate size={16} /> Tipo de Certificado (Layout Visual)
+                </label>
+                <select
+                  value={selectedTemplateType}
+                  onChange={(e) => {
+                    setSelectedTemplateType(e.target.value);
+                    setFormData(prev => ({ ...prev, templateId: '' })); // reset plantilla al cambiar tipo
+                  }}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white"
+                >
+                  <option value="">Todos los tipos</option>
+                  {certTypes.map(ct => (
+                    <option key={ct.id} value={ct.code}>{ct.name} ({ct.code})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Template Selection */}
             <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -175,11 +209,13 @@ export default function CreateCertificatePage() {
                 >
                     <option value="">Predeterminada (Sistema)</option>
                     {filteredTemplates.map(t => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
+                        <option key={t.id} value={t.id}>{t.name} ({t.type})</option>
                     ))}
                 </select>
                 <p className="text-xs text-gray-500">
-                    Selecciona una plantilla visual o usa el formato estándar.
+                    {selectedTemplateType
+                      ? `Mostrando plantillas de tipo "${selectedTemplateType}". Cambia el tipo arriba para ver otras.`
+                      : 'Selecciona una plantilla visual o usa el formato estándar del sistema.'}
                 </p>
             </div>
 
@@ -257,7 +293,21 @@ export default function CreateCertificatePage() {
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                     <FileText size={16} /> Programa Académico
                 </label>
-                <input 
+                {programs.length > 0 ? (
+                  <select
+                    name="academicProgram"
+                    value={formData.academicProgram}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white"
+                  >
+                    <option value="">Selecciona un programa...</option>
+                    {programs.map(p => (
+                      <option key={p.id} value={p.name}>{p.name} ({p.code})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
                     name="academicProgram"
                     value={formData.academicProgram}
                     onChange={handleChange}
@@ -265,7 +315,11 @@ export default function CreateCertificatePage() {
                     required
                     placeholder="Ej. Diplomado en Gestión de Proyectos"
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                />
+                  />
+                )}
+                <p className="text-xs text-gray-400">
+                  {programs.length === 0 ? 'Agrega programas en el módulo «Programas Académicos» para usar la lista desplegable.' : `${programs.length} programas disponibles en el catálogo.`}
+                </p>
                 </div>
 
                 {/* Tipo y Fecha */}

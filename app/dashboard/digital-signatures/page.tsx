@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type ReactElement } from 'react';
+import React, { useState, useEffect, useRef, type ReactElement } from 'react';
 import { SignatureRequest, DigitalSignature } from '@/lib/container';
 import { 
   PenTool, 
@@ -19,8 +19,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SIGNATURE_STATUS_LABELS } from '@/lib/types/digitalSignature';
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 export default function DigitalSignaturesPage() {
+  const { user } = useAuth();
   const [requests, setRequests] = useState<SignatureRequest[]>([]);
   const [signatures, setSignatures] = useState<DigitalSignature[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,13 +34,11 @@ export default function DigitalSignaturesPage() {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      
-      // Simular usuario actual - TODO: obtener de auth context
-      const currentUserId = 'current-user-id';
-      const currentUserRole = 'signer'; // Cambiar según el usuario
+      const signerId = user?.uid || '';
+      if (!signerId) return;
       
       // Obtener solicitudes donde el usuario es el firmante
-      const response = await fetch(`/api/admin/digital-signatures?signerId=${currentUserId}`);
+      const response = await fetch(`/api/admin/digital-signatures?signerId=${signerId}`);
       const data = await response.json();
       
       if (data.success) {
@@ -55,8 +55,8 @@ export default function DigitalSignaturesPage() {
   };
 
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    if (user) fetchRequests();
+  }, [user]);
 
   const handleSign = async (request: SignatureRequest) => {
     setSelectedRequest(request);
@@ -77,14 +77,14 @@ export default function DigitalSignaturesPage() {
           action: 'reject',
           certificateId: request.certificateId,
           rejectionReason: reason,
-          signerId: 'current-user-id' // TODO: obtener de auth
+          signerId: user?.uid || ''
         }),
       });
 
       const data = await response.json();
       
       if (data.success) {
-        fetchRequests(); // Refresh
+        fetchRequests();
       } else {
         alert('Error: ' + data.error);
       }
@@ -307,6 +307,7 @@ export default function DigitalSignaturesPage() {
       {showSignatureModal && selectedRequest && (
         <SignatureModal
           request={selectedRequest}
+          signerId={user?.uid || ''}
           onClose={() => setShowSignatureModal(false)}
           onSuccess={() => {
             setShowSignatureModal(false);
@@ -328,11 +329,13 @@ export default function DigitalSignaturesPage() {
 
 // Componente de modal de firma
 function SignatureModal({ 
-  request, 
+  request,
+  signerId,
   onClose, 
   onSuccess 
 }: { 
   request: SignatureRequest;
+  signerId: string;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -340,6 +343,60 @@ function SignatureModal({
   const [comments, setComments] = useState('');
   const [loading, setLoading] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const getCanvasPos = (canvas: HTMLCanvasElement, e: React.MouseEvent | React.TouchEvent) => {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * (canvas.width / rect.width),
+      y: (clientY - rect.top) * (canvas.height / rect.height),
+    };
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const pos = getCanvasPos(canvas, e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+    setIsDrawing(true);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const pos = getCanvasPos(canvas, e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    setSignatureData(canvas.toDataURL('image/png'));
+  };
+
+  const stopDrawing = (e?: React.MouseEvent | React.TouchEvent) => {
+    e?.preventDefault();
+    setIsDrawing(false);
+  };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setSignatureData('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -358,7 +415,7 @@ function SignatureModal({
           certificateId: request.certificateId,
           signatureBase64: signatureData,
           comments,
-          signerId: 'current-user-id' // TODO: obtener de auth
+          signerId: signerId
         }),
       });
 
@@ -402,18 +459,34 @@ function SignatureModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Firma Digital *
+              Firma Digital * <span className="text-xs font-normal text-gray-400">(dibuja tu firma en el recuadro)</span>
             </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
-              <div className="text-center text-gray-500">
-                <PenTool size={48} className="mx-auto mb-2" />
-                <p className="text-sm">Área de firma digital</p>
-                <p className="text-xs">Dibuja tu firma aquí</p>
-              </div>
+            <div className="border-2 border-gray-200 rounded-lg overflow-hidden bg-white" style={{ touchAction: 'none' }}>
+              <canvas
+                ref={canvasRef}
+                width={500}
+                height={150}
+                className="w-full cursor-crosshair"
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                style={{ background: signatureData ? 'white' : 'repeating-linear-gradient(0deg, transparent, transparent 29px, #e5e7eb 29px, #e5e7eb 30px)' }}
+              />
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              * La firma digital es obligatoria y debe ser clara y legible
-            </p>
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-xs text-gray-400">* La firma es obligatoria</p>
+              <button
+                type="button"
+                onClick={clearCanvas}
+                className="text-xs text-red-500 hover:text-red-700 font-medium"
+              >
+                Limpiar firma
+              </button>
+            </div>
           </div>
 
           <div>

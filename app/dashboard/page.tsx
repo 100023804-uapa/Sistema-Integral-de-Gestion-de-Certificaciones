@@ -270,7 +270,10 @@ export default function DashboardPage() {
           <h2 className="text-xl font-black text-primary uppercase tracking-wider italic">
             Actividad Reciente
           </h2>
-          <button className="text-[var(--color-accent)] font-bold hover:underline">
+          <button
+            onClick={() => router.push('/dashboard/certificates')}
+            className="text-[var(--color-accent)] font-bold hover:underline"
+          >
             Ver todo
           </button>
         </div>
@@ -282,12 +285,15 @@ export default function DashboardPage() {
             viewport={{ once: true }}
           >
             {/* Convert generic activity to ActivityItem if needed or ensure interface match */}
-            <ActivityList activities={stats.recentActivity.map(activity => ({
+            <ActivityList
+              viewAllHref="/dashboard/certificates"
+              activities={stats.recentActivity.map(activity => ({
                 ...activity,
                 type: activity.type as 'success' | 'warning' | 'info' | 'error',
                 icon: activity.type === 'success' ? CheckCircle : 
                       activity.type === 'warning' ? AlertCircle : 
-                      FileText 
+                      FileText,
+                href: activity.href,
             }))} />
           </motion.div>
         ) : (
