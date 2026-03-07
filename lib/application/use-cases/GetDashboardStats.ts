@@ -82,7 +82,7 @@ export class GetDashboardStats {
                 };
             });
 
-            const uniquePrograms = new Set(recentDocs.docs.map(doc => doc.data().academicProgram).filter(Boolean));
+            const uniquePrograms = new Set(recentDocs.docs.map(doc => (doc.data() as any).academicProgram).filter(Boolean));
 
             return {
                 totalIssued: Number((issuedSnapshot.data() as any)?.count || 0),

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.2.3";
+export const APP_VERSION = "1.2.4";
 
 export interface Release {
     version: string;
@@ -12,6 +12,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+    {
+        version: "1.2.4",
+        date: "2026-03-07",
+        title: "Hotfix II: Error de compilación persistente",
+        description: "Se corrigió un segundo error de tipos en GetDashboardStats.ts que se omitió en el hotfix anterior.",
+        details: [
+            { type: 'fix', text: 'Correccion integral de tipos en el mapeo de estadisticas para asegurar despliegue en Vercel.' }
+        ]
+    },
     {
         version: "1.2.3",
         date: "2026-03-07",
