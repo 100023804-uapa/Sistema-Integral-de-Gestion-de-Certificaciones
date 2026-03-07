@@ -14,9 +14,10 @@ interface ProgramForm {
   code: string;
   description: string;
   durationHours: string;
+  isActive: boolean;
 }
 
-const emptyForm: ProgramForm = { name: '', code: '', description: '', durationHours: '' };
+const emptyForm: ProgramForm = { name: '', code: '', description: '', durationHours: '', isActive: true };
 
 // ─────────────────────────────────────────────
 // Página principal
@@ -81,6 +82,7 @@ export default function ProgramsPage() {
       code: p.code,
       description: p.description || '',
       durationHours: p.durationHours?.toString() || '',
+      isActive: p.isActive ?? true,
     });
     setFormError('');
     setShowModal(true);
@@ -101,6 +103,7 @@ export default function ProgramsPage() {
         code: form.code.trim().toUpperCase(),
         description: form.description.trim() || undefined,
         durationHours: form.durationHours ? Number(form.durationHours) : undefined,
+        isActive: form.isActive,
         ...(editingProgram ? { id: editingProgram.id } : {}),
       };
 
@@ -385,6 +388,19 @@ export default function ProgramsPage() {
                   placeholder="Ej: 40"
                   min={1}
                 />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  checked={form.isActive}
+                  onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))}
+                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                />
+                <label htmlFor="isActive" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  Programa Activo
+                </label>
               </div>
             </div>
             <div className="px-6 py-4 border-t flex gap-3">

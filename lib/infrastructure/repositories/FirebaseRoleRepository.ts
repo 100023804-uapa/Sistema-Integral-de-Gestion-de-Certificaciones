@@ -1,15 +1,15 @@
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  query, 
-  orderBy, 
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  query,
+  orderBy,
   where,
   Timestamp,
-  DocumentData 
+  DocumentData
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Role, CreateRoleRequest, UpdateRoleRequest, UserRole, AssignRoleRequest } from '@/lib/types/role';
@@ -23,7 +23,6 @@ export class FirebaseRoleRepository {
     const now = new Date();
     const roleData = {
       ...data,
-      permissions: data.permissions || this.getDefaultPermissions(data.code),
       isActive: true,
       createdAt: now,
       updatedAt: now,
@@ -31,7 +30,7 @@ export class FirebaseRoleRepository {
 
     const docRef = await addDoc(collection(db, this.collectionName), roleData);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) {
       throw new Error('Failed to create role');
     }
@@ -42,7 +41,7 @@ export class FirebaseRoleRepository {
   async findById(id: string): Promise<Role | null> {
     const docRef = doc(db, this.collectionName, id);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) {
       return null;
     }
@@ -55,7 +54,7 @@ export class FirebaseRoleRepository {
       collection(db, this.collectionName),
       orderBy('createdAt', 'desc')
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(this.mapToRole);
   }
@@ -66,7 +65,7 @@ export class FirebaseRoleRepository {
       where('isActive', '==', true),
       orderBy('name', 'asc')
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(this.mapToRole);
   }
@@ -77,7 +76,7 @@ export class FirebaseRoleRepository {
       where('code', '==', code),
       where('isActive', '==', true)
     );
-    
+
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
       return null;
@@ -94,7 +93,7 @@ export class FirebaseRoleRepository {
     };
 
     await updateDoc(docRef, updateData);
-    
+
     const updatedDoc = await getDoc(docRef);
     if (!updatedDoc.exists()) {
       throw new Error('Failed to update role');
@@ -117,6 +116,9 @@ export class FirebaseRoleRepository {
     const userRoleData = {
       userId: data.userId,
       roleId: data.roleId,
+      campusId: data.campusId || null,
+      academicAreaId: data.academicAreaId || null,
+      signerId: data.signerId || null,
       assignedAt: now,
       assignedBy,
       isActive: true,
@@ -124,7 +126,7 @@ export class FirebaseRoleRepository {
 
     const docRef = await addDoc(collection(db, this.userRolesCollectionName), userRoleData);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) {
       throw new Error('Failed to assign role');
     }
@@ -139,7 +141,7 @@ export class FirebaseRoleRepository {
       where('isActive', '==', true),
       orderBy('assignedAt', 'desc')
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(this.mapToUserRole);
   }
@@ -170,7 +172,7 @@ export class FirebaseRoleRepository {
         { resource: '*', actions: ['*'] },
       ],
     };
-    
+
     return permissions[code] || [];
   }
 
@@ -179,9 +181,11 @@ export class FirebaseRoleRepository {
     return {
       id: doc.id,
       name: data.name || '',
-      code: data.code || 'coordinator',
+      code: data.code || '',
       description: data.description,
-      permissions: data.permissions || [],
+      menuPermissions: data.menuPermissions || [],
+      capabilities: data.capabilities || [],
+      scopeType: data.scopeType || 'global',
       isActive: data.isActive ?? true,
       createdAt: data.createdAt?.toDate() || new Date(),
       updatedAt: data.updatedAt?.toDate() || new Date(),
@@ -194,6 +198,9 @@ export class FirebaseRoleRepository {
       id: doc.id,
       userId: data.userId || '',
       roleId: data.roleId || '',
+      campusId: data.campusId,
+      academicAreaId: data.academicAreaId,
+      signerId: data.signerId,
       assignedAt: data.assignedAt?.toDate() || new Date(),
       assignedBy: data.assignedBy || '',
       isActive: data.isActive ?? true,

@@ -7,6 +7,7 @@ import { Trash2, Copy, Image as ImageIcon, Link as LinkIcon, CheckCircle2 } from
 import { cn } from '@/lib/utils';
 import { UploadButton } from '@/lib/uploadthing';
 import { toast } from 'sonner';
+import { useAlert } from '@/hooks/useAlert';
 
 interface MediaFile {
   id: string;
@@ -20,6 +21,7 @@ export default function MediaCenterPage() {
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const { showConfirm, showAlert } = useAlert();
 
   const fetchMedia = async () => {
     setLoading(true);
@@ -70,9 +72,13 @@ export default function MediaCenterPage() {
   };
 
   const handleDelete = async (file: MediaFile) => {
-    if (!confirm(`¿Estás seguro de eliminar "${file.name}" de la biblioteca? Esta acción no se puede deshacer y romperá cualquier plantilla que esté usando esta imagen.`)) {
-      return;
-    }
+    const ok = await showConfirm(
+      '¿Eliminar imagen?',
+      `¿Estás seguro de que deseas eliminar "${file.name}" de la biblioteca? Esta acción no se puede deshacer y romperá cualquier plantilla que esté usando esta imagen.`,
+      { type: 'error', confirmText: 'Eliminar permanentemente', cancelText: 'Conservar imagen' }
+    );
+
+    if (!ok) return;
 
     try {
       // 1. Delete from Firestore
@@ -86,7 +92,7 @@ export default function MediaCenterPage() {
       toast.success('Referencia eliminada de la biblioteca');
     } catch (error) {
       console.error('Error deleting file:', error);
-      toast.error('Error al eliminar el archivo.');
+      showAlert('Error', 'No se pudo eliminar el archivo de la biblioteca.', 'error');
     }
   };
 

@@ -22,11 +22,13 @@ import { Avatar } from '@/components/ui/Avatar';
 import { GetDashboardStats, DashboardStats } from '@/lib/application/use-cases/GetDashboardStats';
 
 import { useAuth } from '@/lib/contexts/AuthContext';
+import { useDataScope } from '@/hooks/use-data-scope';
 import { AnimatePresence } from 'framer-motion';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { scope, getQueryFilters } = useDataScope();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -41,13 +43,21 @@ export default function DashboardPage() {
   const unreadCount = notifications.filter(n => n.unread).length;
 
   useEffect(() => {
-    // ... existing useEffect ...
     let isMounted = true;
     const fetchStats = async () => {
       try {
-        console.log("DashboardPage: Fetching stats...");
+        console.log("DashboardPage: Fetching stats with scope:", scope);
         const useCase = new GetDashboardStats();
-        const data = await useCase.execute();
+        
+        // Obtenemos los filtros formateados para el use case
+        const filters = getQueryFilters();
+        const data = await useCase.execute({
+            type: scope.type,
+            campusIds: scope.campusIds,
+            academicAreaIds: scope.academicAreaIds,
+            signerIds: scope.signerIds,
+            userId: user?.uid
+        });
         if (isMounted) {
             console.log("DashboardPage: Stats received", data);
             setStats(data);
@@ -111,7 +121,7 @@ export default function DashboardPage() {
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-0 top-full mt-2 w-96 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50"
+                        className="absolute right-[-2.5rem] sm:right-0 top-full mt-2 w-[calc(100vw-3rem)] sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 origin-top-right"
                     >
                         <div className="p-4 border-b border-gray-50 flex justify-between items-center">
                             <h3 className="font-bold text-gray-800 text-lg">Notificaciones</h3>

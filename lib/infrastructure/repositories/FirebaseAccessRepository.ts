@@ -17,11 +17,15 @@ const COLLECTION_NAME = 'access_users';
 export interface AccessUser {
     id: string;
     email: string;
-    role: 'admin';
+    role: string; // Flexibilidad para nombres de roles dinámicos
     createdAt: Date | null;
     createdBy?: string;
     updatedAt: Date | null;
     disabled?: boolean;
+    // Datos de Alcance vinculados al usuario
+    campusId?: string;
+    academicAreaId?: string;
+    signerId?: string;
 }
 
 export interface AccessRequest {

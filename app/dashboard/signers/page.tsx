@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Signer } from '@/lib/container';
 import { Plus, Edit, Trash2, UserCheck, Briefcase, Building, Image as ImageIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAlert } from '@/hooks/useAlert';
 import { UploadButton } from '@/lib/uploadthing';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -14,6 +15,7 @@ export default function SignersPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingSigner, setEditingSigner] = useState<Signer | null>(null);
   const [showInactive, setShowInactive] = useState(false);
+  const { showConfirm, showAlert } = useAlert();
 
   const fetchSigners = async () => {
     try {
@@ -44,9 +46,12 @@ export default function SignersPage() {
   };
 
   const handleDelete = async (signer: Signer) => {
-    if (!confirm(`¿Estás seguro de deshabilitar al firmante "${signer.name}"?`)) {
-      return;
-    }
+    const ok = await showConfirm(
+      '¿Deshabilitar firmante?',
+      `¿Estás seguro de que deseas deshabilitar al firmante "${signer.name}"?`,
+      { type: 'warning', confirmText: 'Sí, deshabilitar', cancelText: 'No, cancelar' }
+    );
+    if (!ok) return;
 
     try {
       const response = await fetch(`/api/admin/signers/${signer.id}`, {
@@ -58,11 +63,11 @@ export default function SignersPage() {
       if (data.success) {
         fetchSigners();
       } else {
-        alert('Error al deshabilitar firmante: ' + data.error);
+        showAlert('Error', 'No se pudo deshabilitar al firmante: ' + data.error, 'error');
       }
     } catch (error) {
       console.error('Error deleting signer:', error);
-      alert('Error al deshabilitar firmante');
+      showAlert('Error', 'Ocurrió un error inesperado al deshabilitar al firmante.', 'error');
     }
   };
 
@@ -262,6 +267,7 @@ function SignerFormModal({
     isActive: signer?.isActive ?? true,
   });
   const [loading, setLoading] = useState(false);
+  const { showAlert } = useAlert();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -287,11 +293,11 @@ function SignerFormModal({
       if (data.success) {
         onSuccess();
       } else {
-        alert('Error: ' + data.error);
+        showAlert('Error', 'No se pudo guardar el firmante: ' + data.error, 'error');
       }
     } catch (error) {
       console.error('Error saving signer:', error);
-      alert('Error al guardar firmante');
+      showAlert('Error', 'Ocurrió un error inesperado al guardar el firmante.', 'error');
     } finally {
       setLoading(false);
     }

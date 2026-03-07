@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Loader2, CheckCircle, XCircle, Shield, Clock, Trash2, Edit, UserCheck, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAlert } from '@/hooks/useAlert';
 
 export default function UsersPage() {
   const { user } = useAuth();
@@ -17,12 +18,20 @@ export default function UsersPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const { showConfirm, showAlert } = useAlert();
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<AccessRequest | null>(null);
   const [selectedUser, setSelectedUser] = useState<AccessUser | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
+  const [selectedCampusId, setSelectedCampusId] = useState<string>('');
+  const [selectedAreaId, setSelectedAreaId] = useState<string>('');
+  const [selectedSignerId, setSelectedSignerId] = useState<string>('');
+
+  const [campuses, setCampuses] = useState<any[]>([]);
+  const [areas, setAreas] = useState<any[]>([]);
+  const [signers, setSigners] = useState<any[]>([]);
 
   const accessRepo = getAccessRepository();
   const roleRepo = getRoleRepository();
@@ -32,9 +41,21 @@ export default function UsersPage() {
       setLoading(true);
       const [reqs, usrs, rls] = await Promise.all([
         accessRepo.listAccessRequests(),
-        accessRepo.listAdmins(), // En este punto listAdmins trae todos los users de access_users
+        accessRepo.listAdmins(),
         roleRepo.findActive()
       ]);
+      
+      // Cargar catálogos para alcances
+      const [campList, areaList, signList] = await Promise.all([
+        fetch('/api/campuses').then(res => res.json()),
+        fetch('/api/academic-areas').then(res => res.json()),
+        fetch('/api/signers').then(res => res.json()),
+      ]);
+
+      setCampuses(campList.data || []);
+      setAreas(areaList.data || []);
+      setSigners(signList.data || []);
+      
       setRequests(reqs);
       
       // Mapear los roles a cada usuario
@@ -86,16 +107,20 @@ export default function UsersPage() {
     setProcessingId('modal-action');
     
     try {
+      const assignmentData = { 
+          userId: selectedRequest?.email || selectedUser?.email || '', 
+          roleId: selectedRoleId,
+          campusId: selectedCampusId || undefined,
+          academicAreaId: selectedAreaId || undefined,
+          signerId: selectedSignerId || undefined
+      };
+
       if (selectedRequest) {
-          // Es una aprobación nueva
           await accessRepo.approveRequest(selectedRequest.id, user.uid);
-          // Asignar el rol específico
-          await roleRepo.assignRole({ userId: selectedRequest.email, roleId: selectedRoleId }, user.uid);
+          await roleRepo.assignRole(assignmentData, user.uid);
           toast.success(`Acceso aprobado para ${selectedRequest.email}`);
       } else if (selectedUser) {
-          // Editar un usuario existente (Simulación de actualización)
-          // Nota: Aquí en producción harías un update del UserRole anterior por el nuevo
-          await roleRepo.assignRole({ userId: selectedUser.email, roleId: selectedRoleId }, user.uid);
+          await roleRepo.assignRole(assignmentData, user.uid);
           toast.success(`Rol actualizado para ${selectedUser.email}`);
       }
       
@@ -110,7 +135,12 @@ export default function UsersPage() {
   };
 
   const handleReject = async (req: AccessRequest) => {
-    if(!confirm('¿Estás seguro de rechazar esta solicitud?')) return;
+    const ok = await showConfirm(
+      '¿Rechazar solicitud?',
+      `¿Estás seguro de que deseas rechazar la solicitud de acceso para ${req.email}?`,
+      { type: 'warning', confirmText: 'Sí, rechazar', cancelText: 'No, cancelar' }
+    );
+    if (!ok) return;
     setProcessingId(req.id);
     try {
       await accessRepo.rejectRequest(req.id);
@@ -132,7 +162,12 @@ export default function UsersPage() {
     }
     
     const actionDesc = usr.disabled ? 'HABILITAR' : 'DESHABILITAR';
-    if(!window.confirm(`¿Estás seguro de que deseas ${actionDesc} a ${usr.email}?`)) return;
+    const ok = await showConfirm(
+      `${actionDesc === 'HABILITAR' ? 'Habilitar' : 'Deshabilitar'} usuario`,
+      `¿Estás seguro de que deseas ${actionDesc.toLowerCase()} a ${usr.email}?`,
+      { type: 'warning', confirmText: `Sí, ${actionDesc.toLowerCase()}`, cancelText: 'Cancelar' }
+    );
+    if (!ok) return;
     
     setProcessingId(usr.email);
     try {
@@ -324,18 +359,62 @@ export default function UsersPage() {
                   
                   <div className="space-y-4">
                       <div className="space-y-2">
-                          <label className="text-xs font-bold text-gray-700 uppercase">Rol a asignar</label>
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rol Principal</label>
                           <select 
                               value={selectedRoleId}
                               onChange={(e) => setSelectedRoleId(e.target.value)}
-                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 bg-white"
+                              className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-primary/30 focus:ring-4 focus:ring-primary/5 bg-gray-50/50 transition-all font-bold"
                           >
                               <option value="admin">Administrador (Total)</option>
                               {roles.map(r => (
-                                  <option key={r.id} value={r.id}>{r.name} - {r.description}</option>
+                                  <option key={r.id} value={r.id}>{r.name}</option>
                               ))}
                           </select>
                       </div>
+
+                      {/* SELECTORES DE ALCANCE DINÁMICOS */}
+                      {selectedRoleId !== 'admin' && roles.find(r => r.id === selectedRoleId)?.scopeType === 'campus' && (
+                        <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Recinto Asignado</label>
+                          <select 
+                              value={selectedCampusId}
+                              onChange={(e) => setSelectedCampusId(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border-2 border-blue-100 bg-blue-50/30 focus:border-blue-400 transition-all text-sm"
+                          >
+                              <option value="">Seleccionar Recinto...</option>
+                              {campuses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        </div>
+                      )}
+
+                      {selectedRoleId !== 'admin' && roles.find(r => r.id === selectedRoleId)?.scopeType === 'area' && (
+                        <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Área Académica</label>
+                          <select 
+                              value={selectedAreaId}
+                              onChange={(e) => setSelectedAreaId(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border-2 border-purple-100 bg-purple-50/30 focus:border-purple-400 transition-all text-sm"
+                          >
+                              <option value="">Seleccionar Área...</option>
+                              {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Siempre permitir asociar a un firmante si el rol tiene capacidad de firma */}
+                      {roles.find(r => r.id === selectedRoleId)?.capabilities.includes('can_sign') && (
+                        <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                          <label className="text-[10px] font-black text-orange-400 uppercase tracking-widest">Perfil de Firmante</label>
+                          <select 
+                              value={selectedSignerId}
+                              onChange={(e) => setSelectedSignerId(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border-2 border-orange-100 bg-orange-50/30 focus:border-orange-400 transition-all text-sm"
+                          >
+                              <option value="">Seleccionar Firmante...</option>
+                              {signers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.position})</option>)}
+                          </select>
+                        </div>
+                      )}
                   </div>
 
                   <div className="flex gap-3 mt-8">

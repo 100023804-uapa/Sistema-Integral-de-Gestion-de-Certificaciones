@@ -13,7 +13,7 @@ import { useAuth } from "@/lib/contexts/AuthContext";
 export function Sidebar() {
   const pathname = usePathname();
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
-  const { logout, hasRole } = useAuth();
+  const { logout, userRoles, permissions } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -24,6 +24,8 @@ export function Sidebar() {
       console.error("Error logging out:", error);
     }
   };
+
+  const isLegacyAdmin = userRoles.includes('admin') || userRoles.includes('administrator');
 
   return (
     <>
@@ -42,8 +44,29 @@ export function Sidebar() {
 
         <nav className="custom-scrollbar flex-1 space-y-1 overflow-y-auto px-4 py-6">
           {dashboardMenuItems.map((item, index) => {
-            if (item.allowedRoles && !hasRole(item.allowedRoles)) {
-              return null;
+            // Regla de Visibilidad Dinámica
+            if (!isLegacyAdmin) {
+              if (item.kind === "link") {
+                const hasPermission = permissions.menus.some(p => 
+                  item.href === p || item.href.startsWith(p + '/')
+                );
+                if (!hasPermission) return null;
+              }
+              
+              if (item.kind === "separator") {
+                // Verificar si hay algún link visible en este grupo (hasta el siguiente separador)
+                const nextItems = dashboardMenuItems.slice(index + 1);
+                const nextSeparatorIndex = nextItems.findIndex(i => i.kind === "separator");
+                const currentGroupItems = nextSeparatorIndex === -1 
+                  ? nextItems 
+                  : nextItems.slice(0, nextSeparatorIndex);
+                
+                const hasVisibleLink = currentGroupItems.some(i => 
+                  i.kind === "link" && permissions.menus.some(p => i.href === p || i.href.startsWith(p + '/'))
+                );
+                
+                if (!hasVisibleLink) return null;
+              }
             }
 
             if (item.kind === "separator") {

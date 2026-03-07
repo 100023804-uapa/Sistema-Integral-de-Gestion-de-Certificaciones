@@ -20,9 +20,11 @@ import {
 import { cn } from '@/lib/utils';
 import { SIGNATURE_STATUS_LABELS } from '@/lib/types/digitalSignature';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import { useDataScope } from '@/hooks/use-data-scope';
 
 export default function DigitalSignaturesPage() {
   const { user } = useAuth();
+  const { canAccess, scope } = useDataScope();
   const [requests, setRequests] = useState<SignatureRequest[]>([]);
   const [signatures, setSignatures] = useState<DigitalSignature[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,11 +36,16 @@ export default function DigitalSignaturesPage() {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const signerId = user?.uid || '';
-      if (!signerId) return;
       
-      // Obtener solicitudes donde el usuario es el firmante
-      const response = await fetch(`/api/admin/digital-signatures?signerId=${signerId}`);
+      // Si el alcance es personal, solo buscamos por el ID del usuario como firmante
+      // Si el alcance es mayor (global/campus/area), pedimos todas para luego filtrar en el cliente
+      // NOTA: En producción esto debería filtrarse en el backend (API) usando los mismos parámetros que useDataScope
+      let url = '/api/admin/digital-signatures';
+      if (scope.type === 'personal') {
+        url += `?signerId=${user?.uid || ''}`;
+      }
+      
+      const response = await fetch(url);
       const data = await response.json();
       
       if (data.success) {
@@ -56,7 +63,7 @@ export default function DigitalSignaturesPage() {
 
   useEffect(() => {
     if (user) fetchRequests();
-  }, [user]);
+  }, [user, scope.type]);
 
   const handleSign = async (request: SignatureRequest) => {
     setSelectedRequest(request);
@@ -119,6 +126,10 @@ export default function DigitalSignaturesPage() {
   };
 
   const filteredRequests = requests.filter(request => {
+    // Validación de Alcance (Seguridad)
+    // Para firmas, verificamos el acceso al certificado asociado
+    if (!canAccess(request.certificateData)) return false;
+
     if (filter === 'all') return true;
     if (filter === 'pending') return request.status === 'pending' && !isExpired(request.expiresAt);
     if (filter === 'expired') return isExpired(request.expiresAt);

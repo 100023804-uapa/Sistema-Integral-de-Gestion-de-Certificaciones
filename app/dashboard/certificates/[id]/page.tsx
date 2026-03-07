@@ -22,6 +22,7 @@ import { Certificate } from '@/lib/domain/entities/Certificate';
 import { generateCertificatePDF } from '@/lib/application/utils/pdf-generator';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
+import { useAlert } from '@/hooks/useAlert';
 
 export default function CertificateDetailsPage({ params }: { params: any }) {
   const router = useRouter();
@@ -36,6 +37,7 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isRevoking, setIsRevoking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { showConfirm } = useAlert();
   const qrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -93,7 +95,12 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
 
   const handleRevoke = async () => {
     if (!certificate || certificate.status !== 'active') return;
-    if (!window.confirm('¿Estás seguro de que deseas ANULAR este certificado? Esta acción no se puede deshacer y el código QR dejará de ser válido.')) return;
+    const ok = await showConfirm(
+        '¿Anular certificado?',
+        '¿Estás seguro de que deseas ANULAR este certificado? Esta acción no se puede deshacer y el código QR dejará de ser válido.',
+        { type: 'error', confirmText: 'Sí, anular certificado', cancelText: 'No, mantener activo' }
+    );
+    if (!ok) return;
     
     setIsRevoking(true);
     try {
@@ -110,7 +117,12 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
 
   const handleRevokeAndCorrect = async () => {
     if (!certificate || certificate.status !== 'active') return;
-    if (!window.confirm('¿Estás seguro de que deseas ANULAR este certificado y generar uno nuevo? El certificado actual será revocado.')) return;
+    const ok = await showConfirm(
+        '¿Anular y corregir?',
+        '¿Estás seguro de que deseas ANULAR este certificado y generar uno nuevo? El certificado actual será revocado permanentemente.',
+        { type: 'warning', confirmText: 'Anular y proceder', cancelText: 'Cancelar' }
+    );
+    if (!ok) return;
     
     setIsRevoking(true);
     try {

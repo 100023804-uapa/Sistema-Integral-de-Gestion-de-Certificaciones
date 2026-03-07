@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.2.1";
+export const APP_VERSION = "1.2.2";
 
 export interface Release {
     version: string;
@@ -12,6 +12,18 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+    {
+        version: "1.2.2",
+        date: "2026-03-07",
+        title: "Sistema de Alertas Personalizadas",
+        description: "Se sustituyeron los dialogos nativos por un sistema de modales consistente con el diseño del proyecto.",
+        details: [
+            { type: 'feature', text: 'Nuevo componente AlertModal y hook useAlert para gestion global de mensajes y confirmaciones.' },
+            { type: 'improvement', text: 'Estetica premium y consistente en avisos de exito, error y advertencia en todo el panel.' },
+            { type: 'improvement', text: 'Dialogos de confirmacion asincronos personalizados en modulos de Sedes, Roles, Usuarios y mas.' },
+            { type: 'fix', text: 'Eliminacion total de alert() y confirm() nativos del navegador para una experiencia mas integrada.' }
+        ]
+    },
     {
         version: "1.2.1",
         date: "2026-03-07",

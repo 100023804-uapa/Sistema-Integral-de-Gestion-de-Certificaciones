@@ -18,32 +18,56 @@ export interface DashboardStats {
 }
 
 export class GetDashboardStats {
-    async execute(): Promise<DashboardStats> {
+    async execute(scope?: { type: string; campusIds?: string[]; academicAreaIds?: string[]; signerIds?: string[]; userId?: string }): Promise<DashboardStats> {
         try {
             const certificatesRef = collection(db, "certificates");
             const statesRef = collection(db, "certificateStates");
 
+            // Función auxiliar para aplicar filtros de alcance
+            const applyScopeFilters = (baseQuery: any, isCertificate: boolean = true) => {
+                if (!scope || scope.type === 'global') return baseQuery;
+
+                let q = baseQuery;
+                if (scope.type === 'campus' && scope.campusIds?.length) {
+                    q = query(q, where("campusId", "in", scope.campusIds));
+                } else if (scope.type === 'area' && scope.academicAreaIds?.length) {
+                    q = query(q, where("academicAreaId", "in", scope.academicAreaIds));
+                } else if (scope.type === 'personal') {
+                    if (isCertificate) {
+                        // Para certificados, el alcance personal incluye los creados por el usuario
+                        q = query(q, where("createdBy", "==", scope.userId));
+                    } else {
+                        // Para estados (firmas), el alcance personal incluye los asignados al firmante
+                        if (scope.signerIds?.length) {
+                            q = query(q, where("signerId", "in", scope.signerIds));
+                        }
+                    }
+                }
+                return q;
+            };
+
             // 1. Total Issued (Status: active)
-            const issuedQuery = query(certificatesRef, where("status", "==", "active"));
+            const issuedQuery = applyScopeFilters(query(certificatesRef, where("status", "==", "active")));
             const issuedSnapshot = await getCountFromServer(issuedQuery);
 
             // 2. Pending Validation / Signatures (Using States)
-            const pendingQuery = query(statesRef, where("currentState", "in", ["pending_review", "pending_signature"]));
+            const pendingQuery = applyScopeFilters(query(statesRef, where("currentState", "in", ["pending_review", "pending_signature"])), false);
             const pendingSnapshot = await getCountFromServer(pendingQuery);
 
             // 3. Blocked or Revoked
-            const blockedQuery = query(certificatesRef, where("status", "==", "revoked"));
+            const blockedQuery = applyScopeFilters(query(certificatesRef, where("status", "==", "revoked")));
             const blockedSnapshot = await getCountFromServer(blockedQuery);
 
-            // 4. Breakdown by Type
-            const capQuery = query(certificatesRef, where("type", "==", "CAP"));
+            // 4. Breakdown by Type (CAP)
+            const capQuery = applyScopeFilters(query(certificatesRef, where("type", "==", "CAP")));
             const capSnapshot = await getCountFromServer(capQuery);
 
-            const profundoQuery = query(certificatesRef, where("type", "==", "PROFUNDO"));
+            // Breakdown (PROFUNDO)
+            const profundoQuery = applyScopeFilters(query(certificatesRef, where("type", "==", "PROFUNDO")));
             const profundoSnapshot = await getCountFromServer(profundoQuery);
 
             // 5. Recent Activity & Active Programs
-            const recentQuery = query(certificatesRef, orderBy("createdAt", "desc"), limit(50));
+            const recentQuery = applyScopeFilters(query(certificatesRef, orderBy("createdAt", "desc"), limit(50)));
             const recentDocs = await getDocs(recentQuery);
 
             const recentActivity: DashboardStats['recentActivity'] = recentDocs.docs.slice(0, 5).map(doc => {
@@ -61,13 +85,13 @@ export class GetDashboardStats {
             const uniquePrograms = new Set(recentDocs.docs.map(doc => doc.data().academicProgram).filter(Boolean));
 
             return {
-                totalIssued: issuedSnapshot.data().count,
-                pendingValidation: pendingSnapshot.data().count,
+                totalIssued: Number((issuedSnapshot.data() as any)?.count || 0),
+                pendingValidation: Number((pendingSnapshot.data() as any)?.count || 0),
                 activePrograms: uniquePrograms.size,
-                blockedCertificates: blockedSnapshot.data().count,
+                blockedCertificates: Number((blockedSnapshot.data() as any)?.count || 0),
                 byType: {
-                    CAP: capSnapshot.data().count,
-                    PROFUNDO: profundoSnapshot.data().count
+                    CAP: Number((capSnapshot.data() as any)?.count || 0),
+                    PROFUNDO: Number((profundoSnapshot.data() as any)?.count || 0)
                 },
                 recentActivity: recentActivity,
             };

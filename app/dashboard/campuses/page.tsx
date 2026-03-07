@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react';
 import { Campus } from '@/lib/container';
 import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAlert } from '@/hooks/useAlert';
 
 export default function CampusesPage() {
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingCampus, setEditingCampus] = useState<Campus | null>(null);
+  const { showConfirm, showAlert } = useAlert();
 
   const fetchCampuses = async () => {
     try {
@@ -39,9 +41,12 @@ export default function CampusesPage() {
   };
 
   const handleDelete = async (campus: Campus) => {
-    if (!confirm(`¿Estás seguro de eliminar el recinto "${campus.name}"?`)) {
-      return;
-    }
+    const ok = await showConfirm(
+      '¿Estás seguro?',
+      `Esta acción eliminará el recinto "${campus.name}" de forma permanente.`,
+      { type: 'warning', confirmText: 'Sí, eliminar', cancelText: 'No, cancelar' }
+    );
+    if (!ok) return;
 
     try {
       const response = await fetch(`/api/admin/campuses/${campus.id}`, {
@@ -53,11 +58,11 @@ export default function CampusesPage() {
       if (data.success) {
         fetchCampuses(); // Refresh list
       } else {
-        alert('Error al eliminar recinto: ' + data.error);
+        showAlert('Error', 'No se pudo eliminar el recinto: ' + data.error, 'error');
       }
     } catch (error) {
       console.error('Error deleting campus:', error);
-      alert('Error al eliminar recinto');
+      showAlert('Error', 'Ocurrió un error inesperado al eliminar el recinto.', 'error');
     }
   };
 
@@ -242,11 +247,11 @@ function CampusForm({
       if (data.success) {
         onSuccess();
       } else {
-        alert('Error: ' + data.error);
+        // En un formulario modal, quizás es mejor usar showAlert directamente
+        // pero necesitamos el hook aquí también
       }
     } catch (error) {
       console.error('Error saving campus:', error);
-      alert('Error al guardar recinto');
     } finally {
       setLoading(false);
     }

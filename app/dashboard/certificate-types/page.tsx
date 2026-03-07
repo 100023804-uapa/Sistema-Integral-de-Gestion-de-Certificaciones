@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react';
 import { CertificateType } from '@/lib/container';
 import { Plus, Edit, Trash2, FileText, Shield, ShieldOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAlert } from '@/hooks/useAlert';
 
 export default function CertificateTypesPage() {
   const [certificateTypes, setCertificateTypes] = useState<CertificateType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingCertificateType, setEditingCertificateType] = useState<CertificateType | null>(null);
+  const { showConfirm, showAlert } = useAlert();
 
   const fetchCertificateTypes = async () => {
     try {
@@ -39,9 +41,12 @@ export default function CertificateTypesPage() {
   };
 
   const handleDelete = async (certificateType: CertificateType) => {
-    if (!confirm(`¿Estás seguro de eliminar el tipo de certificado "${certificateType.name}"?`)) {
-      return;
-    }
+    const ok = await showConfirm(
+      '¿Eliminar tipo de certificado?',
+      `¿Estás seguro de que deseas eliminar el tipo de certificado "${certificateType.name}"? Esta acción no se puede deshacer.`,
+      { type: 'warning', confirmText: 'Eliminar', cancelText: 'Cancelar' }
+    );
+    if (!ok) return;
 
     try {
       const response = await fetch(`/api/admin/certificate-types/${certificateType.id}`, {
@@ -53,11 +58,11 @@ export default function CertificateTypesPage() {
       if (data.success) {
         fetchCertificateTypes();
       } else {
-        alert('Error al eliminar tipo de certificado: ' + data.error);
+        showAlert('Error', 'No se pudo eliminar el tipo de certificado: ' + data.error, 'error');
       }
     } catch (error) {
       console.error('Error deleting certificate type:', error);
-      alert('Error al eliminar tipo de certificado');
+      showAlert('Error', 'Ocurrió un error inesperado al eliminar el tipo de certificado.', 'error');
     }
   };
 
@@ -243,6 +248,7 @@ function CertificateTypeForm({
     isActive: certificateType?.isActive ?? true,
   });
   const [loading, setLoading] = useState(false);
+  const { showAlert } = useAlert();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,11 +274,11 @@ function CertificateTypeForm({
       if (data.success) {
         onSuccess();
       } else {
-        alert('Error: ' + data.error);
+        showAlert('Error', 'No se pudo guardar el tipo de certificado: ' + data.error, 'error');
       }
     } catch (error) {
       console.error('Error saving certificate type:', error);
-      alert('Error al guardar tipo de certificado');
+      showAlert('Error', 'Ocurrió un error inesperado al guardar el tipo de certificado.', 'error');
     } finally {
       setLoading(false);
     }

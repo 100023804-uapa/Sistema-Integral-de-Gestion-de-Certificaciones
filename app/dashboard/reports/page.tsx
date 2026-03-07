@@ -13,9 +13,12 @@ interface MonthlyPoint {
   count: number;
 }
 
+import { useDataScope } from '@/hooks/use-data-scope';
+
 export default function ReportsPage() {
   const router = useRouter();
   const certRepo = getCertificateRepository();
+  const { canAccess, scope } = useDataScope();
   const [loading, setLoading] = useState(true);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
@@ -30,13 +33,23 @@ export default function ReportsPage() {
     type: ''
   });
 
+  // Efecto para pre-establecer filtros según el alcance
+  useEffect(() => {
+    if (scope.type === 'campus' && scope.campusIds.length === 1) {
+      setFilters(prev => ({ ...prev, campusId: scope.campusIds[0] }));
+    }
+    if (scope.type === 'area' && scope.academicAreaIds.length === 1) {
+      setFilters(prev => ({ ...prev, academicAreaId: scope.academicAreaIds[0] }));
+    }
+  }, [scope]);
+
   useEffect(() => {
     void loadInitialData();
   }, []);
 
   useEffect(() => {
     void loadCertificates();
-  }, [filters]);
+  }, [filters, scope]);
 
   const loadInitialData = async () => {
     try {
@@ -48,8 +61,18 @@ export default function ReportsPage() {
         areaUseCase.execute()
       ]);
 
-      setCampuses(campusData);
-      setAreas(areaData);
+      // Filtrar catálogos según alcance para los selectores
+      let filteredCampuses = campusData;
+      let filteredAreas = areaData;
+
+      if (scope.type === 'campus') {
+        filteredCampuses = campusData.filter(c => scope.campusIds.includes(c.id));
+      } else if (scope.type === 'area') {
+        filteredAreas = areaData.filter(a => scope.academicAreaIds.includes(a.id));
+      }
+
+      setCampuses(filteredCampuses);
+      setAreas(filteredAreas);
     } catch (err) {
       console.error('Error loading initial report data:', err);
     }
@@ -60,10 +83,8 @@ export default function ReportsPage() {
       setLoading(true);
       setError('');
       
-      // Nota: En una app real, el repo debería soportar estos filtros server-side
-      // Para este MVP/Hito, filtramos en cliente sobre los primeros 500 registros
-      const result = await certRepo.listPaginated(undefined, 500);
-      let filtered = result.data;
+      const result = await certRepo.listPaginated(undefined, 1000); // Aumentamos para reportes
+      let filtered = result.data.filter(c => canAccess(c));
 
       if (filters.campusId) {
         filtered = filtered.filter(c => c.campusId === filters.campusId);
