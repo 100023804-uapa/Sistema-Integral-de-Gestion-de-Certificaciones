@@ -1,4 +1,4 @@
-import { CertificateTemplate } from '@/lib/types/certificateTemplate';
+import { CertificateTemplate, TemplateLayout, TemplatePlaceholder } from '@/lib/types/certificateTemplate';
 import { FirebaseCertificateTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateTemplateRepository';
 import { getListCertificateTypesUseCase } from '@/lib/container';
 
@@ -81,7 +81,7 @@ export class CreateTemplateUseCase {
     return await this.templateRepository.create(templateData, createdBy);
   }
 
-  private getDefaultLayout(type: string) {
+  private getDefaultLayout(type: string): TemplateLayout {
     const layouts = {
       horizontal: {
         width: 297,
@@ -223,8 +223,8 @@ export class CreateTemplateUseCase {
     return layouts[type as keyof typeof layouts] || layouts.horizontal;
   }
 
-  private getDefaultPlaceholders(type: string) {
-    const placeholders = {
+  private getDefaultPlaceholders(type: string): TemplatePlaceholder[] {
+    const placeholders: Record<string, TemplatePlaceholder[]> = {
       horizontal: [
         {
           id: 'logo',
@@ -292,7 +292,7 @@ export class CreateTemplateUseCase {
       ],
       institutional_macro: [
         // Mismos placeholders pero sin firma digital (según regla de negocio)
-        ...this.getDefaultPlaceholders('horizontal').filter(p => p.id !== 'digitalSignature')
+        ...this.getDefaultPlaceholders('horizontal').filter((p: TemplatePlaceholder) => p.id !== 'digitalSignature')
       ]
     };
 

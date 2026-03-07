@@ -10,6 +10,7 @@ import {
   Layout, 
   Monitor, 
   File,
+  FileText,
   Plus,
   Trash2,
   Settings,
@@ -830,7 +831,7 @@ function DeleteTemplateModal({ template, onClose, onConfirm }: any) {
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">×</button>
         </div>
         <p className="text-gray-600 mb-6">
-          ¿Estás seguro de que deseas eliminar la plantilla "{template.name}"? Esta acción no se puede deshacer.
+          ¿Estás seguro de que deseas eliminar la plantilla &ldquo;{template.name}&rdquo;? Esta acción no se puede deshacer.
         </p>
         <div className="flex gap-3">
           <button

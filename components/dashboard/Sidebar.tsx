@@ -113,13 +113,14 @@ export function Sidebar() {
               );
             }
             
-            const isActive = pathname === item.href;
+            const href = item.href ?? '/dashboard';
+            const isActive = pathname === href;
             const Icon = item.icon;
             
             return (
               <Link 
-                key={item.href}
-                href={item.href}
+                key={href}
+                href={href}
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
                   isActive 

@@ -288,6 +288,7 @@ export class FirebaseDigitalSignatureRepository {
       status: data.status || 'pending',
       requestedAt: data.requestedAt?.toDate() || new Date(),
       respondedAt: data.respondedAt?.toDate(),
+      rejectionReason: data.rejectionReason,
       expiresAt: data.expiresAt?.toDate() || new Date(),
       certificateData: data.certificateData || {}
     };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactElement } from 'react';
 import { SignatureRequest, DigitalSignature } from '@/lib/container';
 import { 
   PenTool, 
@@ -95,7 +95,7 @@ export default function DigitalSignaturesPage() {
   };
 
   const getStatusIcon = (status: string) => {
-    const icons: Record<string, JSX.Element> = {
+    const icons: Record<string, ReactElement> = {
       'pending': <Clock size={20} />,
       'signed': <CheckCircle size={20} />,
       'rejected': <XCircle size={20} />,
@@ -192,7 +192,7 @@ export default function DigitalSignaturesPage() {
                   
                   {request.message && (
                     <div className="text-sm">
-                      <p className="text-gray-500 italic">"{request.message}"</p>
+                      <p className="text-gray-500 italic">&ldquo;{request.message}&rdquo;</p>
                     </div>
                   )}
                 </div>
@@ -517,7 +517,7 @@ function RequestDetailsModal({
           {request.message && (
             <div>
               <span className="text-sm text-gray-500">Mensaje:</span>
-              <p className="text-sm text-gray-600 italic">"{request.message}"</p>
+              <p className="text-sm text-gray-600 italic">&ldquo;{request.message}&rdquo;</p>
             </div>
           )}
 

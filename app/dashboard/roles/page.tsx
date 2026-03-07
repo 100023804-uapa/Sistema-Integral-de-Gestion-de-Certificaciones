@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactElement } from 'react';
 import { Role } from '@/lib/container';
 import { Plus, Edit, Trash2, Shield, Users, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -83,7 +83,7 @@ export default function RolesPage() {
   };
 
   const getRoleIcon = (code: string) => {
-    const icons: Record<string, JSX.Element> = {
+    const icons: Record<string, ReactElement> = {
       'coordinator': <Users size={20} />,
       'verifier': <Settings size={20} />,
       'signer': <Shield size={20} />,

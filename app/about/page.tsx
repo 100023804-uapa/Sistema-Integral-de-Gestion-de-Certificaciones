@@ -102,7 +102,7 @@ export default function AboutPage() {
                 Maestro Guía & Mentor del Proyecto
             </p>
             <p className="text-sm text-gray-400 mt-2 italic">
-                "Guiando a la próxima generación de innovadores tecnológicos."
+                &ldquo;Guiando a la próxima generación de innovadores tecnológicos.&rdquo;
             </p>
         </div>
 

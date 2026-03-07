@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactElement } from 'react';
 import { CertificateState, StateHistory } from '@/lib/container';
 import { 
   Clock, 
@@ -82,7 +82,7 @@ export default function CertificateStatesPage() {
   };
 
   const getStateIcon = (state: string) => {
-    const icons: Record<string, JSX.Element> = {
+    const icons: Record<string, ReactElement> = {
       'draft': <Edit size={20} />,
       'pending_review': <Clock size={20} />,
       'verified': <CheckCircle size={20} />,
@@ -493,7 +493,7 @@ function HistoryModal({
                 </p>
                 {transition.comments && (
                   <p className="text-sm text-gray-500 mt-1 italic">
-                    "{transition.comments}"
+                    &ldquo;{transition.comments}&rdquo;
                   </p>
                 )}
               </div>

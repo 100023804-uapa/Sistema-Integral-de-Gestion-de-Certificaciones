@@ -1,5 +1,5 @@
 import { StudentCertificate, StudentCertificateFilter, CertificateStatus } from '@/lib/domain/entities/StudentCertificate';
-import { ICertificateRepository } from '@/lib/domain/repositories/ICertificateRepository';
+import { IStudentCertificateRepository } from '@/lib/domain/repositories/IStudentCertificateRepository';
 import { 
   collection, 
   query, 
@@ -13,8 +13,19 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-export class FirebaseStudentCertificateRepository implements ICertificateRepository {
+export class FirebaseStudentCertificateRepository implements IStudentCertificateRepository {
   private readonly certificatesCollection = 'certificates';
+
+  async findById(certificateId: string): Promise<{ pdfUrl?: string } | null> {
+    const certificate = await this.getCertificateDetails(certificateId);
+    if (!certificate) {
+      return null;
+    }
+
+    return {
+      pdfUrl: certificate.pdfUrl,
+    };
+  }
 
   async findByStudentConstraints(constraints: any[][]): Promise<StudentCertificate[]> {
     let q = query(

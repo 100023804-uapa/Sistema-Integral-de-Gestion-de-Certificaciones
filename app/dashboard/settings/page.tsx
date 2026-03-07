@@ -244,7 +244,7 @@ export default function SettingsPage() {
                         placeholder="••••••••••••••••"
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 bg-white"
                     />
-                    <p className="text-xs text-gray-400 mt-1">Usa una "App Password" de Google, no tu contraseña personal.</p>
+                    <p className="text-xs text-gray-400 mt-1">Usa una &ldquo;App Password&rdquo; de Google, no tu contraseña personal.</p>
                 </div>
                 <div className="md:col-span-2 pt-2">
                     <button 

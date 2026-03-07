@@ -79,6 +79,11 @@ export async function importCertificatesFromExcel(data: any[]): Promise<ImportRe
                     details.push({ type: 'info', message: `Advertencia: Fecha inválida para ${row.Folio}, usando fecha actual.` });
                 }
 
+                const campusId = String(row.CampusId || row.RecintoId || '').trim();
+                if (!campusId) {
+                    throw new Error('Falta CampusId/RecintoId para crear el certificado');
+                }
+
                 const certData: CreateCertificateDTO = {
                     folio: String(row.Folio).trim(),
                     studentId: student.id,
@@ -86,6 +91,7 @@ export async function importCertificatesFromExcel(data: any[]): Promise<ImportRe
                     type: (row.Tipo === 'PROFUNDO' ? 'PROFUNDO' : 'CAP'), // Default CAP
                     academicProgram: String(row.Curso || '').trim(),
                     issueDate: issueDate,
+                    campusId,
                     status: 'active',
                     metadata: {
                         importedAt: new Date().toISOString(),

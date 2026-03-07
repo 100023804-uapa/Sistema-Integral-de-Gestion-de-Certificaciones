@@ -191,7 +191,7 @@ export default function UsersPage() {
                             <div>
                                 <p className="text-gray-500 text-xs font-bold uppercase">Motivo</p>
                                 <p className="text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100 mt-1 line-clamp-2">
-                                    "{req.reason}"
+                                    &ldquo;{req.reason}&rdquo;
                                 </p>
                             </div>
                             <div className="flex gap-2 pt-2">

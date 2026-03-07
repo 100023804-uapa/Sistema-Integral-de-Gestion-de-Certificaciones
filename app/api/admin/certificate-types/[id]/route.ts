@@ -3,11 +3,12 @@ import { getUpdateCertificateTypeUseCase, getDeleteCertificateTypeUseCase, getCe
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const certificateTypeRepository = getCertificateTypeRepository();
-    const certificateType = await certificateTypeRepository.findById(params.id);
+    const certificateType = await certificateTypeRepository.findById(id);
 
     if (!certificateType) {
       return NextResponse.json(
@@ -32,12 +33,13 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const body = await request.json();
     const updateCertificateTypeUseCase = getUpdateCertificateTypeUseCase();
-    const certificateType = await updateCertificateTypeUseCase.execute(params.id, body);
+    const certificateType = await updateCertificateTypeUseCase.execute(id, body);
 
     return NextResponse.json({ 
       success: true, 
@@ -55,11 +57,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const deleteCertificateTypeUseCase = getDeleteCertificateTypeUseCase();
-    await deleteCertificateTypeUseCase.execute(params.id);
+    await deleteCertificateTypeUseCase.execute(id);
 
     return NextResponse.json({ 
       success: true, 

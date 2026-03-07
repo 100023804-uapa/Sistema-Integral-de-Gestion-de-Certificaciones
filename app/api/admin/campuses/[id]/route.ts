@@ -3,11 +3,12 @@ import { getUpdateCampusUseCase, getDeleteCampusUseCase, getCampusRepository } f
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const campusRepository = getCampusRepository();
-    const campus = await campusRepository.findById(params.id);
+    const campus = await campusRepository.findById(id);
 
     if (!campus) {
       return NextResponse.json(
@@ -32,12 +33,13 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const body = await request.json();
     const updateCampusUseCase = getUpdateCampusUseCase();
-    const campus = await updateCampusUseCase.execute(params.id, body);
+    const campus = await updateCampusUseCase.execute(id, body);
 
     return NextResponse.json({ 
       success: true, 
@@ -55,11 +57,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const deleteCampusUseCase = getDeleteCampusUseCase();
-    await deleteCampusUseCase.execute(params.id);
+    await deleteCampusUseCase.execute(id);
 
     return NextResponse.json({ 
       success: true, 

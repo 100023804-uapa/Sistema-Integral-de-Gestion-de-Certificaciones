@@ -17,7 +17,7 @@ export class RBACMiddleware {
     this.roleRepository = new FirebaseRoleRepository();
   }
 
-  async requireRole(allowedRoles: RoleValue[], handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
+  requireRole(allowedRoles: RoleValue[], handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
     return async (req: AuthenticatedRequest): Promise<NextResponse> => {
       try {
         // Obtener usuario del request (debería venir del auth middleware)
@@ -63,7 +63,7 @@ export class RBACMiddleware {
     };
   }
 
-  async requirePermission(resource: string, action: string, handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
+  requirePermission(resource: string, action: string, handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
     return async (req: AuthenticatedRequest): Promise<NextResponse> => {
       try {
         const user = req.user;
@@ -115,7 +115,11 @@ export class RBACMiddleware {
 // Helper functions para uso común
 export const rbac = new RBACMiddleware();
 
-export const requireAdmin = rbac.requireRole(['administrator']);
-export const requireSigner = rbac.requireRole(['signer', 'administrator']);
-export const requireVerifier = rbac.requireRole(['verifier', 'signer', 'administrator']);
-export const requireCoordinator = rbac.requireRole(['coordinator', 'verifier', 'signer', 'administrator']);
+export const requireAdmin = (handler: (req: AuthenticatedRequest) => Promise<NextResponse>) =>
+  rbac.requireRole(['administrator'], handler);
+export const requireSigner = (handler: (req: AuthenticatedRequest) => Promise<NextResponse>) =>
+  rbac.requireRole(['signer', 'administrator'], handler);
+export const requireVerifier = (handler: (req: AuthenticatedRequest) => Promise<NextResponse>) =>
+  rbac.requireRole(['verifier', 'signer', 'administrator'], handler);
+export const requireCoordinator = (handler: (req: AuthenticatedRequest) => Promise<NextResponse>) =>
+  rbac.requireRole(['coordinator', 'verifier', 'signer', 'administrator'], handler);

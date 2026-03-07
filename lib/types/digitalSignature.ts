@@ -38,6 +38,7 @@ export interface SignatureRequest {
   status: SignatureStatus;
   requestedAt: Date;
   respondedAt?: Date;
+  rejectionReason?: string;
   expiresAt: Date;
   certificateData: {
     folio: string;

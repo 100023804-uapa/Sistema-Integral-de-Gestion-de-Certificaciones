@@ -45,11 +45,11 @@ export class GetDashboardStats {
             const recentQuery = query(certificatesRef, orderBy("createdAt", "desc"), limit(50));
             const recentDocs = await getDocs(recentQuery);
 
-            const recentActivity = recentDocs.docs.slice(0, 5).map(doc => {
+            const recentActivity: DashboardStats['recentActivity'] = recentDocs.docs.slice(0, 5).map(doc => {
                 const data = doc.data();
                 return {
                     id: doc.id,
-                    type: data.status === 'revoked' ? 'error' : 'success' as const,
+                    type: data.status === 'revoked' ? 'error' : 'success',
                     title: data.status === 'revoked' ? 'Certificado Revocado' : 'Nuevo Certificado',
                     description: `Emitido a ${data.studentName || 'Estudiante'} - ${data.folio || ''}`,
                     time: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString() : 'Reciente'
