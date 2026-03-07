@@ -71,7 +71,7 @@ export class GetDashboardStats {
             const recentDocs = await getDocs(recentQuery);
 
             const recentActivity: DashboardStats['recentActivity'] = recentDocs.docs.slice(0, 5).map(doc => {
-                const data = doc.data();
+                const data = doc.data() as any;
                 return {
                     id: doc.id,
                     type: data.status === 'revoked' ? 'error' : 'success',

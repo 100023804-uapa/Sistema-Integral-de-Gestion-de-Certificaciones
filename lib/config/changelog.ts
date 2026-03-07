@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.2.2";
+export const APP_VERSION = "1.2.3";
 
 export interface Release {
     version: string;
@@ -12,6 +12,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+    {
+        version: "1.2.3",
+        date: "2026-03-07",
+        title: "Hotfix: Error de compilación",
+        description: "Se corrigió un error de tipos en la generación de estadísticas del dashboard que impedía el despliegue.",
+        details: [
+            { type: 'fix', text: 'Correccion de tipo unknown en GetDashboardStats.ts para asegurar la compilacion exitosa en produccion.' }
+        ]
+    },
     {
         version: "1.2.2",
         date: "2026-03-07",
