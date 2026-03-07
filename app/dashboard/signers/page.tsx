@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Signer } from '@/lib/container';
-import { Plus, Edit, Trash2, UserCheck, Briefcase, Building, Image as ImageIcon, X } from 'lucide-react';
+import { Signer, getAccessRepository } from '@/lib/container';
+import { Plus, Edit, Trash2, UserCheck, Briefcase, Building, Image as ImageIcon, X, Mail, UserPlus, UserMinus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAlert } from '@/hooks/useAlert';
 import { UploadButton } from '@/lib/uploadthing';
 import { toast } from 'sonner';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import Image from 'next/image';
+import { AccessUser } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
 
 export default function SignersPage() {
   const [signers, setSigners] = useState<Signer[]>([]);
@@ -264,10 +267,63 @@ function SignerFormModal({
     title: signer?.title || '',
     department: signer?.department || '',
     signatureUrl: signer?.signatureUrl || '',
+    allowedEmails: signer?.allowedEmails || [] as string[],
     isActive: signer?.isActive ?? true,
   });
   const [loading, setLoading] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<AccessUser[]>([]);
+  const [userSearch, setUserSearch] = useState('');
   const { showAlert } = useAlert();
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const accessRepo = getAccessRepository();
+        const usersList = await accessRepo.listAdmins();
+        setAvailableUsers(usersList);
+      } catch (error) {
+        console.error('Error fetching users for signing:', error);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  const handleAddEmail = (email: string) => {
+    if (!formData.allowedEmails.includes(email)) {
+      setFormData({
+        ...formData,
+        allowedEmails: [...formData.allowedEmails, email]
+      });
+    }
+  };
+
+  const handleRemoveEmail = (email: string) => {
+    setFormData({
+      ...formData,
+      allowedEmails: formData.allowedEmails.filter(e => e !== email)
+    });
+  };
+
+  const handleSignatureUploadComplete = async (res: any) => {
+    if (res?.[0]) {
+      const file = res[0];
+      setFormData({ ...formData, signatureUrl: file.url });
+      
+      try {
+        // Registro automático en la biblioteca de medios
+        await addDoc(collection(db, 'media_files'), {
+          name: file.name || `Firma_${formData.name.replace(/\s+/g, '_')}`,
+          url: file.url,
+          key: file.key,
+          createdAt: serverTimestamp(),
+        });
+        toast.success('Firma subida y registrada en la biblioteca de medios');
+      } catch (error) {
+        console.error('Error auto-registering signature in media:', error);
+        toast.success('Firma subida correctamente');
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -372,12 +428,7 @@ function SignerFormModal({
                 {!formData.signatureUrl ? (
                   <UploadButton
                     endpoint="signatureUpload"
-                    onClientUploadComplete={(res) => {
-                      if (res?.[0]) {
-                        setFormData({ ...formData, signatureUrl: res[0].url });
-                        toast.success('Firma subida correctamente');
-                      }
-                    }}
+                    onClientUploadComplete={handleSignatureUploadComplete}
                     onUploadError={(error: Error) => {
                       toast.error(`Error al subir: ${error.message}`);
                     }}
@@ -426,6 +477,85 @@ function SignerFormModal({
                   onChange={(e) => setFormData({ ...formData, signatureUrl: e.target.value })}
                   className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all focus:bg-white text-xs font-mono"
                 />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t mt-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center gap-2">
+                <Mail size={16} className="text-primary" />
+                Vincular Usuarios Autorizados <span className="text-gray-400 font-normal">(Opcional)</span>
+              </label>
+              <p className="text-xs text-gray-500 mb-3">Asigna secretarios o asistentes que podrán cargar certificados a nombre de este firmante.</p>
+              
+              <div className="space-y-3">
+                {/* Lista de vinculados */}
+                <div className="flex flex-wrap gap-2 min-h-[40px] p-2 bg-gray-50 border rounded-lg">
+                  {formData.allowedEmails.length === 0 ? (
+                    <span className="text-xs text-gray-400 italic py-1">Ningún usuario vinculado directamente</span>
+                  ) : (
+                    formData.allowedEmails.map(email => (
+                      <div key={email} className="flex items-center gap-1.5 bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full text-xs font-medium border border-blue-200 animate-in fade-in zoom-in duration-200">
+                        <Mail size={12} />
+                        {email}
+                        <button 
+                          type="button"
+                          onClick={() => handleRemoveEmail(email)}
+                          className="hover:text-red-600 transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Buscador y selector */}
+                <div className="relative group">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        placeholder="Buscar usuario por nombre o correo..."
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {userSearch && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto animate-in slide-in-from-top-2 duration-200">
+                      {availableUsers
+                        .filter(u => 
+                          u.email.toLowerCase().includes(userSearch.toLowerCase()) &&
+                          !formData.allowedEmails.includes(u.email)
+                        )
+                        .map(user => (
+                          <button
+                            key={user.email}
+                            type="button"
+                            onClick={() => {
+                              handleAddEmail(user.email);
+                              setUserSearch('');
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center justify-between border-b last:border-0"
+                          >
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-gray-900">{user.email}</span>
+                            </div>
+                            <UserPlus size={16} className="text-gray-400" />
+                          </button>
+                        ))
+                      }
+                      {availableUsers.filter(u => 
+                        u.email.toLowerCase().includes(userSearch.toLowerCase()) &&
+                        !formData.allowedEmails.includes(u.email)
+                      ).length === 0 && (
+                        <div className="p-4 text-center text-sm text-gray-500">No hay usuarios disponibles que coincidan</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

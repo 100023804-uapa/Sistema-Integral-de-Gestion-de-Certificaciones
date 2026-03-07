@@ -23,6 +23,7 @@ function mapToSigner(id: string, data: any): Signer {
         title: data.title,
         department: data.department,
         signatureUrl: data.signatureUrl,
+        allowedEmails: data.allowedEmails || [],
         isActive: data.isActive ?? true,
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),

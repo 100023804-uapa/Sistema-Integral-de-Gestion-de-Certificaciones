@@ -71,6 +71,16 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /signers/{signerId} {
+      allow read, create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /media_files/{fileId} {
+      allow read, create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -4,6 +4,7 @@ export interface Signer {
     title: string;
     department?: string;
     signatureUrl?: string; // URL en Firebase Storage
+    allowedEmails?: string[]; // Usuarios autorizados para firmar por esta autoridad
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -14,6 +15,7 @@ export interface CreateSignerRequest {
     title: string;
     department?: string;
     signatureUrl?: string;
+    allowedEmails?: string[];
 }
 
 export interface UpdateSignerRequest {
@@ -22,4 +24,5 @@ export interface UpdateSignerRequest {
     department?: string;
     signatureUrl?: string;
     isActive?: boolean;
+    allowedEmails?: string[];
 }
