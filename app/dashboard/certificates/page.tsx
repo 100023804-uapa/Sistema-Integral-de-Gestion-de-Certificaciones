@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlusCircle, Search, Filter, Loader2, FileText, Calendar, User, FileSpreadsheet, X, MapPin, Building, Activity } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { PlusCircle, Search, Filter, Loader2, FileText, Calendar, User, X, MapPin, Building, Activity } from 'lucide-react';
 import { getCertificateRepository, getListCampusesUseCase, getListAcademicAreasUseCase } from '@/lib/container';
 import { Certificate } from '@/lib/domain/entities/Certificate';
 import { Campus, AcademicArea } from '@/lib/container';
@@ -115,26 +114,14 @@ export default function CertificatesPage() {
           <p className="text-gray-500 font-medium">Gestiona y consulta el historial de emisiones institucionales.</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button 
-            onClick={() => {
-              const ws = XLSX.utils.json_to_sheet(filteredCertificates.map(c => ({
-                Folio: c.folio,
-                Estudiante: c.studentName,
-                Matricula: c.studentId,
-                Programa: c.academicProgram,
-                Tipo: c.type,
-                Fecha: c.issueDate.toLocaleDateString(),
-                Estado: c.status,
-                Recinto: campuses.find(camp => camp.id === c.campusId)?.name || 'N/A'
-              })));
-              const wb = XLSX.utils.book_new();
-              XLSX.utils.book_append_sheet(wb, ws, "Certificados");
-              XLSX.writeFile(wb, `SIGCE_Certificados_${new Date().toISOString().slice(0,10)}.xlsx`);
-            }}
-            className="px-4 py-3 rounded-xl bg-green-50 text-green-700 font-bold border border-green-100 hover:bg-green-100 transition-colors flex items-center gap-2"
-          >
-            <FileSpreadsheet size={20} /> Exportar
-          </button>
+          {hasRole(['administrator', 'coordinator']) && (
+            <button 
+              onClick={() => router.push('/dashboard/certificates/import')}
+              className="px-6 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 font-bold hover:bg-gray-50 transition-all flex items-center gap-2"
+            >
+              <FileText size={20} /> Importar Excel
+            </button>
+          )}
           {hasRole(['administrator', 'coordinator']) && (
             <button 
               onClick={() => router.push('/dashboard/certificates/create')}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { CertificateType } from '@/lib/container';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import { 
   ArrowLeft, 
   Save, 
@@ -16,7 +17,7 @@ import {
   Settings,
   Grid3x3,
   Type,
-  Image,
+  Image as ImageIcon,
   QrCode,
   PenTool,
   X
@@ -24,6 +25,7 @@ import {
 
 export default function CreateTemplatePage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [certificateTypes, setCertificateTypes] = useState<CertificateType[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -147,7 +149,7 @@ export default function CreateTemplatePage() {
           ...formData,
           layout,
           placeholders,
-          createdBy: 'current-user-id' // TODO: obtener de auth
+          createdBy: user?.uid || 'template-editor'
         }),
       });
 
@@ -247,7 +249,7 @@ export default function CreateTemplatePage() {
     const icons = {
       'text': <Type size={16} />,
       'date': <Type size={16} />,
-      'image': <Image size={16} />,
+      'image': <ImageIcon size={16} />,
       'qr': <QrCode size={16} />,
       'signature': <PenTool size={16} />
     };

@@ -59,6 +59,8 @@ export async function POST(request: NextRequest) {
         description: body.description,
         type: body.type,
         certificateTypeId: body.certificateTypeId,
+        htmlContent: body.htmlContent,
+        cssStyles: body.cssStyles,
         layout: body.layout,
         placeholders: body.placeholders,
       },

@@ -34,6 +34,14 @@ export class FirebaseCertificateTemplateRepository {
   async create(template: CreateTemplateRequest, createdBy: string): Promise<CertificateTemplate> {
     try {
       const now = new Date();
+      const layout = template.layout || {
+        width: 297,
+        height: 210,
+        orientation: 'landscape',
+        margins: { top: 20, right: 20, bottom: 20, left: 20 },
+        sections: []
+      };
+      const generatedTemplate = this.generateDefaultTemplate(template.type, layout);
 
       // Simplificar la creación para evitar errores
       const templateData = {
@@ -41,15 +49,9 @@ export class FirebaseCertificateTemplateRepository {
         description: template.description || '',
         type: template.type,
         certificateTypeId: template.certificateTypeId,
-        htmlContent: '<html><body><h1>Template</h1></body></html>',
-        cssStyles: 'body { font-family: Arial; }',
-        layout: template.layout || {
-          width: 297,
-          height: 210,
-          orientation: 'landscape',
-          margins: { top: 20, right: 20, bottom: 20, left: 20 },
-          sections: []
-        },
+        htmlContent: template.htmlContent?.trim() || generatedTemplate.htmlContent,
+        cssStyles: template.cssStyles?.trim() || generatedTemplate.cssStyles,
+        layout,
         placeholders: template.placeholders || [],
         isActive: true,
         createdAt: now,
@@ -77,6 +79,8 @@ export class FirebaseCertificateTemplateRepository {
       description: template.description || '',
       type: template.type || 'horizontal',
       certificateTypeId: template.certificateTypeId || '',
+      htmlContent: template.htmlContent || '',
+      cssStyles: template.cssStyles || '',
       layout: template.layout || {
         width: template.width || 297,
         height: template.height || 210,

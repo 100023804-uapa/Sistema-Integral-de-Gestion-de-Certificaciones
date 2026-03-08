@@ -1,118 +1,298 @@
 'use server';
 
-import { getCertificateRepository, getStudentRepository } from '@/lib/container';
-import { CreateCertificateDTO } from '@/lib/domain/entities/Certificate';
+import { getCreateCertificateUseCase, getStudentRepository } from '@/lib/container';
 import { CreateStudentDTO } from '@/lib/domain/entities/Student';
+import {
+  buildCertificateImportPreviewRows,
+  CertificateImportPreviewRow,
+} from '@/lib/application/utils/certificate-import';
 
-const certificateRepo = getCertificateRepository();
 const studentRepo = getStudentRepository();
 
-export type ImportResult = {
-    total: number;
-    success: number;
-    errors: number;
-    skipped: number;
-    details: { type: 'error' | 'success' | 'info'; message: string }[];
+export interface CertificateImportOptions {
+  campusId: string;
+  academicAreaId?: string;
+  templateId?: string;
+  signer1Id?: string;
+  signer2Id?: string;
+  programName?: string;
+  expirationDate?: string;
+  createdBy?: string;
+}
+
+export type CertificateImportDetail = {
+  rowNumber: number;
+  matricula: string;
+  folio: string;
+  type: 'error' | 'success' | 'info' | 'warning';
+  action:
+    | 'created_student_and_certificate'
+    | 'updated_student_and_certificate'
+    | 'created_certificate'
+    | 'skipped_duplicate'
+    | 'failed';
+  message: string;
 };
 
-export async function importCertificatesFromExcel(data: any[], campusId: string, templateId?: string): Promise<ImportResult> {
-    let successCount = 0;
-    let errorCount = 0;
-    let skippedCount = 0;
-    const details: { type: 'error' | 'success' | 'info'; message: string }[] = [];
+export type CertificateImportResult = {
+  total: number;
+  certificatesCreated: number;
+  studentsCreated: number;
+  studentsUpdated: number;
+  skipped: number;
+  warnings: number;
+  errors: number;
+  details: CertificateImportDetail[];
+};
 
-    for (const row of data) {
-        try {
-            // 1. Validar datos mínimos (Matricula y Nombre son siempre obligatorios)
-            if (!row.Matricula || !row.Nombre) {
-                throw new Error(`Fila inválida: Faltan datos obligatorios (Matricula o Nombre)`);
-            }
+export type ImportResult = CertificateImportResult;
 
-            const matricula = String(row.Matricula).trim();
+function normalizeOptions(
+  optionsOrCampusId: CertificateImportOptions | string,
+  templateId?: string
+): CertificateImportOptions {
+  if (typeof optionsOrCampusId === 'string') {
+    return {
+      campusId: optionsOrCampusId,
+      templateId,
+      createdBy: 'bulk-import',
+    };
+  }
 
-            // 2. Gestión del Estudiante
-            let student = await studentRepo.findById(matricula);
+  return {
+    ...optionsOrCampusId,
+    createdBy: optionsOrCampusId.createdBy || 'bulk-import',
+  };
+}
 
-            if (!student) {
-                // Crear nuevo estudiante
-                const newStudent: CreateStudentDTO = {
-                    id: matricula,
-                    firstName: String(row.Nombre).trim(),
-                    lastName: '', // Asumimos nombre completo en 'Nombre'
-                    email: row.Email || '', // Opcional
-                    career: String(row.Carrera || '').trim(), // Opcional si viene en Excel
-                    cedula: row.Cedula ? String(row.Cedula).trim() : undefined,
-                };
-                student = await studentRepo.create(newStudent);
-            } else {
-                // Si existe, actualizamos datos faltantes si vienen en el Excel
-                const updates: any = {};
-                if (row.Cedula && !student.cedula) updates.cedula = String(row.Cedula).trim();
-                // if (row.Email && !student.email) updates.email = row.Email;
+function splitLegacyFullName(fullName: string): { firstName: string; lastName: string } {
+  const normalized = fullName.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return { firstName: '', lastName: '' };
+  }
 
-                if (Object.keys(updates).length > 0) {
-                    await studentRepo.update(student.id, updates);
-                }
-            }
+  const parts = normalized.split(' ');
 
-            // 3. Verificación de Certificado Duplicado (Solo si viene Folio)
-            if (row.Folio) {
-                const existingCert = await certificateRepo.findByFolio(String(row.Folio).trim());
-                if (existingCert) {
-                    skippedCount++;
-                    details.push({ type: 'info', message: `Matrícula ${row.Matricula}: El folio ${row.Folio} ya existe. Omitido.` });
-                    continue;
-                }
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: '' };
+  }
 
-                // 4. Crear Certificado
-                // Procesar fecha (Excel serial o string)
-                let issueDate = new Date();
-                if (typeof row.Fecha === 'number') {
-                    // Excel serial date to JS Date
-                    issueDate = new Date(Math.round((row.Fecha - 25569) * 86400 * 1000));
-                } else if (row.Fecha) {
-                    issueDate = new Date(row.Fecha);
-                }
+  return {
+    firstName: parts.slice(0, -1).join(' '),
+    lastName: parts.slice(-1).join(' '),
+  };
+}
 
-                if (isNaN(issueDate.getTime())) {
-                    issueDate = new Date(); // Fallback
-                    details.push({ type: 'info', message: `Advertencia: Fecha inválida para ${row.Folio}, usando fecha actual.` });
-                }
+function parseExpirationDate(value?: string): Date | undefined {
+  if (!value?.trim()) return undefined;
+  const parsedDate = new Date(value);
+  return isNaN(parsedDate.getTime()) ? undefined : parsedDate;
+}
 
-                const certData: CreateCertificateDTO = {
-                    folio: String(row.Folio).trim(),
-                    studentId: student.id,
-                    studentName: student.firstName + (student.lastName ? ' ' + student.lastName : ''),
-                    type: (row.Tipo === 'PROFUNDO' ? 'PROFUNDO' : 'CAP'),
-                    academicProgram: String(row.Curso || '').trim(),
-                    issueDate: issueDate,
-                    campusId,
-                    templateId: templateId || undefined,
-                    status: 'active',
-                    metadata: {
-                        importedAt: new Date().toISOString(),
-                        source: 'excel_bulk_import'
-                    }
-                };
+function parseIssueDate(row: CertificateImportPreviewRow): Date {
+  if (!row.issueDate) {
+    return new Date();
+  }
 
-                await certificateRepo.create(certData);
-                successCount++;
-            } else {
-                // Si no hay folio, solo contamos como éxito la actualización/creación del estudiante
-                successCount++;
-            }
+  const parsedDate = new Date(row.issueDate);
+  return isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+}
 
-        } catch (error: any) {
-            errorCount++;
-            details.push({ type: 'error', message: `Error en Matrícula ${row.Matricula || '?'}: ${error.message}` });
-        }
+function buildStudentUpdates(
+  existingStudent: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    cedula?: string;
+    career?: string;
+  },
+  previewRow: CertificateImportPreviewRow
+) {
+  const updates: Record<string, string> = {};
+  const parsedName = splitLegacyFullName(previewRow.studentName);
+
+  if (parsedName.firstName && parsedName.firstName !== existingStudent.firstName) {
+    updates.firstName = parsedName.firstName;
+  }
+
+  if (parsedName.lastName !== existingStudent.lastName) {
+    updates.lastName = parsedName.lastName;
+  }
+
+  if (previewRow.email && previewRow.email !== existingStudent.email) {
+    updates.email = previewRow.email;
+  }
+
+  if (previewRow.cedula && previewRow.cedula !== (existingStudent.cedula || '')) {
+    updates.cedula = previewRow.cedula;
+  }
+
+  if (previewRow.academicProgram && previewRow.academicProgram !== (existingStudent.career || '')) {
+    updates.career = previewRow.academicProgram;
+  }
+
+  return updates;
+}
+
+export async function importCertificatesFromExcel(
+  rawRows: Record<string, unknown>[],
+  optionsOrCampusId: CertificateImportOptions | string,
+  templateId?: string
+): Promise<CertificateImportResult> {
+  const options = normalizeOptions(optionsOrCampusId, templateId);
+
+  if (!options.campusId?.trim()) {
+    throw new Error('Debes seleccionar un recinto antes de importar certificados.');
+  }
+
+  const createCertificateUseCase = getCreateCertificateUseCase();
+  const previewRows = buildCertificateImportPreviewRows(rawRows, {
+    programOverride: options.programName,
+  });
+
+  const details: CertificateImportDetail[] = [];
+  let certificatesCreated = 0;
+  let studentsCreated = 0;
+  let studentsUpdated = 0;
+  let skipped = 0;
+  let warnings = 0;
+  let errors = 0;
+
+  for (const row of previewRows) {
+    if (row.warnings.length) {
+      warnings += row.warnings.length;
+      row.warnings.forEach((warning) => {
+        details.push({
+          rowNumber: row.rowNumber,
+          matricula: row.matricula || '?',
+          folio: row.folio || 'AUTO',
+          type: 'warning',
+          action: 'created_certificate',
+          message: warning,
+        });
+      });
     }
 
-    return {
-        total: data.length,
-        success: successCount,
-        errors: errorCount,
-        skipped: skippedCount,
-        details
-    };
+    if (row.errors.length) {
+      errors += 1;
+      details.push({
+        rowNumber: row.rowNumber,
+        matricula: row.matricula || '?',
+        folio: row.folio || 'AUTO',
+        type: 'error',
+        action: 'failed',
+        message: row.errors.join(' '),
+      });
+      continue;
+    }
+
+    try {
+      let studentWasCreated = false;
+      let studentWasUpdated = false;
+
+      const existingStudent = await studentRepo.findById(row.matricula);
+
+      if (!existingStudent) {
+        const parsedName = splitLegacyFullName(row.studentName);
+        const newStudent: CreateStudentDTO = {
+          id: row.matricula,
+          firstName: parsedName.firstName || row.studentName,
+          lastName: parsedName.lastName,
+          email: row.email,
+          cedula: row.cedula || undefined,
+          career: row.academicProgram || undefined,
+        };
+        await studentRepo.create(newStudent);
+        studentsCreated += 1;
+        studentWasCreated = true;
+      } else {
+        const updates = buildStudentUpdates(existingStudent, row);
+        if (Object.keys(updates).length) {
+          await studentRepo.update(existingStudent.id, updates);
+          studentsUpdated += 1;
+          studentWasUpdated = true;
+        }
+      }
+
+      await createCertificateUseCase.execute({
+        studentName: row.studentName,
+        studentId: row.matricula,
+        cedula: row.cedula || undefined,
+        studentEmail: row.email || undefined,
+        type: row.certificateType,
+        academicProgram: row.academicProgram,
+        issueDate: parseIssueDate(row),
+        expirationDate: parseExpirationDate(options.expirationDate),
+        templateId: options.templateId || undefined,
+        campusId: options.campusId,
+        academicAreaId: options.academicAreaId || undefined,
+        signer1Id: options.signer1Id || undefined,
+        signer2Id: options.signer2Id || undefined,
+        folioOverride: row.folio || undefined,
+        createdBy: options.createdBy || 'bulk-import',
+        metadata: {
+          importedAt: new Date().toISOString(),
+          source: 'excel_bulk_import',
+          grade: String(row.source?.Calificacion ?? '').trim(),
+          duration: String(row.source?.Duracion ?? '').trim(),
+          description: String(row.source?.Descripcion ?? '').trim(),
+        },
+      });
+
+      certificatesCreated += 1;
+
+      details.push({
+        rowNumber: row.rowNumber,
+        matricula: row.matricula,
+        folio: row.folio || 'AUTO',
+        type: 'success',
+        action: studentWasCreated
+          ? 'created_student_and_certificate'
+          : studentWasUpdated
+            ? 'updated_student_and_certificate'
+            : 'created_certificate',
+        message: studentWasCreated
+          ? 'Participante creado y certificado emitido correctamente.'
+          : studentWasUpdated
+            ? 'Participante actualizado y certificado emitido correctamente.'
+            : 'Certificado emitido correctamente sobre un participante existente.',
+      });
+    } catch (error: any) {
+      const message = error?.message || 'Error inesperado al importar el certificado.';
+
+      if (/Ya existe un certificado con el folio/i.test(message)) {
+        skipped += 1;
+        details.push({
+          rowNumber: row.rowNumber,
+          matricula: row.matricula || '?',
+          folio: row.folio || 'AUTO',
+          type: 'info',
+          action: 'skipped_duplicate',
+          message,
+        });
+        continue;
+      }
+
+      errors += 1;
+      details.push({
+        rowNumber: row.rowNumber,
+        matricula: row.matricula || '?',
+        folio: row.folio || 'AUTO',
+        type: 'error',
+        action: 'failed',
+        message,
+      });
+    }
+  }
+
+  return {
+    total: rawRows.length,
+    certificatesCreated,
+    studentsCreated,
+    studentsUpdated,
+    skipped,
+    warnings,
+    errors,
+    details,
+  };
 }

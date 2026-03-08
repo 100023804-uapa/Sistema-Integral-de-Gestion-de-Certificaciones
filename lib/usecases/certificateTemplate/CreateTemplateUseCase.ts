@@ -13,6 +13,8 @@ export class CreateTemplateUseCase {
       description?: string;
       type: 'horizontal' | 'vertical' | 'institutional_macro';
       certificateTypeId: string;
+      htmlContent?: string;
+      cssStyles?: string;
       layout?: any;
       placeholders?: any[];
     },
@@ -61,21 +63,21 @@ export class CreateTemplateUseCase {
     }
 
     // Datos por defecto ultra simplificados
+    const layout = data.layout || this.getDefaultLayout(data.type);
+    const placeholders =
+      data.placeholders && data.placeholders.length
+        ? data.placeholders
+        : this.getDefaultPlaceholders(data.type);
+
     const templateData = {
       name: data.name,
       description: data.description || '',
       type: data.type,
       certificateTypeId: data.certificateTypeId,
-      htmlContent: '<html><body><h1>Template</h1></body></html>',
-      cssStyles: 'body { font-family: Arial; }',
-      layout: {
-        width: 297,
-        height: 210,
-        orientation: 'landscape' as const,
-        margins: { top: 20, right: 20, bottom: 20, left: 20 },
-        sections: []
-      },
-      placeholders: []
+      htmlContent: data.htmlContent || '',
+      cssStyles: data.cssStyles || '',
+      layout,
+      placeholders,
     };
 
     return await this.templateRepository.create(templateData, createdBy);

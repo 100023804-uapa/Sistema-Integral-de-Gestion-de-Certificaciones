@@ -14,6 +14,7 @@ export interface CreateCertificateInput {
     issueDate: Date;
     expirationDate?: Date; // Nuevo: opcional
     prefix?: string;
+    folioOverride?: string;
     metadata?: Record<string, any>;
     studentEmail?: string; // Added for student creation
     templateId?: string;
@@ -70,8 +71,17 @@ export class CreateCertificate {
             throw new Error("El ID del usuario que crea el certificado es obligatorio.");
         }
 
-        // 4. Generar Folio
-        const folio = await this.generateFolio.execute(input.type, input.prefix);
+        // 4. Resolver Folio
+        let folio = input.folioOverride?.trim() || '';
+
+        if (folio) {
+            const existingCertificate = await this.certificateRepository.findByFolio(folio);
+            if (existingCertificate) {
+                throw new Error(`Ya existe un certificado con el folio ${folio}.`);
+            }
+        } else {
+            folio = await this.generateFolio.execute(input.type, input.prefix);
+        }
 
         // 5. Generar Código de Verificación Público (Hash US-13)
         const publicVerificationCode = crypto.randomBytes(8).toString('hex').toUpperCase();

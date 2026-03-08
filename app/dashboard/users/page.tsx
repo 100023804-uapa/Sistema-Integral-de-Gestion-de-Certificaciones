@@ -36,6 +36,32 @@ export default function UsersPage() {
   const accessRepo = getAccessRepository();
   const roleRepo = getRoleRepository();
 
+  const fetchCatalog = async (url: string) => {
+    const response = await fetch(url, {
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Error ${response.status} al cargar ${url}: ${
+          contentType.includes('application/json') ? errorText : 'respuesta no valida del servidor'
+        }`
+      );
+    }
+
+    if (!contentType.includes('application/json')) {
+      throw new Error(`Respuesta no JSON al cargar ${url}`);
+    }
+
+    return response.json();
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -47,9 +73,9 @@ export default function UsersPage() {
       
       // Cargar catálogos para alcances
       const [campList, areaList, signList] = await Promise.all([
-        fetch('/api/campuses').then(res => res.json()),
-        fetch('/api/academic-areas').then(res => res.json()),
-        fetch('/api/signers').then(res => res.json()),
+        fetchCatalog('/api/admin/campuses?activeOnly=true'),
+        fetchCatalog('/api/admin/academic-areas?activeOnly=true'),
+        fetchCatalog('/api/admin/signers?activeOnly=true'),
       ]);
 
       setCampuses(campList.data || []);
@@ -411,7 +437,7 @@ export default function UsersPage() {
                               className="w-full px-4 py-3 rounded-xl border-2 border-orange-100 bg-orange-50/30 focus:border-orange-400 transition-all text-sm"
                           >
                               <option value="">Seleccionar Firmante...</option>
-                              {signers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.position})</option>)}
+                              {signers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.title})</option>)}
                           </select>
                         </div>
                       )}

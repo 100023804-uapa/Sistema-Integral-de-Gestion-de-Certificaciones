@@ -85,6 +85,8 @@ export interface CreateTemplateRequest {
   description?: string;
   type: TemplateType;
   certificateTypeId: string;
+  htmlContent?: string;
+  cssStyles?: string;
   layout: TemplateLayout;
   placeholders: TemplatePlaceholder[];
 }
