@@ -18,6 +18,14 @@
       ]
     },
     {
+      "collectionGroup": "academicPrograms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "campuses",
       "queryScope": "COLLECTION",
       "fields": [
@@ -45,8 +53,8 @@
       "collectionGroup": "userRoles",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "assignedAt", "order": "DESCENDING" }
       ]
     },

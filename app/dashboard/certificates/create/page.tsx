@@ -39,11 +39,13 @@ export default function CreateCertificatePage() {
     folioPrefix: 'sigce', // Default prefix
     templateId: '',
     campusId: '', // Nuevo: obligatorio
+    academicAreaId: '', // Nuevo
     signer1Id: '', // Nuevo
     signer2Id: '', // Nuevo
   });
 
   const [activeSigners, setActiveSigners] = useState<any[]>([]);
+  const [academicAreas, setAcademicAreas] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchSigners = async () => {
@@ -104,6 +106,28 @@ export default function CreateCertificatePage() {
     fetchData();
   }, []);
 
+  // Cargar áreas académicas cuando cambie el recinto
+  useEffect(() => {
+    const fetchAreas = async () => {
+      if (!formData.campusId) {
+        setAcademicAreas([]);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/admin/academic-areas?campusId=${formData.campusId}&activeOnly=true`);
+        const data = await res.json();
+        if (data.success) {
+          setAcademicAreas(data.data);
+          // Opcional: limpiar academicAreaId si el anterior no pertenece al nuevo campus
+          setFormData(prev => ({ ...prev, academicAreaId: '' }));
+        }
+      } catch (err) {
+        console.error("Error fetching academic areas", err);
+      }
+    };
+    fetchAreas();
+  }, [formData.campusId]);
+
   // Filtrar plantillas según tipo de layout seleccionado
   const filteredTemplates = selectedTemplateType
     ? templates.filter(t => t.type === selectedTemplateType)
@@ -124,11 +148,15 @@ export default function CreateCertificatePage() {
         await createCertificate.execute({
             ...formData,
             issueDate: new Date(formData.issueDate),
+            expirationDate: formData.expirationDate ? new Date(formData.expirationDate) : undefined,
             prefix: formData.folioPrefix || undefined,
             cedula: formData.cedula,
-            studentEmail: '',
+            studentEmail: formData.studentEmail,
             templateId: formData.templateId || undefined,
             campusId: formData.campusId,
+            academicAreaId: formData.academicAreaId || undefined,
+            signer1Id: formData.signer1Id || undefined,
+            signer2Id: formData.signer2Id || undefined,
             createdBy: user?.uid || 'system',
         });
 
@@ -141,7 +169,9 @@ export default function CreateCertificatePage() {
         console.error("Error creating certificate:", err);
         setError(err.message || "Error al crear el certificado. Intente nuevamente.");
     } finally {
-        setLoading(false);
+        if (!success) {
+            setLoading(false);
+        }
     }
   };
 
@@ -213,6 +243,30 @@ export default function CreateCertificatePage() {
                 </select>
                 <p className="text-xs text-red-500">
                     * Campo obligatorio. El certificado debe estar asociado a un recinto.
+                </p>
+            </div>
+
+            {/* Academic Area Selection */}
+            <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <MapPin size={16} className="text-blue-500" /> Área Académica
+                </label>
+                <select 
+                    name="academicAreaId"
+                    value={formData.academicAreaId} 
+                    onChange={handleChange}
+                    disabled={!formData.campusId}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white disabled:bg-gray-50 disabled:cursor-not-allowed"
+                >
+                    <option value="">{formData.campusId ? "Selecciona un área académica (Opcional)" : "Primero selecciona un recinto"}</option>
+                    {academicAreas.map(area => (
+                        <option key={area.id} value={area.id}>
+                            {area.name} ({area.code})
+                        </option>
+                    ))}
+                </select>
+                <p className="text-xs text-gray-500">
+                    Útil para segmentar reportes por departamento o facultad.
                 </p>
             </div>
 
@@ -406,6 +460,21 @@ export default function CreateCertificatePage() {
                 />
                 </div>
 
+                <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <User size={16} /> Correo Electrónico
+                </label>
+                <input 
+                    name="studentEmail"
+                    value={formData.studentEmail}
+                    onChange={handleChange}
+                    type="email" 
+                    readOnly
+                    placeholder="Se autocompleta con la búsqueda..."
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed focus:outline-none transition-all"
+                />
+                </div>
+
                 {/* Programa */}
                 <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -439,16 +508,16 @@ export default function CreateCertificatePage() {
 
                 <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <Calendar size={16} /> Fecha de Emisión
+                    <Calendar size={16} className="text-amber-500" /> Fecha de Expiración (Opcional)
                 </label>
                 <input 
-                    name="issueDate"
-                    value={formData.issueDate}
+                    name="expirationDate"
+                    value={formData.expirationDate}
                     onChange={handleChange}
                     type="date" 
-                    required
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                 />
+                <p className="text-xs text-gray-400">Deja vacío si el certificado no vence.</p>
                 </div>
             </div>
 

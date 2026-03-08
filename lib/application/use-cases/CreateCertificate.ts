@@ -12,6 +12,7 @@ export interface CreateCertificateInput {
     type: CertificateType;
     academicProgram: string;
     issueDate: Date;
+    expirationDate?: Date; // Nuevo: opcional
     prefix?: string;
     metadata?: Record<string, any>;
     studentEmail?: string; // Added for student creation
@@ -27,7 +28,10 @@ export class CreateCertificate {
     constructor(
         private certificateRepository: ICertificateRepository,
         private studentRepository: IStudentRepository,
-        private generateFolio: GenerateFolio
+        private generateFolio: GenerateFolio,
+        private campusRepository: any,
+        private academicAreaRepository: any,
+        private signerRepository: any
     ) { }
 
     async execute(input: CreateCertificateInput): Promise<Certificate> {
@@ -72,24 +76,56 @@ export class CreateCertificate {
         // 5. Generar Código de Verificación Público (Hash US-13)
         const publicVerificationCode = crypto.randomBytes(8).toString('hex').toUpperCase();
 
-        // 6. Preparar datos (DTO)
+        // 6. Enriquecer metadatos con nombres reales para el PDF
+        const enrichedMetadata = { ...input.metadata };
+
+        // Resolver nombre de recinto
+        if (input.campusId) {
+            const campus = await this.campusRepository.findById(input.campusId);
+            if (campus) enrichedMetadata.campusName = campus.name;
+        }
+
+        // Resolver nombre de área académica
+        if (input.academicAreaId) {
+            const area = await this.academicAreaRepository.findById(input.academicAreaId);
+            if (area) enrichedMetadata.academicArea = area.name;
+        }
+
+        // Resolver detalles de firmantes
+        if (input.signer1Id) {
+            const signer1 = await this.signerRepository.findById(input.signer1Id);
+            if (signer1) {
+                enrichedMetadata.signer1_Name = signer1.name;
+                enrichedMetadata.signer1_Title = signer1.title;
+                enrichedMetadata.signer1_SignatureImage = signer1.signatureUrl;
+            }
+        }
+        if (input.signer2Id) {
+            const signer2 = await this.signerRepository.findById(input.signer2Id);
+            if (signer2) {
+                enrichedMetadata.signer2_Name = signer2.name;
+                enrichedMetadata.signer2_Title = signer2.title;
+                enrichedMetadata.signer2_SignatureImage = signer2.signatureUrl;
+            }
+        }
+
+        // 7. Preparar datos (DTO)
         const certificateData: CreateCertificateDTO & { publicVerificationCode: string } = {
             folio,
             publicVerificationCode,
             studentName: input.studentName,
             studentId: studentId,
+            studentEmail: input.studentEmail || null,
+            cedula: input.cedula || null,
             type: input.type,
             academicProgram: input.academicProgram,
             issueDate: input.issueDate,
+            expirationDate: input.expirationDate || null,
             status: 'active' as CertificateStatus,
-            metadata: {
-                ...input.metadata,
-                signer1Id: input.signer1Id,
-                signer2Id: input.signer2Id
-            },
-            templateId: input.templateId,
+            metadata: enrichedMetadata,
+            templateId: input.templateId || null,
             campusId: input.campusId,
-            academicAreaId: input.academicAreaId,
+            academicAreaId: input.academicAreaId || null,
         };
 
         // 7. Guardar en repositorio de certificados

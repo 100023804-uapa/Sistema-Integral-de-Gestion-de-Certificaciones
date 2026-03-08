@@ -161,11 +161,11 @@ export class FirebaseCertificateStateRepository {
           id: t.id,
           certificateId: t.certificateId,
           currentState: t.currentState,
-          previousState: t.previousState,
+          previousState: t.previousState || null,
           changedAt: Timestamp.fromDate(t.changedAt),
           changedBy: t.changedBy,
-          comments: t.comments,
-          metadata: t.metadata
+          comments: t.comments || null,
+          metadata: t.metadata || null
         })),
         updatedAt: Timestamp.fromDate(history.updatedAt)
       });
@@ -177,11 +177,11 @@ export class FirebaseCertificateStateRepository {
           id: newState.id,
           certificateId: newState.certificateId,
           currentState: newState.currentState,
-          previousState: newState.previousState,
+          previousState: newState.previousState || null,
           changedAt: Timestamp.fromDate(newState.changedAt),
           changedBy: newState.changedBy,
-          comments: newState.comments,
-          metadata: newState.metadata
+          comments: newState.comments || null,
+          metadata: newState.metadata || null
         }],
         createdAt: Timestamp.fromDate(new Date()),
         updatedAt: Timestamp.fromDate(new Date())

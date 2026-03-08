@@ -9,6 +9,7 @@ El objetivo es que SIGCE pueda:
 - recrear sus indices y reglas sin depender de enlaces manuales de la consola
 - mover el proyecto a otra cuenta o a otro proyecto Firebase con un checklist reproducible
 - reducir el riesgo de que una consulta falle por falta de indice despues de una migracion
+- asegurar el estándar de portabilidad y sanitización de datos (ver [Guía de Portabilidad](file:///c:/Users/LENOVO%20i7%207TH%20GAMERS/Downloads/sigce/docs/architecture/portabilidad_y_estandar_datos.md))
 
 ## Artefactos ya versionados
 

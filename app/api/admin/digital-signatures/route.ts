@@ -45,10 +45,12 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(
-      { success: false, error: 'Se requiere signerId, requestedBy o certificateId' },
-      { status: 400 }
-    );
+    // Si no hay filtros específicos, retornamos todas las solicitudes (para administradores)
+    const requests = await getSignatureRequestsUseCase.getAllRequests();
+    return NextResponse.json({
+      success: true,
+      data: requests,
+    });
   } catch (error) {
     console.error('Error fetching signature requests:', error);
     return NextResponse.json(

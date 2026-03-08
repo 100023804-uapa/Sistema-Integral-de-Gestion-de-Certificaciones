@@ -6,18 +6,20 @@ export interface Certificate {
   folio: string; // Código único visible (e.g., sigce-2026-CAP-0001)
   studentId: string; // Relación con Student
   studentName: string; // Desnormalizado para consultas rápidas
+  studentEmail?: string | null; // Nuevo: Correo para notificaciones
+  cedula?: string | null; // Nuevo: Cédula para el PDF
   type: CertificateType;
   academicProgram: string; // Nombre del curso/diplomado
   issueDate: Date;
-  expirationDate?: Date; // Opcional
+  expirationDate?: Date | null; // Opcional
   status: CertificateStatus;
-  templateId?: string; // ID de la plantilla utilizada
+  templateId?: string | null; // ID de la plantilla utilizada
   qrCodeUrl: string; // URL pública de validación
   publicVerificationCode?: string; // Código hash único (US-13)
-  pdfUrl?: string; // URL del archivo en Storage
+  pdfUrl?: string | null; // URL del archivo en Storage
   campusId: string; // ID del recinto (obligatorio)
-  academicAreaId?: string; // ID del área académica (obligatorio en futuro)
-  certificateTypeId?: string; // ID del tipo de certificado (opcional por ahora)
+  academicAreaId?: string | null; // ID del área académica (obligatorio en futuro)
+  certificateTypeId?: string | null; // ID del tipo de certificado (opcional por ahora)
   metadata: Record<string, any>; // Para datos extra flexibles
   createdAt: Date;
   updatedAt: Date;

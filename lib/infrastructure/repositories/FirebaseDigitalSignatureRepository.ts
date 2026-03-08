@@ -1,26 +1,26 @@
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  query, 
-  orderBy, 
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  query,
+  orderBy,
   where,
   limit,
   Timestamp,
-  DocumentData 
+  DocumentData
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { 
-  DigitalSignature, 
-  SignatureRequest, 
+import {
+  DigitalSignature,
+  SignatureRequest,
   SignatureTemplate,
   CreateSignatureRequest,
   SignCertificateRequest,
   RejectSignatureRequest,
-  SignatureStatus 
+  SignatureStatus
 } from '@/lib/types/digitalSignature';
 import { QueryDocumentSnapshot } from 'firebase/firestore';
 
@@ -36,7 +36,7 @@ export class FirebaseDigitalSignatureRepository {
 
     // Obtener datos del certificado
     const certificateData = await this.getCertificateData(data.certificateId);
-    
+
     const requestData = {
       certificateId: data.certificateId,
       requestedBy,
@@ -53,7 +53,7 @@ export class FirebaseDigitalSignatureRepository {
 
     const docRef = await addDoc(collection(db, this.requestsCollection), requestData);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) {
       throw new Error('Failed to create signature request');
     }
@@ -76,7 +76,7 @@ export class FirebaseDigitalSignatureRepository {
         orderBy('requestedAt', 'desc')
       );
     }
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(this.mapToSignatureRequest);
   }
@@ -87,7 +87,17 @@ export class FirebaseDigitalSignatureRepository {
       where('requestedBy', '==', requestedBy),
       orderBy('requestedAt', 'desc')
     );
-    
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(this.mapToSignatureRequest);
+  }
+
+  async getAllSignatureRequests(): Promise<SignatureRequest[]> {
+    const q = query(
+      collection(db, this.requestsCollection),
+      orderBy('requestedAt', 'desc')
+    );
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(this.mapToSignatureRequest);
   }
@@ -99,7 +109,7 @@ export class FirebaseDigitalSignatureRepository {
       orderBy('requestedAt', 'desc'),
       limit(1)
     );
-    
+
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
       return null;
@@ -111,7 +121,7 @@ export class FirebaseDigitalSignatureRepository {
   // Digital Signatures
   async createSignature(data: SignCertificateRequest): Promise<DigitalSignature> {
     const now = new Date();
-    
+
     const signatureData = {
       certificateId: data.certificateId,
       signerId: data.signerId,
@@ -134,22 +144,22 @@ export class FirebaseDigitalSignatureRepository {
 
     const docRef = await addDoc(collection(db, this.signaturesCollection), signatureData);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) {
       throw new Error('Failed to create digital signature');
     }
 
     const signature = this.mapToDigitalSignature(docSnap);
-    
+
     // Actualizar el request
     await this.updateSignatureRequestStatus(data.certificateId, 'signed');
-    
+
     return signature;
   }
 
   async rejectSignature(data: RejectSignatureRequest): Promise<void> {
     const now = new Date();
-    
+
     // Actualizar el request
     const requestRef = query(
       collection(db, this.requestsCollection),
@@ -157,7 +167,7 @@ export class FirebaseDigitalSignatureRepository {
       where('requestedTo', '==', data.signerId),
       limit(1)
     );
-    
+
     const querySnapshot = await getDocs(requestRef);
     if (!querySnapshot.empty) {
       const docRef = querySnapshot.docs[0].ref;
@@ -176,7 +186,7 @@ export class FirebaseDigitalSignatureRepository {
       orderBy('signedAt', 'desc'),
       limit(1)
     );
-    
+
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
       return null;
@@ -191,7 +201,7 @@ export class FirebaseDigitalSignatureRepository {
       where('signerId', '==', signerId),
       orderBy('signedAt', 'desc')
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(this.mapToDigitalSignature);
   }
@@ -207,7 +217,7 @@ export class FirebaseDigitalSignatureRepository {
 
     const docRef = await addDoc(collection(db, this.templatesCollection), templateData);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) {
       throw new Error('Failed to create signature template');
     }
@@ -221,7 +231,7 @@ export class FirebaseDigitalSignatureRepository {
       where('isActive', '==', true),
       orderBy('name', 'asc')
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(this.mapToSignatureTemplate);
   }
@@ -234,7 +244,7 @@ export class FirebaseDigitalSignatureRepository {
     };
 
     await updateDoc(docRef, updateData);
-    
+
     const updatedDoc = await getDoc(docRef);
     if (!updatedDoc.exists()) {
       throw new Error('Failed to update signature template');
@@ -250,7 +260,7 @@ export class FirebaseDigitalSignatureRepository {
       where('certificateId', '==', certificateId),
       limit(1)
     );
-    
+
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
       const docRef = querySnapshot.docs[0].ref;

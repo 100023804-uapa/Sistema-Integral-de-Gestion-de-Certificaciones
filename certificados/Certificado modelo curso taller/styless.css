@@ -1,17 +1,25 @@
-/* Configuración Base */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+:root {
+    --ink: #1a1a1a;
+    --muted: #5b6472;
+    --panel: #ffffff;
+    --shell: #f0f2f5;
+    --accent: #0b1f68;
+}
+
 body {
-    background-color: #f0f2f5;
+    background-color: var(--shell);
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     font-family: 'Montserrat', sans-serif;
+    color: var(--ink);
 }
 
 .certificate-wrapper {
@@ -21,53 +29,67 @@ body {
 .certificate-container {
     width: 1000px;
     height: 750px;
-    background-color: #ffffff;
-    padding: 60px;
+    background-color: var(--panel);
+    padding: 48px 56px 128px;
     position: relative;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     text-align: center;
-    color: #1a1a1a;
+    overflow: hidden;
 }
 
-/* Cabecera */
 .logos-header {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 120px 1fr 120px;
     align-items: center;
-    margin-bottom: 35px;
+    gap: 20px;
+    margin-bottom: 26px;
 }
 
-.logo-left, .logo-right {
+.logo-left,
+.logo-right {
     height: 80px;
+    width: 100%;
     object-fit: contain;
+}
+
+.titles {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
 }
 
 .inst-name {
     font-size: 22px;
     font-weight: 700;
     text-transform: uppercase;
-    margin: 0;
     letter-spacing: 0.5px;
+    line-height: 1.2;
 }
 
 .sub-name {
     font-size: 18px;
     font-weight: 700;
     text-transform: uppercase;
-    margin-top: 5px;
+    line-height: 1.2;
 }
 
-/* Cuerpo */
+.content {
+    max-width: 760px;
+    margin: 0 auto;
+}
+
 .award-text {
     font-size: 18px;
-    margin-top: 35px;
+    margin-top: 8px;
 }
 
 .recipient-name {
     font-family: 'Pinyon Script', cursive;
     font-size: 72px;
     font-weight: 400;
-    margin: 25px 0;
+    line-height: 0.95;
+    margin: 18px 0 26px;
     color: #000;
 }
 
@@ -79,95 +101,145 @@ body {
 .course-title {
     font-size: 28px;
     font-weight: 700;
-    margin: 5px 0 20px 0;
+    margin: 0 0 18px;
     line-height: 1.2;
 }
 
 .academic-details {
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
     font-size: 14px;
     color: #444;
-    margin-bottom: 25px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.separator {
+    opacity: 0.55;
 }
 
 .location-date {
     font-size: 16px;
     line-height: 1.7;
-    margin-bottom: 45px;
+    max-width: 640px;
+    margin: 0 auto;
 }
 
-/* Firmas, Sello y QR */
-.signatures-area {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-top: 40px;
-    padding: 0 20px;
+.footer-band {
+    position: absolute;
+    left: 56px;
+    right: 170px;
+    bottom: 82px;
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) 120px minmax(220px, 1fr);
+    gap: 34px;
+    align-items: end;
 }
 
 .signature-block {
-    width: 280px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .signature-image-wrapper {
-    height: 75px;
+    height: 74px;
+    width: 100%;
     display: flex;
     justify-content: center;
     align-items: flex-end;
+    margin-bottom: 6px;
 }
 
 .sig-img {
     max-height: 100%;
-    max-width: 200px;
+    max-width: 185px;
+    object-fit: contain;
 }
 
 .line {
+    width: 100%;
     border-top: 1.5px solid #000;
-    margin: 8px 0;
+    margin-bottom: 7px;
 }
 
 .signer-name {
     font-weight: 700;
     font-size: 15px;
-    display: block;
+    line-height: 1.2;
 }
 
 .signer-title {
     font-size: 12px;
-    display: block;
+    line-height: 1.2;
+    color: var(--muted);
 }
 
-/* Centro (QR y Sello) */
-.qr-and-seal {
+.center-mark {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 15px;
+    justify-content: end;
+    gap: 6px;
+    padding-bottom: 20px;
 }
 
 .seal-img {
-    width: 95px;
+    width: 92px;
     height: auto;
+    object-fit: contain;
 }
 
-.qr-code {
-    width: 80px;
-    height: 80px;
+.seal-caption {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
 }
 
-/* Pie de página */
 .registration-footer {
     position: absolute;
-    bottom: 30px;
-    width: 100%;
-    left: 0;
+    left: 56px;
+    right: 170px;
+    bottom: 28px;
+    text-align: center;
     font-size: 12px;
+    line-height: 1.45;
 }
 
 .verify-link {
     font-size: 10px;
     color: #777;
-    margin-top: 5px;
+    margin-top: 4px;
+    word-break: break-word;
+}
+
+.qr-corner {
+    position: absolute;
+    right: 52px;
+    bottom: 30px;
+    width: 98px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.qr-code {
+    width: 90px;
+    height: 90px;
+    object-fit: contain;
+}
+
+.qr-caption {
+    font-size: 10px;
+    line-height: 1.2;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    text-align: center;
 }
 
 u {
@@ -175,9 +247,18 @@ u {
     padding: 0 4px;
 }
 
-/* Ajustes de Impresión */
 @media print {
-    body { background: none; }
-    .certificate-wrapper { padding: 0; }
-    .certificate-container { box-shadow: none; border: none; }
+    body {
+        background: none;
+        min-height: auto;
+    }
+
+    .certificate-wrapper {
+        padding: 0;
+    }
+
+    .certificate-container {
+        box-shadow: none;
+        border: none;
+    }
 }

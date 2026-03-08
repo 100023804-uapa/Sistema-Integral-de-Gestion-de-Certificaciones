@@ -92,7 +92,7 @@ export function getStudentCertificateRepository() {
 }
 
 export function getTemplateRepository() {
-    return new FirebaseTemplateRepository();
+    return new FirebaseCertificateTemplateRepository();
 }
 
 export function getCampusRepository() {
@@ -296,9 +296,19 @@ export function getGenerateFolioUseCase() {
 export function getCreateCertificateUseCase() {
     const certificateRepository = getCertificateRepository();
     const studentRepository = getStudentRepository();
+    const campusRepository = getCampusRepository();
+    const academicAreaRepository = getAcademicAreaRepository();
+    const signerRepository = getSignerRepository();
     const generateFolio = new GenerateFolio(certificateRepository);
 
-    return new CreateCertificate(certificateRepository, studentRepository, generateFolio);
+    return new CreateCertificate(
+        certificateRepository,
+        studentRepository,
+        generateFolio,
+        campusRepository,
+        academicAreaRepository,
+        signerRepository
+    );
 }
 
 // Use Cases para Estudiantes (US-12)
