@@ -12,6 +12,9 @@ import { LayoutTemplate } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { StudentCombobox } from '@/components/ui/StudentCombobox';
 import { ProgramCombobox } from '@/components/ui/ProgramCombobox';
+import { buildTemplateFromCertificateSnapshot } from '@/lib/application/utils/certificate-template-snapshot';
+import { persistCertificatePdf } from '@/lib/application/utils/persist-certificate-pdf';
+import { generateCertificatePDF } from '@/lib/application/utils/pdf-generator';
 import { Student } from '@/lib/domain/entities/Student';
 
 export default function CreateCertificatePage() {
@@ -145,7 +148,7 @@ export default function CreateCertificatePage() {
     
     try {
         const createCertificate = getCreateCertificateUseCase();
-        await createCertificate.execute({
+        const createdCertificate = await createCertificate.execute({
             ...formData,
             issueDate: new Date(formData.issueDate),
             expirationDate: formData.expirationDate ? new Date(formData.expirationDate) : undefined,
@@ -159,6 +162,21 @@ export default function CreateCertificatePage() {
             signer2Id: formData.signer2Id || undefined,
             createdBy: user?.uid || 'system',
         });
+
+        try {
+            const templateForPdf = createdCertificate.templateSnapshot
+                ? buildTemplateFromCertificateSnapshot(createdCertificate.templateSnapshot)
+                : templates.find((template) => template.id === createdCertificate.templateId) || null;
+
+            const pdfBlob = await generateCertificatePDF(createdCertificate, templateForPdf);
+            await persistCertificatePdf(
+                createdCertificate.id,
+                pdfBlob,
+                `Certificado_${createdCertificate.folio}.pdf`
+            );
+        } catch (pdfPersistenceError) {
+            console.error('Error persisting generated certificate PDF:', pdfPersistenceError);
+        }
 
         setSuccess(true);
         setTimeout(() => {

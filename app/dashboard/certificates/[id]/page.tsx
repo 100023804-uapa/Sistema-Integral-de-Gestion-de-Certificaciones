@@ -20,6 +20,12 @@ import { toast } from 'sonner';
 import { getCertificateRepository, getTemplateRepository } from '@/lib/container';
 import { Certificate } from '@/lib/domain/entities/Certificate';
 import { generateCertificatePDF } from '@/lib/application/utils/pdf-generator';
+import { buildTemplateFromCertificateSnapshot } from '@/lib/application/utils/certificate-template-snapshot';
+import { persistCertificatePdf } from '@/lib/application/utils/persist-certificate-pdf';
+import {
+  buildCertificateCompatibilityReport,
+  getCompatibilityClasses,
+} from '@/lib/application/utils/certificate-compatibility';
 import {
   RenderedCertificateTemplate,
   renderCertificateTemplate,
@@ -57,7 +63,11 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
 
         setCertificate(data);
 
-        if (data.templateId) {
+        if (data.templateSnapshot) {
+          const snapshotTemplate = buildTemplateFromCertificateSnapshot(data.templateSnapshot);
+          setTemplate(snapshotTemplate);
+          setTemplateName(data.templateSnapshot.name || snapshotTemplate.name);
+        } else if (data.templateId) {
           try {
             const templateData = await templateRepository.findById(data.templateId);
             if (templateData) {
@@ -169,12 +179,36 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
     setIsDownloading(true);
 
     try {
-      const templateRepository = getTemplateRepository();
-      const selectedTemplate = certificate.templateId
-        ? await templateRepository.findById(certificate.templateId)
-        : null;
+      if (certificate.pdfUrl) {
+        window.open(certificate.pdfUrl, '_blank', 'noopener,noreferrer');
+        toast.success('PDF definitivo abierto correctamente');
+        return;
+      }
 
-      const pdfBlob = await generateCertificatePDF(certificate, selectedTemplate);
+      const pdfBlob = await generateCertificatePDF(certificate, template || null);
+      try {
+        const persistedPdf = await persistCertificatePdf(
+          certificate.id,
+          pdfBlob,
+          `Certificado_${certificate.folio}.pdf`
+        );
+
+        setCertificate((currentCertificate) =>
+          currentCertificate
+            ? {
+                ...currentCertificate,
+                pdfUrl: persistedPdf.pdfUrl,
+                metadata: {
+                  ...(currentCertificate.metadata || {}),
+                  pdfStorageKey: persistedPdf.pdfStorageKey || null,
+                },
+              }
+            : currentCertificate
+        );
+      } catch (persistError) {
+        console.error('Error persisting certificate PDF:', persistError);
+      }
+
       const url = window.URL.createObjectURL(pdfBlob);
       const anchor = document.createElement('a');
       anchor.href = url;
@@ -297,6 +331,7 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
     revoked: <XCircle size={16} />,
     expired: <Clock size={16} />,
   };
+  const compatibilityReport = buildCertificateCompatibilityReport(certificate, template);
 
   return (
     <div className="min-h-screen bg-gray-50/60 pb-20">
@@ -500,6 +535,47 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
                   <span className="text-gray-500">ID Interno</span>
                   <span className="font-mono text-xs text-gray-400">{certificate.id.substring(0, 8)}...</span>
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                  <AlertTriangle size={18} className="text-primary" />
+                  Compatibilidad del documento
+                </h3>
+                <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${getCompatibilityClasses(compatibilityReport.level)}`}>
+                  {compatibilityReport.label}
+                </span>
+              </div>
+
+              <p className="text-sm text-gray-600">{compatibilityReport.summary}</p>
+
+              <div className="space-y-3">
+                {compatibilityReport.signals.map((signal) => (
+                  <div key={signal.id} className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-gray-900">{signal.label}</span>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.18em] ${
+                          signal.state === 'ok'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : signal.state === 'warning'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {signal.state === 'ok' ? 'OK' : signal.state === 'warning' ? 'Pendiente' : 'Sin dato'}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500">{signal.detail}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-3">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-gray-400">Siguiente paso recomendado</p>
+                <p className="mt-2 text-sm text-gray-600">{compatibilityReport.recommendation}</p>
               </div>
             </div>
           </div>

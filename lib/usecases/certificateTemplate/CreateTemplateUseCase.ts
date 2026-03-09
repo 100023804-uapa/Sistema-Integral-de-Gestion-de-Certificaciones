@@ -1,4 +1,4 @@
-import { CertificateTemplate, TemplateLayout, TemplatePlaceholder } from '@/lib/types/certificateTemplate';
+import { CertificateTemplate, TemplateFontRef, TemplateLayout, TemplatePlaceholder } from '@/lib/types/certificateTemplate';
 import { FirebaseCertificateTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateTemplateRepository';
 import { getListCertificateTypesUseCase } from '@/lib/container';
 
@@ -15,6 +15,7 @@ export class CreateTemplateUseCase {
       certificateTypeId: string;
       htmlContent?: string;
       cssStyles?: string;
+      fontRefs?: TemplateFontRef[];
       layout?: any;
       placeholders?: any[];
     },
@@ -76,6 +77,7 @@ export class CreateTemplateUseCase {
       certificateTypeId: data.certificateTypeId,
       htmlContent: data.htmlContent || '',
       cssStyles: data.cssStyles || '',
+      fontRefs: data.fontRefs || [],
       layout,
       placeholders,
     };

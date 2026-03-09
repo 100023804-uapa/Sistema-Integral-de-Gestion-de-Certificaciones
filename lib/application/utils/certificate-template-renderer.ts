@@ -1,5 +1,6 @@
 import QRCode from 'qrcode';
 
+import { buildManagedTemplateFontFaceCss } from '@/lib/config/template-fonts';
 import { Certificate } from '@/lib/domain/entities/Certificate';
 import {
   CertificateTemplate,
@@ -68,7 +69,7 @@ export async function renderCertificateTemplate(
 
   return {
     mode: 'default',
-    documentHtml: buildDefaultTemplateDocument(values, layout, options.watermarkText),
+    documentHtml: buildDefaultTemplateDocument(template, values, layout, options.watermarkText),
     width: layout.width || DEFAULT_LAYOUT.width,
     height: layout.height || DEFAULT_LAYOUT.height,
     orientation: layout.orientation || inferOrientation(layout.width, layout.height),
@@ -163,6 +164,7 @@ function buildHtmlTemplateDocument(
   values: TemplateValueMap,
   watermarkText?: string
 ): string {
+  const managedFontCss = buildManagedTemplateFontFaceCss(template.fontRefs || []);
   const printStyles = buildSharedPrintStyles(template.layout || DEFAULT_LAYOUT, watermarkText);
   const cssStyles = replaceTemplatePlaceholders(template.cssStyles || '', values);
   const hadCssPlaceholder = template.htmlContent.includes('{{cssStyles}}');
@@ -171,7 +173,7 @@ function buildHtmlTemplateDocument(
 
   return ensureHtmlDocument(
     processedHtml,
-    hadCssPlaceholder ? printStyles : `${printStyles}\n${cssStyles}`
+    hadCssPlaceholder ? `${managedFontCss}\n${printStyles}` : `${managedFontCss}\n${printStyles}\n${cssStyles}`
   );
 }
 
@@ -187,6 +189,7 @@ function buildLegacyTemplateDocument(
   const backgroundImageUrl = (template as { backgroundImageUrl?: string }).backgroundImageUrl;
 
   const css = `
+    ${buildManagedTemplateFontFaceCss(template.fontRefs || [])}
     ${buildSharedPrintStyles(layout, watermarkText)}
     body {
       margin: 0;
@@ -238,11 +241,13 @@ function buildLegacyTemplateDocument(
 }
 
 function buildDefaultTemplateDocument(
+  template: CertificateTemplate | null | undefined,
   values: TemplateValueMap,
   layout: TemplateLayout,
   watermarkText?: string
 ): string {
   const css = `
+    ${template?.fontRefs ? buildManagedTemplateFontFaceCss(template.fontRefs) : ''}
     ${buildSharedPrintStyles(layout || DEFAULT_LAYOUT, watermarkText)}
     body {
       margin: 0;

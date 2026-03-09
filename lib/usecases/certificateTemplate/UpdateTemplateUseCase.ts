@@ -1,4 +1,4 @@
-import { CertificateTemplate } from '@/lib/types/certificateTemplate';
+import { CertificateTemplate, TemplateFontRef } from '@/lib/types/certificateTemplate';
 import { FirebaseCertificateTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateTemplateRepository';
 import { getListCertificateTypesUseCase } from '@/lib/container';
 
@@ -14,6 +14,7 @@ export class UpdateTemplateUseCase {
       description?: string;
       htmlContent?: string;
       cssStyles?: string;
+      fontRefs?: TemplateFontRef[];
       layout?: any;
       placeholders?: any[];
       isActive?: boolean;

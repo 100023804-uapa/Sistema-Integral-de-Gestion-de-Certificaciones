@@ -81,6 +81,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /font_assets/{fontId} {
+      allow read, create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

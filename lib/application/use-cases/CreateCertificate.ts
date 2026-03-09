@@ -3,6 +3,7 @@ import { GenerateFolio } from './GenerateFolio';
 import { Certificate, CertificateType, CertificateStatus, CreateCertificateDTO } from '../../domain/entities/Certificate';
 import { IStudentRepository } from '../../domain/repositories/IStudentRepository';
 import { getCreateCertificateStateUseCase } from '../../container';
+import { createCertificateTemplateSnapshot } from '../utils/certificate-template-snapshot';
 import crypto from 'crypto';
 
 export interface CreateCertificateInput {
@@ -32,7 +33,8 @@ export class CreateCertificate {
         private generateFolio: GenerateFolio,
         private campusRepository: any,
         private academicAreaRepository: any,
-        private signerRepository: any
+        private signerRepository: any,
+        private templateRepository: any
     ) { }
 
     async execute(input: CreateCertificateInput): Promise<Certificate> {
@@ -120,6 +122,15 @@ export class CreateCertificate {
         }
 
         // 7. Preparar datos (DTO)
+        const templateSnapshot =
+            input.templateId && this.templateRepository?.findById
+                ? await this.templateRepository
+                    .findById(input.templateId)
+                    .then((selectedTemplate: any) =>
+                        selectedTemplate ? createCertificateTemplateSnapshot(selectedTemplate) : null
+                    )
+                : null;
+
         const certificateData: CreateCertificateDTO & { publicVerificationCode: string } = {
             folio,
             publicVerificationCode,
@@ -134,6 +145,7 @@ export class CreateCertificate {
             status: 'active' as CertificateStatus,
             metadata: enrichedMetadata,
             templateId: input.templateId || null,
+            templateSnapshot,
             campusId: input.campusId,
             academicAreaId: input.academicAreaId || null,
         };

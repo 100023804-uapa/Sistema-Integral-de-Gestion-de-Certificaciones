@@ -45,8 +45,15 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
     async save(data: CreateCertificateDTO): Promise<Certificate> {
         const verificationCode = (data as any).publicVerificationCode || data.folio;
         const qrCodeUrl = `${APP_URL}/verify/${verificationCode}`;
+        const templateSnapshot = data.templateSnapshot
+            ? {
+                ...data.templateSnapshot,
+                capturedAt: Timestamp.fromDate(new Date(data.templateSnapshot.capturedAt)),
+            }
+            : null;
         const certificateData = {
             ...data,
+            templateSnapshot,
             qrCodeUrl,
             publicVerificationCode: verificationCode,
             createdAt: Timestamp.now(),
@@ -62,6 +69,7 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
         return {
             id: docRef.id,
             ...data,
+            templateSnapshot: data.templateSnapshot || null,
             publicVerificationCode: verificationCode,
             qrCodeUrl,
             createdAt: new Date(),
@@ -209,6 +217,21 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
         });
     }
 
+    async updatePdfAsset(id: string, pdfUrl: string | null, storageKey?: string | null): Promise<void> {
+        const docRef = doc(db, COLLECTION_NAME, id);
+        const updatePayload: Record<string, any> = {
+            pdfUrl: pdfUrl || null,
+            updatedAt: Timestamp.now(),
+            'metadata.pdfPersistedAt': Timestamp.now(),
+        };
+
+        if (typeof storageKey !== 'undefined') {
+            updatePayload['metadata.pdfStorageKey'] = storageKey || null;
+        }
+
+        await updateDoc(docRef, updatePayload);
+    }
+
     private async upsertProgramStats(data: CreateCertificateDTO): Promise<void> {
         const programKey = this.toProgramKey(data.academicProgram);
         const statRef = doc(db, PROGRAM_STATS_COLLECTION, programKey);
@@ -244,6 +267,12 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
         return {
             id: docSnap.id,
             ...data,
+            templateSnapshot: data.templateSnapshot
+                ? {
+                    ...data.templateSnapshot,
+                    capturedAt: safeToDate(data.templateSnapshot.capturedAt),
+                }
+                : null,
             qrCodeUrl: data.qrCodeUrl || `${APP_URL}/verify/${data.folio}`,
             issueDate: safeToDate(data.issueDate),
             expirationDate: data.expirationDate ? safeToDate(data.expirationDate) : undefined,

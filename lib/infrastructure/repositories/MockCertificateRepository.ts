@@ -117,6 +117,19 @@ export class MockCertificateRepository implements ICertificateRepository {
     }
   }
 
+  async updatePdfAsset(id: string, pdfUrl: string | null, storageKey?: string | null): Promise<void> {
+    const index = this.certificates.findIndex((certificate) => certificate.id === id);
+    if (index === -1) return;
+
+    this.certificates[index].pdfUrl = pdfUrl || undefined;
+    this.certificates[index].metadata = {
+      ...(this.certificates[index].metadata || {}),
+      pdfStorageKey: storageKey || null,
+      pdfPersistedAt: new Date().toISOString(),
+    };
+    this.certificates[index].updatedAt = new Date();
+  }
+
   async countByYearAndType(year: number, type: Certificate['type']): Promise<number> {
     return this.certificates.filter(c =>
       c.issueDate.getFullYear() === year && c.type === type

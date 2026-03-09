@@ -12,4 +12,5 @@ export interface ICertificateRepository {
     findAll(): Promise<Certificate[]>;
     findByStudentId(studentId: string): Promise<Certificate[]>;
     updateStatus(id: string, status: Certificate['status']): Promise<void>;
+    updatePdfAsset(id: string, pdfUrl: string | null, storageKey?: string | null): Promise<void>;
 }

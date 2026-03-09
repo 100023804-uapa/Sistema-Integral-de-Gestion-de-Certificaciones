@@ -3,27 +3,41 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Download, Share2, Mail, Loader2 } from 'lucide-react';
-import { jsPDF } from 'jspdf';
-import { Certificate } from '@/lib/domain/entities/Certificate';
+import { persistCertificatePdf } from '@/lib/application/utils/persist-certificate-pdf';
 
 interface CertificateActionsProps {
   certificate: any; // Using any to handle serialization (Dates becoming strings)
-  pdfGenerator?: any; 
+  template?: any;
 }
 
-export function CertificateActions({ certificate }: CertificateActionsProps) {
+export function CertificateActions({ certificate, template }: CertificateActionsProps) {
   const [downloading, setDownloading] = useState(false);
 
   const handleDownload = async () => {
     setDownloading(true);
     try {
-        // Implementation will depend on pdf-generator.ts content
-        // For now, placeholder or logic to be filled after reading the file
-        console.log("Downloading PDF for", certificate.folio);
-        
-        // Dynamic import to avoid SSR issues if any with jspdf
+        if (certificate.pdfUrl) {
+          window.open(certificate.pdfUrl, '_blank', 'noopener,noreferrer');
+          return;
+        }
+
         const { generateCertificatePDF } = await import('@/lib/application/utils/pdf-generator');
-        const blob = await generateCertificatePDF(certificate);
+        const blob = await generateCertificatePDF(certificate, template || null);
+
+        try {
+          const persistedPdf = await persistCertificatePdf(
+            certificate.id,
+            blob,
+            `${certificate.folio}.pdf`
+          );
+          certificate.pdfUrl = persistedPdf.pdfUrl;
+          if (!certificate.metadata) {
+            certificate.metadata = {};
+          }
+          certificate.metadata.pdfStorageKey = persistedPdf.pdfStorageKey || null;
+        } catch (persistError) {
+          console.error('Error persisting public certificate PDF download:', persistError);
+        }
         
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -105,7 +119,7 @@ export function CertificateActions({ certificate }: CertificateActionsProps) {
         ) : (
             <>
                 <Download className="mr-2 h-5 w-5" />
-                Descargar PDF Original
+                Descargar PDF
             </>
         )}
       </Button>

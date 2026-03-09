@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 
 import { Certificate } from '@/lib/domain/entities/Certificate';
@@ -23,27 +24,6 @@ export const generateCertificatePDF = async (
 };
 
 async function generateHtmlBasedPDF(documentHtml: string, width: number, height: number): Promise<Blob> {
-  let doc: jsPDF | null = null;
-  let docWithHtml: (jsPDF & {
-    html?: (
-      source: HTMLElement,
-      options: {
-        callback: (pdf: jsPDF) => void;
-        x?: number;
-        y?: number;
-        width?: number;
-        windowWidth?: number;
-        autoPaging?: 'text' | 'slice' | boolean;
-        html2canvas?: {
-          scale?: number;
-          useCORS?: boolean;
-          allowTaint?: boolean;
-          backgroundColor?: string;
-        };
-      }
-    ) => void;
-  }) | null = null;
-
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
   iframe.style.position = 'fixed';
@@ -64,65 +44,38 @@ async function generateHtmlBasedPDF(documentHtml: string, width: number, height:
     }
 
     await waitForDocumentAssets(iframeDocument);
-    const printableElement = getPrintableElement(iframeDocument);
-    const contentWidthPx = Math.max(printableElement.scrollWidth || printableElement.clientWidth, 1);
-    const contentHeightPx = Math.max(printableElement.scrollHeight || printableElement.clientHeight, 1);
-    const pageWidthMm = width;
-    const pageHeightMm = Number(((contentHeightPx / contentWidthPx) * pageWidthMm).toFixed(2)) || height;
-    const orientation = pageWidthMm >= pageHeightMm ? 'landscape' : 'portrait';
+    await waitForDocumentFonts(iframeDocument);
 
-    doc = new jsPDF({
+    const printableElement = getPrintableElement(iframeDocument);
+    const iframeWindow = iframe.contentWindow;
+    if (!iframeWindow) {
+      throw new Error('The HTML preview window could not be loaded.');
+    }
+
+    iframeWindow.scrollTo(0, 0);
+
+    const pageWidthMm = width;
+    const pageHeightMm = height;
+    const orientation = pageWidthMm >= pageHeightMm ? 'landscape' : 'portrait';
+    const canvas = await html2canvas(printableElement, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      width: Math.max(printableElement.scrollWidth || printableElement.clientWidth, 1),
+      height: Math.max(printableElement.scrollHeight || printableElement.clientHeight, 1),
+      windowWidth: iframeWindow.innerWidth,
+      windowHeight: iframeWindow.innerHeight,
+    });
+
+    const imageData = canvas.toDataURL('image/png', 1.0);
+    const doc = new jsPDF({
       orientation,
       unit: 'mm',
       format: [pageWidthMm, pageHeightMm],
     });
 
-    docWithHtml = doc as jsPDF & {
-      html?: (
-        source: HTMLElement,
-        options: {
-          callback: (pdf: jsPDF) => void;
-          x?: number;
-          y?: number;
-          width?: number;
-          windowWidth?: number;
-          autoPaging?: 'text' | 'slice' | boolean;
-          html2canvas?: {
-            scale?: number;
-            useCORS?: boolean;
-            allowTaint?: boolean;
-            backgroundColor?: string;
-          };
-        }
-      ) => void;
-    };
-
-    if (typeof docWithHtml.html !== 'function') {
-      throw new Error('jsPDF html renderer is not available in this environment.');
-    }
-
-    const htmlRenderer = docWithHtml.html;
-
-    await new Promise<void>((resolve, reject) => {
-      try {
-        htmlRenderer(printableElement, {
-          x: 0,
-          y: 0,
-          width: pageWidthMm,
-          windowWidth: contentWidthPx,
-          autoPaging: false,
-          html2canvas: {
-            scale: 1.6,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: '#ffffff',
-          },
-          callback: () => resolve(),
-        });
-      } catch (error) {
-        reject(error);
-      }
-    });
+    doc.addImage(imageData, 'PNG', 0, 0, pageWidthMm, pageHeightMm, undefined, 'FAST');
 
     return doc.output('blob');
   } finally {
@@ -164,6 +117,26 @@ async function waitForDocumentAssets(iframeDocument: Document): Promise<void> {
         })
     )
   );
+
+  await delay(80);
+}
+
+async function waitForDocumentFonts(iframeDocument: Document): Promise<void> {
+  const fontFaceSet = (iframeDocument as Document & {
+    fonts?: {
+      ready?: Promise<unknown>;
+    };
+  }).fonts;
+
+  try {
+    if (fontFaceSet?.ready) {
+      await fontFaceSet.ready;
+      await delay(80);
+      return;
+    }
+  } catch (error) {
+    console.error('Error waiting for certificate fonts:', error);
+  }
 
   await delay(80);
 }

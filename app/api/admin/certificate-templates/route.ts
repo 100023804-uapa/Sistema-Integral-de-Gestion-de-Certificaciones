@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
         certificateTypeId: body.certificateTypeId,
         htmlContent: body.htmlContent,
         cssStyles: body.cssStyles,
+        fontRefs: body.fontRefs,
         layout: body.layout,
         placeholders: body.placeholders,
       },

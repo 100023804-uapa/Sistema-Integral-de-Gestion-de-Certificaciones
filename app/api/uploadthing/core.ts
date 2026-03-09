@@ -16,6 +16,12 @@ export const ourFileRouter = {
             console.log("Upload complete for signatureUpload:", file.url);
             return { url: file.url };
         }),
+
+    fontUpload: f({ blob: { maxFileSize: "8MB", maxFileCount: 1 } })
+        .onUploadComplete(async ({ metadata, file }) => {
+            console.log("Upload complete for fontUpload:", file.url);
+            return { url: file.url, name: file.name, key: file.key, type: file.type };
+        }),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;

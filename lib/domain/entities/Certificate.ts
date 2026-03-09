@@ -1,5 +1,28 @@
+import {
+  TemplateFontProfile,
+  TemplateFontRef,
+  TemplateLayout,
+  TemplatePlaceholder,
+  TemplateType,
+} from '../../types/certificateTemplate';
+
 export type CertificateStatus = 'active' | 'revoked' | 'expired';
 export type CertificateType = 'CAP' | 'PROFUNDO';
+
+export interface CertificateTemplateSnapshot {
+  templateId?: string | null;
+  name: string;
+  description?: string;
+  type: TemplateType;
+  certificateTypeId: string;
+  htmlContent: string;
+  cssStyles: string;
+  fontRefs: TemplateFontRef[];
+  fontProfile?: TemplateFontProfile | null;
+  layout: TemplateLayout;
+  placeholders: TemplatePlaceholder[];
+  capturedAt: Date;
+}
 
 export interface Certificate {
   id: string; // UUID interno
@@ -20,6 +43,7 @@ export interface Certificate {
   campusId: string; // ID del recinto (obligatorio)
   academicAreaId?: string | null; // ID del área académica (obligatorio en futuro)
   certificateTypeId?: string | null; // ID del tipo de certificado (opcional por ahora)
+  templateSnapshot?: CertificateTemplateSnapshot | null; // Snapshot visual de la plantilla al emitir
   metadata: Record<string, any>; // Para datos extra flexibles
   createdAt: Date;
   updatedAt: Date;

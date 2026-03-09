@@ -3,6 +3,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlusCircle, Search, Filter, Loader2, FileText, Calendar, User, X, MapPin, Building, Activity } from 'lucide-react';
+import {
+  buildCertificateCompatibilityReport,
+  getCompatibilityClasses,
+} from '@/lib/application/utils/certificate-compatibility';
 import { getCertificateRepository, getListCampusesUseCase, getListAcademicAreasUseCase } from '@/lib/container';
 import { Certificate } from '@/lib/domain/entities/Certificate';
 import { Campus, AcademicArea } from '@/lib/container';
@@ -95,6 +99,28 @@ export default function CertificatesPage() {
   };
 
   const activeFiltersCount = Object.values(filters).filter(v => v !== '').length;
+  const compatibilitySummary = useMemo(() => {
+    return filteredCertificates.reduce(
+      (accumulator, certificate) => {
+        const report = buildCertificateCompatibilityReport(certificate);
+        accumulator.total += 1;
+        if (report.level === 'modern') accumulator.modern += 1;
+        if (report.level === 'legacy') accumulator.legacy += 1;
+        if (report.level === 'transitional') accumulator.transitional += 1;
+        if (certificate.pdfUrl) accumulator.persistedPdf += 1;
+        if (certificate.templateSnapshot) accumulator.snapshot += 1;
+        return accumulator;
+      },
+      {
+        total: 0,
+        modern: 0,
+        legacy: 0,
+        transitional: 0,
+        persistedPdf: 0,
+        snapshot: 0,
+      }
+    );
+  }, [filteredCertificates]);
 
   if (loading) {
     return (
@@ -245,11 +271,21 @@ export default function CertificatesPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Listados</p>
-                <p className="text-2xl font-black text-primary">{filteredCertificates.length}</p>
+                <p className="text-2xl font-black text-primary">{compatibilitySummary.total}</p>
             </div>
             <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Activos</p>
                 <p className="text-2xl font-black text-green-600">{filteredCertificates.filter(c => c.status === 'active').length}</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Modernizados</p>
+                <p className="text-2xl font-black text-emerald-600">{compatibilitySummary.modern}</p>
+                <p className="mt-1 text-[11px] text-gray-400">Snapshot + PDF definitivo</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Pendientes</p>
+                <p className="text-2xl font-black text-amber-600">{compatibilitySummary.transitional + compatibilitySummary.legacy}</p>
+                <p className="mt-1 text-[11px] text-gray-400">{compatibilitySummary.snapshot} con snapshot, {compatibilitySummary.persistedPdf} con PDF</p>
             </div>
         </div>
       )}
@@ -288,6 +324,7 @@ export default function CertificatesPage() {
                 <tbody className="divide-y divide-gray-50">
                     {filteredCertificates.map((cert) => {
                         const campus = campuses.find(c => c.id === cert.campusId);
+                        const compatibility = buildCertificateCompatibilityReport(cert);
                         return (
                             <tr key={cert.id} className="hover:bg-gray-50/50 transition-colors group">
                                 <td className="px-6 py-5">
@@ -337,6 +374,14 @@ export default function CertificatesPage() {
                                     }`}>
                                         {cert.status === 'active' ? 'Activo' : cert.status === 'revoked' ? 'Revocado' : 'Expirado'}
                                     </span>
+                                    <div className="mt-2">
+                                        <span
+                                            title={compatibility.summary}
+                                            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${getCompatibilityClasses(compatibility.level)}`}
+                                        >
+                                            {compatibility.label}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td className="px-6 py-5 text-right">
                                     <button 

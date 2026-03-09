@@ -1,166 +1,211 @@
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent } from '@/components/ui/Card';
-import { CheckCircle, Download, Share2, Calendar, Clock, Award } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
-import { getCertificateRepository } from '@/lib/container';
+import { CheckCircle, Award, Calendar, Hash, Layers3 } from 'lucide-react';
 import { notFound } from 'next/navigation';
+
 import { CertificateActions } from '@/components/certificates/CertificateActions';
+import { RenderedCertificatePreview } from '@/components/certificates/RenderedCertificatePreview';
+import { Footer } from '@/components/layout/Footer';
+import { Navbar } from '@/components/layout/Navbar';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import {
+  RenderedCertificateTemplate,
+  renderCertificateTemplate,
+} from '@/lib/application/utils/certificate-template-renderer';
+import { buildTemplateFromCertificateSnapshot } from '@/lib/application/utils/certificate-template-snapshot';
+import { getCertificateRepository, getTemplateRepository } from '@/lib/container';
 
 interface PageProps {
   params: Promise<{ id: string }>;
+}
+
+async function findCertificate(id: string) {
+  const repository = getCertificateRepository();
+
+  let certificate = await repository.findById(id);
+
+  if (!certificate) {
+    certificate = await repository.findByFolio(id);
+  }
+
+  if (!certificate) {
+    certificate = await repository.findByFolio(id.toUpperCase());
+  }
+
+  if (!certificate) {
+    certificate = await repository.findByVerificationCode(id);
+  }
+
+  if (!certificate) {
+    certificate = await repository.findByVerificationCode(id.toUpperCase());
+  }
+
+  return certificate;
+}
+
+function buildVerificationUrl(certificate: {
+  qrCodeUrl?: string;
+  publicVerificationCode?: string;
+  folio: string;
+}) {
+  const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://sigce.app';
+  return certificate.qrCodeUrl || `${baseUrl}/verify/${certificate.publicVerificationCode || certificate.folio}`;
+}
+
+function getRenderModeLabel(renderedTemplate: RenderedCertificateTemplate) {
+  if (renderedTemplate.mode === 'html') return 'HTML';
+  if (renderedTemplate.mode === 'legacy') return 'LEGACY';
+  return 'DEFAULT';
 }
 
 export default async function CertificateDetailsPage({ params }: PageProps) {
   const { id } = await params;
   if (!id) return notFound();
 
-  const repository = getCertificateRepository();
-  // Try finding by ID first
-  let certificate = await repository.findById(id);
+  const certificate = await findCertificate(id);
+  if (!certificate) return notFound();
 
-  // If not found, try finding by Folio
-  if (!certificate) {
-      certificate = await repository.findByFolio(id);
-      
-      // Try uppercase folio
-      if (!certificate) {
-          certificate = await repository.findByFolio(id.toUpperCase());
-      }
-  }
+  const templateRepository = getTemplateRepository();
+  const template = certificate.templateSnapshot
+    ? buildTemplateFromCertificateSnapshot(certificate.templateSnapshot)
+    : certificate.templateId
+      ? await templateRepository.findById(certificate.templateId)
+      : null;
+  const verificationUrl = buildVerificationUrl(certificate);
+  const renderedTemplate = await renderCertificateTemplate(template, certificate, {
+    verificationUrl,
+  });
 
-  // If still not found, try finding by publicVerificationCode (Hash US-13)
-  if (!certificate) {
-      certificate = await repository.findByVerificationCode(id);
-      
-      if (!certificate) {
-          certificate = await repository.findByVerificationCode(id.toUpperCase());
-      }
-  }
-
-  if (!certificate) {
-    return notFound();
-  }
+  const serializedCertificate = JSON.parse(JSON.stringify(certificate));
+  const serializedTemplate = template ? JSON.parse(JSON.stringify(template)) : null;
+  const templateName = certificate.templateSnapshot?.name || template?.name || null;
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--background)]">
       <Navbar />
-      <main className="flex-1 container max-w-3xl mx-auto px-4 py-8">
-        <div className="flex justify-center mb-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 border border-green-200">
-            <CheckCircle className="h-5 w-5 text-green-600" />
-            <span className="text-sm font-bold text-green-700 uppercase tracking-wider">Certificado Validado</span>
-          </div>
-        </div>
-
-        <Card className="overflow-hidden border-none shadow-lg mb-8">
-          <div className="relative bg-white p-8 md:p-12 text-center border-b border-gray-100">
-            {/* Decorative background element */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[var(--primary)]/10 to-transparent rounded-bl-full"></div>
-            
-            <div className="flex justify-center mb-6">
-               {/* Logo */}
-               <div className="h-24 w-24 relative flex items-center justify-center">
-                  <img 
-                    src="/logo de la uapa.jpeg" 
-                    alt="Logo UAPA" 
-                    className="object-contain w-full h-full"
-                  />
-               </div>
+      <main className="flex-1">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+          <div className="flex justify-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-100 px-4 py-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <span className="text-sm font-bold uppercase tracking-wider text-green-700">Certificado validado</span>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <Card className="overflow-hidden border border-slate-200 shadow-lg">
+              <CardHeader className="border-b border-slate-200 bg-white">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-xl text-slate-900">Vista del certificado</CardTitle>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Esta validacion publica usa la misma plantilla renderizada del certificado emitido.
+                    </p>
+                  </div>
+                  <div className="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-green-700">
+                    {getRenderModeLabel(renderedTemplate)}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-6 lg:p-8">
+                <RenderedCertificatePreview
+                  renderedTemplate={renderedTemplate}
+                  title="Vista publica del certificado"
+                  minHeightClassName="min-h-[82vh] lg:min-h-[86vh]"
+                  maxScale={1.45}
+                />
+              </CardContent>
+            </Card>
 
             <div className="space-y-6">
-              <p className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold">Certifica que</p>
-              <h1 className="font-display text-3xl md:text-4xl text-[var(--primary)] font-bold leading-tight">
-                {certificate.studentName}
-              </h1>
-              <div className="w-20 h-1 bg-[var(--accent)] rounded-full mx-auto my-4"></div>
-              <p className="text-sm text-gray-600 leading-relaxed max-w-lg mx-auto">
-                Ha completado satisfactoriamente los requisitos académicos del programa de educación continuada:
-              </p>
-              <h2 className="font-display text-xl md:text-2xl text-[var(--primary)] font-semibold px-4 leading-tight">
-                {certificate.academicProgram}
-              </h2>
-              <p className="text-xs text-gray-500 mt-4">
-                Otorgado en Santiago de los Caballeros, República Dominicana<br />
-                el día <span className="font-bold text-gray-700">{certificate.issueDate.toLocaleDateString('es-DO', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-              </p>
-            </div>
-
-            <div className="mt-8 pt-8 border-t border-gray-100 flex justify-between items-end">
-              <div className="text-left space-y-2">
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase">ID del Certificado</p>
-                  <p className="text-xs font-mono text-gray-600 font-medium">{certificate.id}</p>
-                </div>
-                {certificate.publicVerificationCode && (
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase">Código de Verificación (Hash)</p>
-                    <p className="text-xs font-mono text-accent font-bold tracking-wider">{certificate.publicVerificationCode}</p>
+              <Card className="border border-slate-200 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg text-slate-900">Datos de validacion</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-slate-500">Titular</span>
+                    <span className="text-right font-semibold text-slate-900">{certificate.studentName}</span>
                   </div>
-                )}
-              </div>
-              {/* QR Code */}
-              <div className="bg-white p-1 rounded shadow-sm border border-gray-100">
-                  <QRCodeSVG 
-                    value={`${process.env.NEXT_PUBLIC_APP_URL || 'https://sigce.app'}/verify/${certificate.folio}`}
-                    size={64}
-                    level="H"
-                    includeMargin={false}
-                    fgColor="#000000"
-                  />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <div className="space-y-4">
-          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide ml-1">Metadatos del Curso</h3>
-          <Card>
-            <CardContent className="p-0">
-              <div className="divide-y divide-gray-100">
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500">
-                      <Calendar className="h-5 w-5" />
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-slate-500">Programa</span>
+                    <span className="text-right font-semibold text-slate-900">{certificate.academicProgram}</span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-slate-500">Folio</span>
+                    <span className="text-right font-mono text-xs text-slate-700">{certificate.folio}</span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-slate-500">Codigo publico</span>
+                    <span className="text-right font-mono text-xs font-semibold text-[var(--accent)]">
+                      {certificate.publicVerificationCode || certificate.folio}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-slate-500">Fecha de emision</span>
+                    <span className="text-right font-semibold text-slate-900">
+                      {certificate.issueDate.toLocaleDateString('es-DO', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </span>
+                  </div>
+                  {templateName && (
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-slate-500">Plantilla</span>
+                      <span className="text-right text-xs font-semibold uppercase tracking-wide text-slate-700">
+                        {templateName}
+                      </span>
                     </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border border-slate-200 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg text-slate-900">Metadatos reales</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <div className="flex items-start gap-3">
+                    <Layers3 className="mt-0.5 h-4 w-4 text-slate-400" />
                     <div>
-                      <p className="text-xs text-gray-500">Fecha de Emisión</p>
-                      <p className="text-sm font-medium text-[var(--primary)]">
-                        {certificate.issueDate.toLocaleDateString('es-DO', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      <p className="text-slate-500">Area academica</p>
+                      <p className="font-medium text-slate-900">
+                        {certificate.metadata?.academicArea || certificate.academicAreaId || 'No especificada'}
                       </p>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500">
-                      <Clock className="h-5 w-5" />
-                    </div>
+                  <div className="flex items-start gap-3">
+                    <Award className="mt-0.5 h-4 w-4 text-slate-400" />
                     <div>
-                      <p className="text-xs text-gray-500">Duración</p>
-                      <p className="text-sm font-medium text-[var(--primary)]">120 Horas</p>
+                      <p className="text-slate-500">Recinto</p>
+                      <p className="font-medium text-slate-900">
+                        {certificate.metadata?.campusName || certificate.campusId || 'No especificado'}
+                      </p>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500">
-                      <Award className="h-5 w-5" />
-                    </div>
+                  <div className="flex items-start gap-3">
+                    <Calendar className="mt-0.5 h-4 w-4 text-slate-400" />
                     <div>
-                      <p className="text-xs text-gray-500">Modalidad</p>
-                      <p className="text-sm font-medium text-[var(--primary)]">Virtual</p>
+                      <p className="text-slate-500">Duracion</p>
+                      <p className="font-medium text-slate-900">
+                        {certificate.metadata?.duration || 'No especificada'}
+                      </p>
                     </div>
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                  <div className="flex items-start gap-3">
+                    <Hash className="mt-0.5 h-4 w-4 text-slate-400" />
+                    <div>
+                      <p className="text-slate-500">URL de verificacion</p>
+                      <p className="break-all font-mono text-[11px] text-slate-600">{verificationUrl}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-        <CertificateActions certificate={JSON.parse(JSON.stringify(certificate))} />
+              <CertificateActions certificate={serializedCertificate} template={serializedTemplate} />
+            </div>
+          </div>
+        </div>
       </main>
       <Footer />
     </div>

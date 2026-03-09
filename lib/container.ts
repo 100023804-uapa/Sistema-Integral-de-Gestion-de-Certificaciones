@@ -299,6 +299,7 @@ export function getCreateCertificateUseCase() {
     const campusRepository = getCampusRepository();
     const academicAreaRepository = getAcademicAreaRepository();
     const signerRepository = getSignerRepository();
+    const templateRepository = getCertificateTemplateRepository();
     const generateFolio = new GenerateFolio(certificateRepository);
 
     return new CreateCertificate(
@@ -307,7 +308,8 @@ export function getCreateCertificateUseCase() {
         generateFolio,
         campusRepository,
         academicAreaRepository,
-        signerRepository
+        signerRepository,
+        templateRepository
     );
 }
 

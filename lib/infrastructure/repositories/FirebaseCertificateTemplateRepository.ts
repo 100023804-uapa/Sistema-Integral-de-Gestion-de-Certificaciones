@@ -25,6 +25,7 @@ import {
   TemplateType
 } from '@/lib/types/certificateTemplate';
 import { QueryDocumentSnapshot } from 'firebase/firestore';
+import { buildTemplateFontProfile, normalizeTemplateFontRefs } from '@/lib/config/template-fonts';
 
 export class FirebaseCertificateTemplateRepository {
   private readonly templatesCollection = 'certificateTemplates';
@@ -42,6 +43,9 @@ export class FirebaseCertificateTemplateRepository {
         sections: []
       };
       const generatedTemplate = this.generateDefaultTemplate(template.type, layout);
+      const htmlContent = template.htmlContent?.trim() || generatedTemplate.htmlContent;
+      const cssStyles = template.cssStyles?.trim() || generatedTemplate.cssStyles;
+      const fontRefs = normalizeTemplateFontRefs(template.fontRefs || []);
 
       // Simplificar la creación para evitar errores
       const templateData = {
@@ -49,8 +53,10 @@ export class FirebaseCertificateTemplateRepository {
         description: template.description || '',
         type: template.type,
         certificateTypeId: template.certificateTypeId,
-        htmlContent: template.htmlContent?.trim() || generatedTemplate.htmlContent,
-        cssStyles: template.cssStyles?.trim() || generatedTemplate.cssStyles,
+        htmlContent,
+        cssStyles,
+        fontRefs,
+        fontProfile: buildTemplateFontProfile(htmlContent, cssStyles, fontRefs),
         layout,
         placeholders: template.placeholders || [],
         isActive: true,
@@ -81,6 +87,7 @@ export class FirebaseCertificateTemplateRepository {
       certificateTypeId: template.certificateTypeId || '',
       htmlContent: template.htmlContent || '',
       cssStyles: template.cssStyles || '',
+      fontRefs: template.fontRefs || [],
       layout: template.layout || {
         width: template.width || 297,
         height: template.height || 210,
@@ -157,8 +164,23 @@ export class FirebaseCertificateTemplateRepository {
 
   async update(id: string, data: UpdateTemplateRequest): Promise<CertificateTemplate> {
     const docRef = doc(db, this.templatesCollection, id);
+    const currentTemplate = await this.findById(id);
+
+    if (!currentTemplate) {
+      throw new Error('Certificate template not found');
+    }
+
+    const htmlContent = data.htmlContent?.trim() || currentTemplate.htmlContent;
+    const cssStyles = data.cssStyles?.trim() || currentTemplate.cssStyles;
+    const fontRefs = data.fontRefs
+      ? normalizeTemplateFontRefs(data.fontRefs)
+      : currentTemplate.fontRefs;
     const updateData = {
       ...data,
+      htmlContent,
+      cssStyles,
+      fontRefs,
+      fontProfile: buildTemplateFontProfile(htmlContent, cssStyles, fontRefs),
       updatedAt: new Date()
     };
 
@@ -595,6 +617,12 @@ export class FirebaseCertificateTemplateRepository {
       certificateTypeId: data.certificateTypeId || '',
       htmlContent: data.htmlContent || '',
       cssStyles: data.cssStyles || '',
+      fontRefs: normalizeTemplateFontRefs(data.fontRefs || []),
+      fontProfile: data.fontProfile || buildTemplateFontProfile(
+        data.htmlContent || '',
+        data.cssStyles || '',
+        data.fontRefs || []
+      ),
       layout: data.layout || {
         width: 297,
         height: 210,

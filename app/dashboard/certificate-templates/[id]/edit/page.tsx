@@ -3,6 +3,12 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { CertificateType } from '@/lib/container';
+import { FontLibraryPanel } from '@/components/dashboard/templates/FontLibraryPanel';
+import {
+  buildRuntimePreviewTemplate,
+  TemplateRuntimePreview,
+} from '@/components/dashboard/templates/TemplateRuntimePreview';
+import { TemplateFontRef } from '@/lib/types/certificateTemplate';
 import { 
   ArrowLeft, 
   Save, 
@@ -38,7 +44,8 @@ export default function EditTemplatePage({ params }: { params: Promise<{ id: str
     type: 'horizontal' as 'horizontal' | 'vertical' | 'institutional_macro',
     certificateTypeId: '',
     htmlContent: '',
-    cssStyles: ''
+    cssStyles: '',
+    fontRefs: [] as TemplateFontRef[]
   });
 
   const [layout, setLayout] = useState({
@@ -123,7 +130,8 @@ export default function EditTemplatePage({ params }: { params: Promise<{ id: str
           type: data.data.type || 'horizontal',
           certificateTypeId: data.data.certificateTypeId || '',
           htmlContent: data.data.htmlContent || '',
-          cssStyles: data.data.cssStyles || ''
+          cssStyles: data.data.cssStyles || '',
+          fontRefs: data.data.fontRefs || []
         });
         if (data.data.layout) setLayout(data.data.layout);
         if (data.data.placeholders) setPlaceholders(data.data.placeholders);
@@ -179,6 +187,7 @@ export default function EditTemplatePage({ params }: { params: Promise<{ id: str
           ...formData,
           layout,
           placeholders,
+          fontRefs: formData.fontRefs,
           createdBy: 'current-user-id' // TODO: obtener de auth
         }),
       });
@@ -302,6 +311,20 @@ export default function EditTemplatePage({ params }: { params: Promise<{ id: str
       </div>
     );
   }
+
+  const previewTemplate = buildRuntimePreviewTemplate({
+    id,
+    name: formData.name || 'Vista previa',
+    description: formData.description,
+    type: formData.type,
+    certificateTypeId: formData.certificateTypeId,
+    htmlContent: formData.htmlContent,
+    cssStyles: formData.cssStyles,
+    fontRefs: formData.fontRefs,
+    layout,
+    placeholders,
+    isActive: true,
+  });
 
   return (
     <div className="space-y-6 px-4 py-6 md:px-8 md:py-10">
@@ -782,6 +805,19 @@ export default function EditTemplatePage({ params }: { params: Promise<{ id: str
               </p>
             </div>
 
+            <FontLibraryPanel
+              value={formData.fontRefs}
+              onChange={(fontRefs) => setFormData((current) => ({ ...current, fontRefs }))}
+              onInsertCssSnippet={(snippet) =>
+                setFormData((current) => ({
+                  ...current,
+                  cssStyles: `${current.cssStyles}${current.cssStyles.trim() ? '\n\n' : ''}${snippet}`.trim(),
+                }))
+              }
+              htmlContent={formData.htmlContent}
+              cssStyles={formData.cssStyles}
+            />
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Editor HTML */}
               <div>
@@ -859,6 +895,9 @@ h1 {
             {/* Plantillas Predefinidas */}
             <div>
               <h4 className="text-md font-medium text-gray-900 mb-3">Plantillas Predefinidas</h4>
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Estas bases ya usan solo fuentes seguras del navegador. Si necesitas una tipografia especial, importala desde el panel <strong>Fuentes</strong> y evita pegar Google Fonts o links remotos.
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button
                   type="button"
@@ -889,8 +928,8 @@ h1 {
       </div>
       <div class="signature">
         <div class="signature-line"></div>
-        <p>{{signerName}}</p>
-        <p>{{signerTitle}}</p>
+        <p>{{signer1_Name}}</p>
+        <p>{{signer1_Title}}</p>
       </div>
     </footer>
   </div>
@@ -989,7 +1028,7 @@ h1 {
       <div class="logo"></div>
     </div>
     <div class="content">
-      <h2>DE {{certificateType}}</h2>
+      <h2>DE PARTICIPACION</h2>
       <p class="recipient">A nombre de:</p>
       <h3 class="name">{{studentName}}</h3>
       <p class="program">{{programName}}</p>
@@ -1000,7 +1039,7 @@ h1 {
       <div class="signatures">
         <div class="signature">
           <div class="line"></div>
-          <p>{{signerName}}</p>
+          <p>{{signer1_Name}}</p>
         </div>
       </div>
     </div>
@@ -1115,13 +1154,13 @@ h1 {
       <div class="signatures">
         <div class="signature">
           <div class="line"></div>
-          <p>{{rectorName}}</p>
-          <p>Rector</p>
+          <p>{{signer1_Name}}</p>
+          <p>{{signer1_Title}}</p>
         </div>
         <div class="signature">
           <div class="line"></div>
-          <p>{{secretaryName}}</p>
-          <p>Secretario Académico</p>
+          <p>{{signer2_Name}}</p>
+          <p>{{signer2_Title}}</p>
         </div>
       </div>
     </div>
@@ -1274,41 +1313,14 @@ h1 {
             </div>
             
             <div className="flex-1 bg-gray-50 overflow-auto p-8 flex justify-center items-start border-b">
-              {formData.htmlContent ? (
-                <div 
-                  className="bg-white shadow-2xl"
-                  style={{
-                    width: `${layout.width}mm`,
-                    height: `${layout.height}mm`,
-                    position: 'relative',
-                    overflow: 'hidden',
-                    transform: `scale(${Math.min(1.2, 1000 / (layout.width * 3.78))})`,
-                    transformOrigin: 'top center',
-                    marginBottom: '2rem'
-                  }}
-                >
-                  <iframe
+              {(formData.htmlContent || formData.cssStyles || formData.fontRefs.length > 0) ? (
+                <div className="w-full max-w-[1120px]">
+                  <TemplateRuntimePreview
+                    template={previewTemplate}
+                    maxWidth={1040}
+                    maxHeight={760}
+                    watermarkText="Vista previa"
                     title="Vista Previa de Plantilla"
-                    srcDoc={`
-                      <!DOCTYPE html>
-                      <html>
-                        <head>
-                          <style>
-                            ${formData.cssStyles}
-                          </style>
-                        </head>
-                        <body>
-                          ${formData.htmlContent}
-                        </body>
-                      </html>
-                    `}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      border: 'none',
-                      margin: 0,
-                      padding: 0
-                    }}
                   />
                 </div>
               ) : (

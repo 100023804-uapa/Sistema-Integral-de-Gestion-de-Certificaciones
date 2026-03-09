@@ -1,4 +1,35 @@
+import { FontAssetFormat, FontAssetSourceType, FontAssetStyle } from '@/lib/types/fontAsset';
+
 export type TemplateType = 'horizontal' | 'vertical' | 'institutional_macro';
+
+export interface TemplateFontRef {
+  assetId?: string;
+  family: string;
+  url: string;
+  key?: string;
+  format?: FontAssetFormat;
+  weight?: string;
+  style?: FontAssetStyle;
+  sourceType?: FontAssetSourceType;
+}
+
+export type TemplateFontStatus =
+  | 'managed'
+  | 'safe'
+  | 'mixed'
+  | 'external'
+  | 'unmanaged'
+  | 'unstyled';
+
+export interface TemplateFontProfile {
+  status: TemplateFontStatus;
+  managedFamilies: string[];
+  safeFamilies: string[];
+  unmanagedFamilies: string[];
+  declaredFamilies: string[];
+  externalSources: string[];
+  riskIds: string[];
+}
 
 export interface CertificateTemplate {
   id: string;
@@ -8,6 +39,8 @@ export interface CertificateTemplate {
   certificateTypeId: string;
   htmlContent: string;
   cssStyles: string;
+  fontRefs: TemplateFontRef[];
+  fontProfile: TemplateFontProfile;
   layout: TemplateLayout;
   placeholders: TemplatePlaceholder[];
   isActive: boolean;
@@ -87,6 +120,7 @@ export interface CreateTemplateRequest {
   certificateTypeId: string;
   htmlContent?: string;
   cssStyles?: string;
+  fontRefs?: TemplateFontRef[];
   layout: TemplateLayout;
   placeholders: TemplatePlaceholder[];
 }
@@ -96,6 +130,7 @@ export interface UpdateTemplateRequest {
   description?: string;
   htmlContent?: string;
   cssStyles?: string;
+  fontRefs?: TemplateFontRef[];
   layout?: TemplateLayout;
   placeholders?: TemplatePlaceholder[];
   isActive?: boolean;
