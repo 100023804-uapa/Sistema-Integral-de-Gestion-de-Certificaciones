@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "sigce-v2"
+    "default": "sigce-v2",
+    "sigce-v2": "sigce-uapa"
   },
   "targets": {},
   "etags": {}
