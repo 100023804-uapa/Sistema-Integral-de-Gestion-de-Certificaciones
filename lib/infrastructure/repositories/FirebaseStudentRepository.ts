@@ -133,7 +133,7 @@ export class FirebaseStudentRepository implements IStudentRepository {
         );
 
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(this.mapDocToStudent);
+        return querySnapshot.docs.map((doc) => this.mapDocToStudent(doc));
     }
 
     async listPaginated(cursor?: QueryDocumentSnapshot, pageSize: number = this.pageSize): Promise<{ data: Student[]; hasMore: boolean; lastVisible?: QueryDocumentSnapshot }> {
@@ -151,7 +151,7 @@ export class FirebaseStudentRepository implements IStudentRepository {
             );
 
         const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(this.mapDocToStudent);
+        const data = querySnapshot.docs.map((doc) => this.mapDocToStudent(doc));
         const hasMore = querySnapshot.docs.length === pageSize;
         const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
 
@@ -169,8 +169,8 @@ export class FirebaseStudentRepository implements IStudentRepository {
             phone: data.phone,
             career: data.career,
             portalAccess: this.mapPortalAccess(data.portalAccess),
-            createdAt: data.createdAt?.toDate() || new Date(),
-            updatedAt: data.updatedAt?.toDate() || new Date(),
+            createdAt: this.toDate(data.createdAt) || new Date(),
+            updatedAt: this.toDate(data.updatedAt) || new Date(),
         };
     }
 }

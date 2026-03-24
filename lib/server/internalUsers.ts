@@ -11,6 +11,7 @@ import type {
 import type { RoleValue } from '@/lib/types/role';
 
 const COLLECTION_NAME = 'internal_users';
+const LEGACY_COLLECTION_NAME = 'access_users';
 
 function getAdminDb() {
   return getAdminApp().firestore();
@@ -22,6 +23,36 @@ function normalizeEmail(email: string) {
 
 function now() {
   return new Date();
+}
+
+function parseDate(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === 'object' && 'toDate' in (value as Record<string, unknown>)) {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+}
+
+function mapLegacyRoleCode(role: unknown): RoleValue {
+  if (role === 'admin') {
+    return 'administrator';
+  }
+
+  return ensureRoleCode(typeof role === 'string' ? role : 'coordinator');
+}
+
+function buildDisplayName(email: string, preferredName?: string | null) {
+  if (preferredName && preferredName.trim()) {
+    return preferredName.trim();
+  }
+
+  const [localPart] = email.split('@');
+  return localPart.replace(/[._-]+/g, ' ').trim() || email;
 }
 
 function ensureRoleCode(roleCode: string): RoleValue {
@@ -121,18 +152,54 @@ async function sendInternalInvitationEmail(params: {
 }
 
 export async function listInternalUsers(): Promise<InternalUser[]> {
-  const snapshot = await getAdminDb()
-    .collection(COLLECTION_NAME)
-    .orderBy('createdAt', 'desc')
-    .get();
+  const [internalSnapshot, legacySnapshot] = await Promise.all([
+    getAdminDb()
+      .collection(COLLECTION_NAME)
+      .orderBy('createdAt', 'desc')
+      .get(),
+    getAdminDb().collection(LEGACY_COLLECTION_NAME).get(),
+  ]);
 
-  return snapshot.docs.map((doc) => mapInternalUser(doc.id, doc.data()));
+  const users = internalSnapshot.docs.map((doc) => mapInternalUser(doc.id, doc.data()));
+  const knownEmails = new Set(users.map((user) => normalizeEmail(user.email)));
+  const legacyUsers = await Promise.all(
+    legacySnapshot.docs.map(async (doc) => {
+      const data = doc.data() as Record<string, unknown>;
+      const email = normalizeEmail(
+        typeof data.email === 'string' ? data.email : doc.id
+      );
+
+      if (!email || knownEmails.has(email)) {
+        return null;
+      }
+
+      return syncLegacyInternalUser(email, data);
+    })
+  );
+
+  return [...users, ...legacyUsers.filter((user): user is InternalUser => user !== null)].sort(
+    (left, right) =>
+      (right.createdAt?.getTime() || 0) - (left.createdAt?.getTime() || 0)
+  );
 }
 
 export async function getInternalUser(uid: string): Promise<InternalUser | null> {
   const doc = await getAdminDb().collection(COLLECTION_NAME).doc(uid).get();
-  if (!doc.exists) return null;
-  return mapInternalUser(doc.id, doc.data());
+  if (doc.exists) {
+    return mapInternalUser(doc.id, doc.data());
+  }
+
+  try {
+    const authUser = await getAdminAuth().getUser(uid);
+    return syncLegacyInternalUser(normalizeEmail(authUser.email || ''));
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === 'auth/user-not-found') {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export async function createInternalUser(
@@ -293,4 +360,72 @@ export async function markInternalUserLogin(uid: string): Promise<void> {
   }
 
   await getAdminDb().collection(COLLECTION_NAME).doc(uid).set(updateData, { merge: true });
+}
+
+async function syncLegacyInternalUser(
+  email: string,
+  providedLegacyData?: Record<string, unknown>
+): Promise<InternalUser | null> {
+  if (!email) {
+    return null;
+  }
+
+  const normalizedEmail = normalizeEmail(email);
+  const legacyData =
+    providedLegacyData ||
+    (
+      await getAdminDb()
+        .collection(LEGACY_COLLECTION_NAME)
+        .doc(normalizedEmail)
+        .get()
+    ).data();
+
+  if (!legacyData) {
+    return null;
+  }
+
+  let authUser: UserRecord;
+  try {
+    authUser = await getAdminAuth().getUserByEmail(normalizedEmail);
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === 'auth/user-not-found') {
+      return null;
+    }
+
+    throw error;
+  }
+
+  const docRef = getAdminDb().collection(COLLECTION_NAME).doc(authUser.uid);
+  const existing = await docRef.get();
+  if (existing.exists) {
+    return mapInternalUser(existing.id, existing.data());
+  }
+
+  const createdAt =
+    parseDate(legacyData.createdAt) ||
+    parseDate(authUser.metadata.creationTime) ||
+    now();
+  const updatedAt =
+    parseDate(legacyData.updatedAt) ||
+    parseDate(authUser.metadata.lastRefreshTime) ||
+    createdAt;
+  const lastLoginAt = parseDate(authUser.metadata.lastSignInTime);
+  const status: InternalUserStatus = legacyData.disabled === true ? 'disabled' : 'active';
+  const roleCode = mapLegacyRoleCode(legacyData.role);
+  const payload: Record<string, unknown> = {
+    email: normalizedEmail,
+    displayName: buildDisplayName(normalizedEmail, authUser.displayName),
+    roleCode,
+    status,
+    createdAt,
+    updatedAt,
+    createdBy: typeof legacyData.createdBy === 'string' ? legacyData.createdBy : '',
+    inviteSentAt: null,
+    activatedAt: status === 'active' ? createdAt : null,
+    lastLoginAt,
+  };
+
+  await docRef.set(payload, { merge: true });
+  return mapInternalUser(authUser.uid, payload);
 }

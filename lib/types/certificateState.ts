@@ -35,6 +35,15 @@ export interface StateHistory {
   updatedAt: Date;
 }
 
+const CANCELLABLE_STATES: CertificateStateValue[] = [
+  'draft',
+  'pending_review',
+  'verified',
+  'pending_signature',
+  'signed',
+  'issued',
+];
+
 // Definición de transiciones permitidas
 export const STATE_TRANSITIONS: StateTransition[] = [
   // Draft → Pending Review
@@ -114,16 +123,16 @@ export const STATE_TRANSITIONS: StateTransition[] = [
     description: 'Hacer disponible el certificado para el participante'
   },
   
-  // Cualquier estado → Cancelled (solo admin)
-  {
-    from: 'draft' as CertificateStateValue,
-    to: 'cancelled',
+  // Cualquier estado operativo → Cancelled (solo admin)
+  ...CANCELLABLE_STATES.map((from) => ({
+    from,
+    to: 'cancelled' as CertificateStateValue,
     allowedRoles: ['administrator'],
     requiresAction: true,
-    flow: 'direct',
+    flow: 'direct' as const,
     actionLabel: 'Cancelar',
-    description: 'Anular el certificado'
-  }
+    description: 'Anular el certificado',
+  }))
 ];
 
 // Configuración de estados
