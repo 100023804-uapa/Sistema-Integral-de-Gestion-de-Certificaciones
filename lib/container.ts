@@ -9,8 +9,12 @@ import { FirebaseRoleRepository } from './infrastructure/repositories/FirebaseRo
 import { FirebaseCertificateStateRepository } from './infrastructure/repositories/FirebaseCertificateStateRepository';
 import { FirebaseDigitalSignatureRepository } from './infrastructure/repositories/FirebaseDigitalSignatureRepository';
 import { FirebaseCertificateTemplateRepository } from './infrastructure/repositories/FirebaseCertificateTemplateRepository';
+import { FirebaseAcademicProgramRepository } from './infrastructure/repositories/FirebaseAcademicProgramRepository';
+import { FirebaseSignerRepository } from './infrastructure/repositories/FirebaseSignerRepository';
+import { QueryDocumentSnapshot } from 'firebase/firestore';
 
 // Use Cases existentes
+import { CreateCertificate } from './application/use-cases/CreateCertificate';
 import { CreateCampusUseCase } from './usecases/campus/CreateCampusUseCase';
 import { ListCampusesUseCase } from './usecases/campus/ListCampusesUseCase';
 import { UpdateCampusUseCase } from './usecases/campus/UpdateCampusUseCase';
@@ -41,15 +45,24 @@ import { UpdateTemplateUseCase } from './usecases/certificateTemplate/UpdateTemp
 import { DeleteTemplateUseCase } from './usecases/certificateTemplate/DeleteTemplateUseCase';
 import { GenerateCertificateUseCase } from './usecases/certificateTemplate/GenerateCertificateUseCase';
 import { GenerateFolio } from './application/use-cases/GenerateFolio';
-import { CreateCertificate } from './application/use-cases/CreateCertificate';
 
 // Use Cases nuevos para Estudiantes (US-12)
 import { GetStudentCertificatesUseCase } from './usecases/student/GetStudentCertificatesUseCase';
 import { GetCertificateDetailsUseCase } from './usecases/student/GetCertificateDetailsUseCase';
 import { DownloadCertificateUseCase } from './usecases/student/DownloadCertificateUseCase';
+import { CreateAcademicProgramUseCase } from './usecases/academicProgram/CreateAcademicProgramUseCase';
+import { ListAcademicProgramsUseCase } from './usecases/academicProgram/ListAcademicProgramsUseCase';
+import { UpdateAcademicProgramUseCase } from './usecases/academicProgram/UpdateAcademicProgramUseCase';
+import { DeleteAcademicProgramUseCase } from './usecases/academicProgram/DeleteAcademicProgramUseCase';
+
+// Use Cases para Firmantes
+import { CreateSignerUseCase } from './usecases/signer/CreateSignerUseCase';
+import { ListSignersUseCase } from './usecases/signer/ListSignersUseCase';
+import { UpdateSignerUseCase } from './usecases/signer/UpdateSignerUseCase';
+import { DeleteSignerUseCase } from './usecases/signer/DeleteSignerUseCase';
 
 // Re-exportar tipos para evitar imports de infraestructura en app/
-export type { ProgramStat, AccessUser, AccessRequest };
+export type { ProgramStat, AccessUser, AccessRequest, QueryDocumentSnapshot };
 export type { Campus } from './types/campus';
 export type { AcademicArea } from './types/academicArea';
 export type { CertificateType } from './types/certificateType';
@@ -57,6 +70,8 @@ export type { Role, UserRole, RoleValue } from './types/role';
 export type { CertificateState, CertificateStateValue, StateHistory, StateTransition } from './types/certificateState';
 export type { DigitalSignature, SignatureRequest, SignatureTemplate, SignatureStatus } from './types/digitalSignature';
 export type { CertificateTemplate, GeneratedCertificate, TemplateType } from './types/certificateTemplate';
+export type { AcademicProgram } from './types/academicProgram';
+export type { Signer } from './types/signer';
 
 // Repositorios
 export function getAccessRepository() {
@@ -105,6 +120,14 @@ export function getDigitalSignatureRepository() {
     return new FirebaseDigitalSignatureRepository();
 }
 
+export function getAcademicProgramRepository() {
+    return new FirebaseAcademicProgramRepository();
+}
+
+export function getSignerRepository() {
+    return new FirebaseSignerRepository();
+}
+
 // Campus Use Cases
 export function getCreateCampusUseCase() {
     return new CreateCampusUseCase(getCampusRepository());
@@ -137,6 +160,40 @@ export function getUpdateAcademicAreaUseCase() {
 
 export function getDeleteAcademicAreaUseCase() {
     return new DeleteAcademicAreaUseCase(getAcademicAreaRepository());
+}
+
+// Academic Program Use Cases
+export function getCreateAcademicProgramUseCase() {
+    return new CreateAcademicProgramUseCase(getAcademicProgramRepository());
+}
+
+// Signer Use Cases
+export function getCreateSignerUseCase() {
+    return new CreateSignerUseCase(getSignerRepository());
+}
+
+export function getListSignersUseCase() {
+    return new ListSignersUseCase(getSignerRepository());
+}
+
+export function getUpdateSignerUseCase() {
+    return new UpdateSignerUseCase(getSignerRepository());
+}
+
+export function getDeleteSignerUseCase() {
+    return new DeleteSignerUseCase(getSignerRepository());
+}
+
+export function getListAcademicProgramsUseCase() {
+    return new ListAcademicProgramsUseCase(getAcademicProgramRepository());
+}
+
+export function getUpdateAcademicProgramUseCase() {
+    return new UpdateAcademicProgramUseCase(getAcademicProgramRepository());
+}
+
+export function getDeleteAcademicProgramUseCase() {
+    return new DeleteAcademicProgramUseCase(getAcademicProgramRepository());
 }
 
 // Certificate Type Use Cases
@@ -236,9 +293,21 @@ export function getGenerateFolioUseCase() {
 export function getCreateCertificateUseCase() {
     const certificateRepository = getCertificateRepository();
     const studentRepository = getStudentRepository();
-    const generateFolio = new GenerateFolio(getCertificateRepository());
+    const campusRepository = getCampusRepository();
+    const academicAreaRepository = getAcademicAreaRepository();
+    const signerRepository = getSignerRepository();
+    const templateRepository = getCertificateTemplateRepository();
+    const generateFolio = new GenerateFolio(certificateRepository);
 
-    return new CreateCertificate(certificateRepository, studentRepository, generateFolio);
+    return new CreateCertificate(
+        certificateRepository,
+        studentRepository,
+        generateFolio,
+        campusRepository,
+        academicAreaRepository,
+        signerRepository,
+        templateRepository
+    );
 }
 
 // Use Cases para Estudiantes (US-12)

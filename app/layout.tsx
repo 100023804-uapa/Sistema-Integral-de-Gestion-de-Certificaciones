@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import {Montserrat, Poppins} from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/contexts/AuthContext';
+import { AlertProvider } from '@/hooks/useAlert';
 
 const montserrat = Montserrat({
   subsets: ['latin'],
@@ -30,8 +31,10 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
     <html lang="es" className={`${montserrat.variable} ${poppins.variable}`}>
       <body className={`${montserrat.variable} ${poppins.variable}`} suppressHydrationWarning>
         <AuthProvider>
-          {children}
-          <Toaster richColors position="top-center" />
+          <AlertProvider>
+            {children}
+            <Toaster richColors position="top-center" />
+          </AlertProvider>
         </AuthProvider>
       </body>
     </html>

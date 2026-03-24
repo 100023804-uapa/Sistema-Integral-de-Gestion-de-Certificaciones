@@ -3,6 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { CertificateType } from '@/lib/container';
+import { FontLibraryPanel } from '@/components/dashboard/templates/FontLibraryPanel';
+import {
+  buildRuntimePreviewTemplate,
+  TemplateRuntimePreview,
+} from '@/components/dashboard/templates/TemplateRuntimePreview';
+import { useAuth } from '@/lib/contexts/AuthContext';
+import { TemplateFontRef } from '@/lib/types/certificateTemplate';
 import { 
   ArrowLeft, 
   Save, 
@@ -16,15 +23,18 @@ import {
   Settings,
   Grid3x3,
   Type,
-  Image,
+  Image as ImageIcon,
   QrCode,
-  PenTool
+  PenTool,
+  X
 } from 'lucide-react';
 
 export default function CreateTemplatePage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [certificateTypes, setCertificateTypes] = useState<CertificateType[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'layout' | 'placeholders' | 'code'>('basic');
   
@@ -34,7 +44,8 @@ export default function CreateTemplatePage() {
     type: 'horizontal' as 'horizontal' | 'vertical' | 'institutional_macro',
     certificateTypeId: '',
     htmlContent: '',
-    cssStyles: ''
+    cssStyles: '',
+    fontRefs: [] as TemplateFontRef[]
   });
 
   const [layout, setLayout] = useState({
@@ -91,7 +102,13 @@ export default function CreateTemplatePage() {
     { id: 'folio', name: 'Folio', type: 'text', required: true },
     { id: 'campusName', name: 'Nombre del Recinto', type: 'text', required: true },
     { id: 'verificationQR', name: 'Código QR de Verificación', type: 'qr', required: false },
-    { id: 'digitalSignature', name: 'Firma Digital', type: 'signature', required: false }
+    { id: 'digitalSignature', name: 'Firma Digital (Genérica)', type: 'signature', required: false },
+    { id: 'signer1_Name', name: 'Nombre Firmante 1', type: 'text', required: false },
+    { id: 'signer1_Title', name: 'Cargo Firmante 1', type: 'text', required: false },
+    { id: 'signer1_SignatureImage', name: 'Firma Firmante 1 (Imagen)', type: 'image', required: false },
+    { id: 'signer2_Name', name: 'Nombre Firmante 2', type: 'text', required: false },
+    { id: 'signer2_Title', name: 'Cargo Firmante 2', type: 'text', required: false },
+    { id: 'signer2_SignatureImage', name: 'Firma Firmante 2 (Imagen)', type: 'image', required: false }
   ]);
 
   useEffect(() => {
@@ -113,6 +130,20 @@ export default function CreateTemplatePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    // Validación manual
+    if (!formData.name.trim()) {
+      setError('El nombre de la plantilla es obligatorio');
+      setActiveTab('basic');
+      return;
+    }
+    if (!formData.certificateTypeId) {
+      setError('El tipo de certificado es obligatorio');
+      setActiveTab('basic');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -124,7 +155,9 @@ export default function CreateTemplatePage() {
         body: JSON.stringify({
           ...formData,
           layout,
-          placeholders
+          placeholders,
+          fontRefs: formData.fontRefs,
+          createdBy: user?.uid || 'template-editor'
         }),
       });
 
@@ -224,7 +257,7 @@ export default function CreateTemplatePage() {
     const icons = {
       'text': <Type size={16} />,
       'date': <Type size={16} />,
-      'image': <Image size={16} />,
+      'image': <ImageIcon size={16} />,
       'qr': <QrCode size={16} />,
       'signature': <PenTool size={16} />
     };
@@ -240,10 +273,24 @@ export default function CreateTemplatePage() {
     return icons[type as keyof typeof icons] || <Layout size={20} />;
   };
 
+  const previewTemplate = buildRuntimePreviewTemplate({
+    id: 'draft-template',
+    name: formData.name || 'Vista previa',
+    description: formData.description,
+    type: formData.type,
+    certificateTypeId: formData.certificateTypeId,
+    htmlContent: formData.htmlContent,
+    cssStyles: formData.cssStyles,
+    fontRefs: formData.fontRefs,
+    layout,
+    placeholders,
+    isActive: true,
+  });
+
   return (
-    <div className="container mx-auto p-6">
+    <div className="space-y-6 px-4 py-6 md:px-8 md:py-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.back()}
@@ -304,7 +351,13 @@ export default function CreateTemplatePage() {
         </nav>
       </div>
 
-      <form id="template-form" onSubmit={handleSubmit} className="space-y-6">
+      {error && (
+        <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
+          <p>{error}</p>
+        </div>
+      )}
+
+      <form id="template-form" onSubmit={handleSubmit} className="space-y-6" noValidate>
         {/* Tab: Información Básica */}
         {activeTab === 'basic' && (
           <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -320,7 +373,6 @@ export default function CreateTemplatePage() {
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
@@ -335,7 +387,6 @@ export default function CreateTemplatePage() {
                 <div className="flex items-center gap-2">
                   {getTemplateIcon(formData.type)}
                   <select
-                    required
                     value={formData.type}
                     onChange={(e) => {
                       const newType = e.target.value as any;
@@ -356,7 +407,6 @@ export default function CreateTemplatePage() {
                   Tipo de Certificado *
                 </label>
                 <select
-                  required
                   value={formData.certificateTypeId}
                   onChange={(e) => setFormData({ ...formData, certificateTypeId: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
@@ -638,64 +688,76 @@ export default function CreateTemplatePage() {
                 <h4 className="font-medium text-blue-900 mb-2">Placeholders Disponibles:</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
                   <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}studentName{'}{'}'}</code>
-                    <span className="text-gray-700">Nombre completo del estudiante</span>
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono text-primary font-bold">{"{{"}studentName{"}}"}</code>
+                    <span className="text-gray-700 font-medium">Nombre completo [OBLIGATORIO]</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}programName{'}{'}'}</code>
-                    <span className="text-gray-700">Nombre del programa académico</span>
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono text-primary font-bold">{"{{"}programName{"}}"}</code>
+                    <span className="text-gray-700 font-medium">Nombre del programa [OBLIGATORIO]</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}folio{'}{'}'}</code>
-                    <span className="text-gray-700">Número de folio del certificado</span>
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono text-primary font-bold">{"{{"}folio{"}}"}</code>
+                    <span className="text-gray-700 font-medium">Folio del certificado [OBLIGATORIO]</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}issueDate{'}{'}'}</code>
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}issueDate{"}}"}</code>
                     <span className="text-gray-700">Fecha de emisión</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}expirationDate{'}{'}'}</code>
-                    <span className="text-gray-700">Fecha de vencimiento</span>
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}campusName{"}}"}</code>
+                    <span className="text-gray-700">Nombre del recinto</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}description{'}{'}'}</code>
-                    <span className="text-gray-700">Descripción adicional</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}campusName{'}{'}'}</code>
-                    <span className="text-gray-700">Nombre del campus</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}academicArea{'}{'}'}</code>
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}academicArea{"}}"}</code>
                     <span className="text-gray-700">Área académica</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}signerName{'}{'}'}</code>
-                    <span className="text-gray-700">Nombre del firmante</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}signerTitle{'}{'}'}</code>
-                    <span className="text-gray-700">Título del firmante</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}qrCode{'}{'}'}</code>
-                    <span className="text-gray-700">Código QR de verificación</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}certificateType{'}{'}'}</code>
-                    <span className="text-gray-700">Tipo de certificado</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}grade{'}{'}'}</code>
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}grade{"}}"}</code>
                     <span className="text-gray-700">Calificación o nivel</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}duration{'}{'}'}</code>
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}duration{"}}"}</code>
                     <span className="text-gray-700">Duración del programa</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono">{'{'}{'}verificationUrl{'}{'}'}</code>
-                    <span className="text-gray-700">URL de verificación</span>
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}qrCode{"}}"}</code>
+                    <span className="text-gray-700">Código QR (Imagen)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}sealImage{"}}"}</code>
+                    <span className="text-gray-700">Imagen del Sello</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}signer1_SignatureImage{"}}"}</code>
+                    <span className="text-gray-700">Firma 1 (Imagen)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}signer1_Name{"}}"}</code>
+                    <span className="text-gray-700">Nombre Firmante 1</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}signer1_Title{"}}"}</code>
+                    <span className="text-gray-700">Cargo Firmante 1</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}signer2_SignatureImage{"}}"}</code>
+                    <span className="text-gray-700">Firma 2 (Imagen)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}signer2_Name{"}}"}</code>
+                    <span className="text-gray-700">Nombre Firmante 2</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}signer2_Title{"}}"}</code>
+                    <span className="text-gray-700">Cargo Firmante 2</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}verificationUrl{"}}"}</code>
+                    <span className="text-gray-700">URL para validar</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-white px-2 py-1 rounded border border-blue-300 font-mono font-bold">{"{{"}description{"}}"}</code>
+                    <span className="text-gray-700">Comentarios/Datos extra</span>
                   </div>
                 </div>
               </div>
@@ -703,6 +765,19 @@ export default function CreateTemplatePage() {
                 Usa estos placeholders en tu código HTML. Se reemplazarán automáticamente con los datos del certificado al generar.
               </p>
             </div>
+
+            <FontLibraryPanel
+              value={formData.fontRefs}
+              onChange={(fontRefs) => setFormData((current) => ({ ...current, fontRefs }))}
+              onInsertCssSnippet={(snippet) =>
+                setFormData((current) => ({
+                  ...current,
+                  cssStyles: `${current.cssStyles}${current.cssStyles.trim() ? '\n\n' : ''}${snippet}`.trim(),
+                }))
+              }
+              htmlContent={formData.htmlContent}
+              cssStyles={formData.cssStyles}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Editor HTML */}
@@ -781,6 +856,9 @@ h1 {
             {/* Plantillas Predefinidas */}
             <div>
               <h4 className="text-md font-medium text-gray-900 mb-3">Plantillas Predefinidas</h4>
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Estas bases ya usan solo fuentes seguras del navegador. Si necesitas una tipografia especial, importala desde el panel <strong>Fuentes</strong> y evita pegar Google Fonts o links remotos.
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button
                   type="button"
@@ -811,8 +889,8 @@ h1 {
       </div>
       <div class="signature">
         <div class="signature-line"></div>
-        <p>{{signerName}}</p>
-        <p>{{signerTitle}}</p>
+        <p>{{signer1_Name}}</p>
+        <p>{{signer1_Title}}</p>
       </div>
     </footer>
   </div>
@@ -911,7 +989,7 @@ h1 {
       <div class="logo"></div>
     </div>
     <div class="content">
-      <h2>DE {{certificateType}}</h2>
+      <h2>DE PARTICIPACION</h2>
       <p class="recipient">A nombre de:</p>
       <h3 class="name">{{studentName}}</h3>
       <p class="program">{{programName}}</p>
@@ -922,7 +1000,7 @@ h1 {
       <div class="signatures">
         <div class="signature">
           <div class="line"></div>
-          <p>{{signerName}}</p>
+          <p>{{signer1_Name}}</p>
         </div>
       </div>
     </div>
@@ -1037,13 +1115,13 @@ h1 {
       <div class="signatures">
         <div class="signature">
           <div class="line"></div>
-          <p>{{rectorName}}</p>
-          <p>Rector</p>
+          <p>{{signer1_Name}}</p>
+          <p>{{signer1_Title}}</p>
         </div>
         <div class="signature">
           <div class="line"></div>
-          <p>{{secretaryName}}</p>
-          <p>Secretario Académico</p>
+          <p>{{signer2_Name}}</p>
+          <p>{{signer2_Title}}</p>
         </div>
       </div>
     </div>
@@ -1182,93 +1260,109 @@ h1 {
 
       {/* Modal de Vista Previa */}
       {showPreview && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Vista Previa</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-[95vw] h-[95vh] mx-4 flex flex-col overflow-hidden">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-bold">Vista Previa de la Plantilla</h2>
               <button
                 onClick={() => setShowPreview(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                title="Cerrar"
               >
-                ×
+                <X size={24} />
               </button>
             </div>
             
-            <div className="bg-gray-100 rounded-lg p-4 min-h-[400px]">
-              <div 
-                className="bg-white shadow-lg mx-auto relative"
-                style={{
-                  width: `${Math.min(layout.width, 600)}px`,
-                  height: `${Math.min(layout.height, 400)}px`,
-                  transform: `scale(${Math.min(600 / layout.width, 400 / layout.height)})`,
-                  transformOrigin: 'top center'
-                }}
-              >
-                {/* Header */}
+            <div className="flex-1 bg-gray-50 overflow-auto p-8 flex justify-center items-start border-b">
+              {(formData.htmlContent || formData.cssStyles || formData.fontRefs.length > 0) ? (
+                <div className="w-full max-w-[1120px]">
+                  <TemplateRuntimePreview
+                    template={previewTemplate}
+                    maxWidth={1040}
+                    maxHeight={760}
+                    watermarkText="Vista previa"
+                    title="Vista Previa de Plantilla"
+                  />
+                </div>
+              ) : (
                 <div 
-                  className="border-b-2 border-gray-800 flex items-center justify-center p-4"
-                  style={{ backgroundColor: '#1e40af', color: '#ffffff' }}
+                  className="bg-white shadow-2xl relative"
+                  style={{
+                    width: `${layout.width}mm`,
+                    height: `${layout.height}mm`,
+                    transform: `scale(1)`,
+                    transformOrigin: 'top center',
+                    marginBottom: '2rem'
+                  }}
                 >
-                  <h1 className="text-xl font-bold">CERTIFICADO</h1>
-                </div>
-                
-                {/* Body */}
-                <div className="p-6 text-center">
-                  <h2 className="text-2xl font-bold mb-4">CERTIFICADO DE {formData.type?.toUpperCase() || 'FINALIZACIÓN'}</h2>
-                  <p className="text-lg mb-2">Se otorga a:</p>
-                  <p className="text-xl font-semibold mb-4">[Nombre del Estudiante]</p>
-                  <p className="text-gray-600 mb-2">Por haber completado satisfactoriamente:</p>
-                  <p className="text-lg font-medium">[Programa Académico]</p>
-                </div>
-                
-                {/* Footer */}
-                <div className="border-t mt-auto p-4 flex justify-between items-center">
-                  <div className="text-left">
-                    <p className="text-sm text-gray-600">Folio: [FOLIO]</p>
-                    <p className="text-sm text-gray-600">Fecha: [FECHA]</p>
+                  {/* Header */}
+                  <div 
+                    className="border-b-2 border-gray-800 flex items-center justify-center p-4"
+                    style={{ backgroundColor: '#1e40af', color: '#ffffff' }}
+                  >
+                    <h1 className="text-xl font-bold">CERTIFICADO</h1>
                   </div>
-                  <div className="text-right">
-                    <div className="w-24 h-12 border-2 border-dashed border-gray-400 flex items-center justify-center">
-                      <span className="text-xs text-gray-500">FIRMA</span>
+                  
+                  {/* Body */}
+                  <div className="p-6 text-center">
+                    <h2 className="text-2xl font-bold mb-4">CERTIFICADO DE {formData.type?.toUpperCase() || 'FINALIZACIÓN'}</h2>
+                    <p className="text-lg mb-2">Se otorga a:</p>
+                    <p className="text-xl font-semibold mb-4">[Nombre del Estudiante]</p>
+                    <p className="text-gray-600 mb-2">Por haber completado satisfactoriamente:</p>
+                    <p className="text-lg font-medium">[Programa Académico]</p>
+                  </div>
+                  
+                  {/* Footer */}
+                  <div className="border-t mt-auto p-4 flex justify-between items-center">
+                    <div className="text-left">
+                      <p className="text-sm text-gray-600">Folio: [FOLIO]</p>
+                      <p className="text-sm text-gray-600">Fecha: [FECHA]</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="w-24 h-12 border-2 border-dashed border-gray-400 flex items-center justify-center">
+                        <span className="text-xs text-gray-500">FIRMA</span>
+                      </div>
                     </div>
                   </div>
+                  
+                  {/* QR Code Placeholder */}
+                  <div className="absolute bottom-4 right-4 w-16 h-16 bg-gray-200 border-2 border-gray-300 flex items-center justify-center">
+                    <QrCode size={24} className="text-gray-500" />
+                  </div>
                 </div>
-                
-                {/* QR Code Placeholder */}
-                <div className="absolute bottom-4 right-4 w-16 h-16 bg-gray-200 border-2 border-gray-300 flex items-center justify-center">
-                  <QrCode size={24} className="text-gray-500" />
+              )}
+            </div>
+            
+            <div className="bg-white p-6">
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <h3 className="font-semibold text-blue-900 mb-2">Configuración Actual:</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
+                  <div>
+                    <span className="font-semibold block text-blue-800 uppercase text-[10px]">Nombre</span> {formData.name || 'Sin nombre'}
+                  </div>
+                  <div>
+                    <span className="font-semibold block text-blue-800 uppercase text-[10px]">Tipo</span> {formData.type}
+                  </div>
+                  <div>
+                    <span className="font-semibold block text-blue-800 uppercase text-[10px]">Dimensiones</span> {layout.width}×{layout.height}mm
+                  </div>
+                  <div>
+                    <span className="font-semibold block text-blue-800 uppercase text-[10px]">Orientación</span> {layout.orientation}
+                  </div>
+                  <div>
+                    <span className="font-semibold block text-blue-800 uppercase text-[10px]">Secciones</span> {layout.sections?.length || 0}
+                  </div>
+                  <div>
+                    <span className="font-semibold block text-blue-800 uppercase text-[10px]">Placeholders</span> {placeholders.length}
+                  </div>
                 </div>
               </div>
             </div>
             
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-              <h3 className="font-semibold text-blue-900 mb-2">Configuración Actual:</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Nombre:</span> {formData.name || 'Sin nombre'}
-                </div>
-                <div>
-                  <span className="font-medium">Tipo:</span> {formData.type}
-                </div>
-                <div>
-                  <span className="font-medium">Dimensiones:</span> {layout.width}×{layout.height}mm
-                </div>
-                <div>
-                  <span className="font-medium">Orientación:</span> {layout.orientation}
-                </div>
-                <div>
-                  <span className="font-medium">Secciones:</span> {layout.sections?.length || 0}
-                </div>
-                <div>
-                  <span className="font-medium">Placeholders:</span> {placeholders.length}
-                </div>
-              </div>
-            </div>
-            
-            <div className="mt-6 flex justify-end">
+            <div className="px-6 pb-6 flex justify-end">
               <button
                 onClick={() => setShowPreview(false)}
-                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+                className="px-6 py-2 bg-slate-900 text-white rounded-md hover:bg-slate-800 font-medium transition-all"
               >
                 Cerrar
               </button>

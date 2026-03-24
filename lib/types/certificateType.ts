@@ -5,6 +5,7 @@ export interface CertificateType {
   name: string;
   code: CertificateTypeValue;
   description?: string;
+  defaultFolioPrefix?: string;
   requiresSignature: boolean;
   isActive: boolean;
   createdAt: Date;
@@ -15,6 +16,7 @@ export interface CreateCertificateTypeRequest {
   name: string;
   code: CertificateTypeValue;
   description?: string;
+  defaultFolioPrefix?: string;
   requiresSignature?: boolean;
 }
 
@@ -22,6 +24,7 @@ export interface UpdateCertificateTypeRequest {
   name?: string;
   code?: CertificateTypeValue;
   description?: string;
+  defaultFolioPrefix?: string;
   requiresSignature?: boolean;
   isActive?: boolean;
 }

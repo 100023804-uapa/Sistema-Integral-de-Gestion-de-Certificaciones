@@ -132,6 +132,16 @@ export class FirebaseDigitalSignatureRepository {
     return querySnapshot.docs.map(this.mapToSignatureRequest);
   }
 
+  async getAllSignatureRequests(): Promise<SignatureRequest[]> {
+    const q = query(
+      collection(db, this.requestsCollection),
+      orderBy('requestedAt', 'desc')
+    );
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(this.mapToSignatureRequest);
+  }
+
   async getSignatureRequest(certificateId: string): Promise<SignatureRequest | null> {
     const q = query(
       collection(db, this.requestsCollection),

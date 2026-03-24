@@ -40,8 +40,8 @@ export interface SignatureRequest {
   status: SignatureStatus;
   requestedAt: Date;
   respondedAt?: Date;
-  expiresAt: Date;
   rejectionReason?: string;
+  expiresAt: Date;
   certificateData: {
     folio: string;
     studentName: string;

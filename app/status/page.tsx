@@ -95,20 +95,20 @@ export default async function StatusPage({ searchParams }: PageProps) {
                                         <div className="flex-1">
                                             <div className="flex flex-wrap items-center gap-2 mb-1">
                                                 <h3 className="font-bold text-gray-900 text-lg">
-                                                    {cert.courseName}
+                                                    Certificado {cert.folio}
                                                 </h3>
                                                 <span className="px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200">
-                                                    {cert.folio}
+                                                    {cert.statusLabel}
                                                 </span>
                                             </div>
                                             <p className="text-sm text-gray-500">
-                                                Solicitante: <span className="font-medium text-gray-700">{cert.studentName}</span>
+                                                Resultado: <span className="font-medium text-gray-700">{cert.message}</span>
                                             </p>
                                         </div>
 
                                         <div className="text-right min-w-[140px]">
-                                            <div className={`text-sm font-bold uppercase tracking-wide mb-1 ${cert.status === 'valid' ? 'text-green-600' : 'text-red-600'}`}>
-                                                {cert.status === 'valid' ? 'Completado' : 'Cancelado'}
+                                            <div className={`text-sm font-bold uppercase tracking-wide mb-1 ${cert.isValid ? 'text-green-600' : 'text-red-600'}`}>
+                                                {cert.isValid ? 'Valido' : 'No disponible'}
                                             </div>
                                             <p className="text-xs text-gray-400">
                                                 Actualizado: {new Date(cert.issueDate).toLocaleDateString()}
@@ -116,7 +116,7 @@ export default async function StatusPage({ searchParams }: PageProps) {
                                         </div>
                                         
                                         <div>
-                                             <Link href={`/verify/${cert.id}`}>
+                                             <Link href={`/verify/${cert.verificationCode || cert.folio}`}>
                                                 <Button variant="outline" size="sm" className="rounded-lg">
                                                     Ver Detalles <ChevronRight className="ml-1 h-3 w-3" />
                                                 </Button>

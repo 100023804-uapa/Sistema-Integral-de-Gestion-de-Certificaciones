@@ -17,10 +17,15 @@ const COLLECTION_NAME = 'access_users';
 export interface AccessUser {
     id: string;
     email: string;
-    role: 'admin';
+    role: string; // Flexibilidad para nombres de roles dinámicos
     createdAt: Date | null;
     createdBy?: string;
     updatedAt: Date | null;
+    disabled?: boolean;
+    // Datos de Alcance vinculados al usuario
+    campusId?: string;
+    academicAreaId?: string;
+    signerId?: string;
 }
 
 export interface AccessRequest {
@@ -49,6 +54,7 @@ export class FirebaseAccessRepository {
             createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null,
             createdBy: data.createdBy,
             updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : null,
+            disabled: data.disabled || false,
         };
     }
 
@@ -113,6 +119,14 @@ export class FirebaseAccessRepository {
         const normalized = this.normalizeEmail(email);
         await setDoc(doc(db, COLLECTION_NAME, normalized), {
             disabled: true,
+            updatedAt: serverTimestamp()
+        }, { merge: true });
+    }
+
+    async enableAdmin(email: string): Promise<void> {
+        const normalized = this.normalizeEmail(email);
+        await setDoc(doc(db, COLLECTION_NAME, normalized), {
+            disabled: false,
             updatedAt: serverTimestamp()
         }, { merge: true });
     }

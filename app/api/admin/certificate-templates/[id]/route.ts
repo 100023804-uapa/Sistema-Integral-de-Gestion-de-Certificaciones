@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUpdateTemplateUseCase, getDeleteTemplateUseCase, getListTemplatesUseCase } from '@/lib/container';
+
 import { requireInternalUserRole } from '@/lib/auth/server';
+import { getUpdateTemplateUseCase, getDeleteTemplateUseCase, getListTemplatesUseCase } from '@/lib/container';
 
 export async function GET(
   request: NextRequest,
@@ -23,11 +24,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      data: template 
+    return NextResponse.json({
+      success: true,
+      data: template,
     });
-
   } catch (error) {
     console.error('Error fetching certificate template:', error);
     return NextResponse.json(
@@ -52,11 +52,10 @@ export async function PUT(
     const updateTemplateUseCase = getUpdateTemplateUseCase();
     const template = await updateTemplateUseCase.execute(id, body);
 
-    return NextResponse.json({ 
-      success: true, 
-      data: template 
+    return NextResponse.json({
+      success: true,
+      data: template,
     });
-
   } catch (error) {
     console.error('Error updating certificate template:', error);
     return NextResponse.json(
@@ -80,11 +79,10 @@ export async function DELETE(
     const deleteTemplateUseCase = getDeleteTemplateUseCase();
     await deleteTemplateUseCase.execute(id);
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Plantilla eliminada exitosamente' 
+    return NextResponse.json({
+      success: true,
+      message: 'Plantilla eliminada exitosamente',
     });
-
   } catch (error) {
     console.error('Error deleting certificate template:', error);
     return NextResponse.json(

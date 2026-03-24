@@ -4,16 +4,17 @@ import { requireInternalUserRole } from '@/lib/auth/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireInternalUserRole(request, ['administrator']);
     if (auth.response) {
       return auth.response;
     }
+    const { id } = await params;
 
     const roleRepository = getRoleRepository();
-    const role = await roleRepository.findById(params.id);
+    const role = await roleRepository.findById(id);
 
     if (!role) {
       return NextResponse.json(
@@ -38,17 +39,18 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireInternalUserRole(request, ['administrator']);
     if (auth.response) {
       return auth.response;
     }
+    const { id } = await params;
 
     const body = await request.json();
     const updateRoleUseCase = getUpdateRoleUseCase();
-    const role = await updateRoleUseCase.execute(params.id, body);
+    const role = await updateRoleUseCase.execute(id, body);
 
     return NextResponse.json({ 
       success: true, 
@@ -66,16 +68,17 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireInternalUserRole(request, ['administrator']);
     if (auth.response) {
       return auth.response;
     }
+    const { id } = await params;
 
     const deleteRoleUseCase = getDeleteRoleUseCase();
-    await deleteRoleUseCase.execute(params.id);
+    await deleteRoleUseCase.execute(id);
 
     return NextResponse.json({ 
       success: true, 

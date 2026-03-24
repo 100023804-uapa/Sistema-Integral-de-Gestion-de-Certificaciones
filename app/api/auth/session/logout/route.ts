@@ -1,23 +1,32 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+
 import {
-    clearSessionCookie,
-    getSessionCookieValue,
-    revokeSession,
+  clearSessionCookie,
+  getSessionCookieValue,
+  revokeSession,
 } from '@/lib/auth/session';
+import {
+  SESSION_COOKIE_NAME,
+  getSessionCookieOptions as getAppSessionCookieOptions,
+} from '@/lib/auth/app-session';
+
+export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
-    try {
-        const sessionCookie = getSessionCookieValue(request);
-        await revokeSession(sessionCookie);
+  try {
+    const sessionCookie = getSessionCookieValue(request);
+    await revokeSession(sessionCookie);
 
-        const response = NextResponse.json({ success: true });
-        return clearSessionCookie(response);
+    const response = NextResponse.json({ success: true });
+    clearSessionCookie(response);
+    response.cookies.set(SESSION_COOKIE_NAME, '', getAppSessionCookieOptions(0));
 
-    } catch (error) {
-        console.error('Logout session error:', error);
-        return NextResponse.json(
-            { error: 'No fue posible cerrar la sesión. Inténtelo de nuevo.' },
-            { status: 500 }
-        );
-    }
+    return response;
+  } catch (error) {
+    console.error('Logout session error:', error);
+    return NextResponse.json(
+      { success: false, error: 'No fue posible cerrar la sesión. Inténtelo de nuevo.' },
+      { status: 500 }
+    );
+  }
 }

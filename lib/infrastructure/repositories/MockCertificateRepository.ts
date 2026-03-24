@@ -10,6 +10,7 @@ export class MockCertificateRepository implements ICertificateRepository {
       studentName: 'Juan Pérez Rodríguez',
       academicProgram: 'Diplomado en Ciberseguridad y Hacking Ético',
       issueDate: new Date('2023-10-15'),
+      campusId: 'mock-campus',
       qrCodeUrl: '/mock-qr.png',
       pdfUrl: '/mock-certificate.pdf',
       status: 'active',
@@ -33,6 +34,7 @@ export class MockCertificateRepository implements ICertificateRepository {
       studentName: 'Carlos Jiménez',
       academicProgram: 'Criminología Educativa y Prevención Escolar',
       issueDate: new Date('2023-10-08'),
+      campusId: 'mock-campus',
       qrCodeUrl: '/mock-qr-2.png',
       pdfUrl: '/mock-certificate-2.pdf',
       status: 'active',
@@ -62,6 +64,10 @@ export class MockCertificateRepository implements ICertificateRepository {
 
   async findByFolio(folio: string): Promise<Certificate | null> {
     return this.certificates.find((c) => c.folio === folio) || null;
+  }
+
+  async findByVerificationCode(code: string): Promise<Certificate | null> {
+    return this.certificates.find((c) => c.publicVerificationCode === code || c.folio === code) || null;
   }
 
   async findByStudentId(studentId: string): Promise<Certificate[]> {
@@ -111,7 +117,20 @@ export class MockCertificateRepository implements ICertificateRepository {
     }
   }
 
-  async countByYearAndType(year: number, type: string): Promise<number> {
+  async updatePdfAsset(id: string, pdfUrl: string | null, storageKey?: string | null): Promise<void> {
+    const index = this.certificates.findIndex((certificate) => certificate.id === id);
+    if (index === -1) return;
+
+    this.certificates[index].pdfUrl = pdfUrl || undefined;
+    this.certificates[index].metadata = {
+      ...(this.certificates[index].metadata || {}),
+      pdfStorageKey: storageKey || null,
+      pdfPersistedAt: new Date().toISOString(),
+    };
+    this.certificates[index].updatedAt = new Date();
+  }
+
+  async countByYearAndType(year: number, type: Certificate['type']): Promise<number> {
     return this.certificates.filter(c =>
       c.issueDate.getFullYear() === year && c.type === type
     ).length;

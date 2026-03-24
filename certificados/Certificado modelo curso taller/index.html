@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificado Oficial UAPA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=Pinyon+Script&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="certificate-wrapper">
+        <main class="certificate-container">
+            <header class="logos-header">
+                <img src="https://utfs.io/f/T9qxIVmwE4N8JXTKZe7pYcgqIzhXBxTJjLadt9rf4SEokWM5" alt="Logo CAP" class="logo-left">
+                <div class="titles">
+                    <h1 class="inst-name">Universidad Abierta para Adultos</h1>
+                    <h2 class="sub-name">Centro de Capacitación Profesional</h2>
+                </div>
+                <img src="https://utfs.io/f/T9qxIVmwE4N87WpL81RDUunQoKEw5pVxbS7tNzGi2jyI89LZ" alt="Logo UAPA" class="logo-right">
+            </header>
+
+            <section class="content">
+                <p class="award-text">Otorgan el presente certificado a:</p>
+
+                <h3 class="recipient-name">{{studentName}}</h3>
+
+                <p class="course-intro">Por su participación en el Curso-Taller:</p>
+                <h4 class="course-title">{{programName}}</h4>
+
+                <div class="academic-details">
+                    <span>Área: {{academicArea}}</span>
+                    <span class="separator">|</span>
+                    <span>Calificación: {{grade}}</span>
+                </div>
+
+                <p class="location-date">
+                    Dado en el recinto {{campusName}}, República Dominicana,<br>
+                    a los {{issueDate}}, con una duración de {{duration}}.
+                </p>
+            </section>
+
+            <footer class="footer-band">
+                <div class="signature-block signature-left">
+                    <div class="signature-image-wrapper">
+                        <img src="{{signer1_SignatureImage}}" alt="Firma 1" class="sig-img">
+                    </div>
+                    <div class="line"></div>
+                    <span class="signer-name">{{signer1_Name}}</span>
+                    <span class="signer-title">{{signer1_Title}}</span>
+                </div>
+
+                <div class="center-mark">
+                    <img src="{{sealImage}}" alt="Sello Institucional" class="seal-img">
+                    <span class="seal-caption">Sello institucional</span>
+                </div>
+
+                <div class="signature-block signature-right">
+                    <div class="signature-image-wrapper">
+                        <img src="{{signer2_SignatureImage}}" alt="Firma 2" class="sig-img">
+                    </div>
+                    <div class="line"></div>
+                    <span class="signer-name">{{signer2_Name}}</span>
+                    <span class="signer-title">{{signer2_Title}}</span>
+                </div>
+            </footer>
+
+            <div class="registration-footer">
+                <p>*Registrado en el libro <u>9</u> folio <u>{{folio}}</u> con el número <u>{{description}}</u></p>
+                <p class="verify-link">Validar autenticidad en: {{verificationUrl}}</p>
+            </div>
+
+            <aside class="qr-corner">
+                <img src="{{qrCode}}" alt="Código QR" class="qr-code">
+                <span class="qr-caption">Validar autenticidad</span>
+            </aside>
+        </main>
+    </div>
+</body>
+</html>

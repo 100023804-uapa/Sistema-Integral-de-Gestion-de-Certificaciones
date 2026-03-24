@@ -1,27 +1,52 @@
 import type { CertificateRestriction } from '@/lib/types/certificateRestriction';
 import type { CertificateStatusValue } from '@/lib/types/certificateStatus';
+import type {
+  TemplateFontProfile,
+  TemplateFontRef,
+  TemplateLayout,
+  TemplatePlaceholder,
+  TemplateType,
+} from '@/lib/types/certificateTemplate';
 
 export type CertificateStatus = CertificateStatusValue;
 export type CertificateType = 'CAP' | 'PROFUNDO';
 
+export interface CertificateTemplateSnapshot {
+  templateId?: string | null;
+  name: string;
+  description?: string;
+  type: TemplateType;
+  certificateTypeId: string;
+  htmlContent: string;
+  cssStyles: string;
+  fontRefs: TemplateFontRef[];
+  fontProfile?: TemplateFontProfile | null;
+  layout: TemplateLayout;
+  placeholders: TemplatePlaceholder[];
+  capturedAt: Date;
+}
+
 export interface Certificate {
-  id: string; // UUID interno
-  folio: string; // Código único visible (e.g., sigce-2026-CAP-0001)
-  studentId: string; // Relación con Student
-  studentName: string; // Desnormalizado para consultas rápidas
+  id: string;
+  folio: string;
+  studentId: string;
+  studentName: string;
+  studentEmail?: string | null;
+  cedula?: string | null;
   type: CertificateType;
-  academicProgram: string; // Nombre del curso/diplomado
+  academicProgram: string;
   issueDate: Date;
-  expirationDate?: Date; // Opcional
+  expirationDate?: Date | null;
   status: CertificateStatus;
-  templateId?: string; // ID de la plantilla utilizada
-  qrCodeUrl: string; // URL pública de validación
-  publicVerificationCode?: string; // Código hash único (US-13)
-  pdfUrl?: string; // URL del archivo en Storage
-  campusId: string; // ID del recinto (obligatorio)
-  academicAreaId?: string; // ID del área académica (obligatorio en futuro)
-  certificateTypeId?: string; // ID del tipo de certificado (opcional por ahora)
-  metadata: Record<string, any>; // Para datos extra flexibles
+  templateId?: string | null;
+  qrCodeUrl: string;
+  publicVerificationCode?: string;
+  pdfUrl?: string | null;
+  campusId: string;
+  academicAreaId?: string | null;
+  certificateTypeId?: string | null;
+  templateSnapshot?: CertificateTemplateSnapshot | null;
+  metadata: Record<string, any>;
   previousStatus?: CertificateStatus;
   stateChangedAt?: Date;
   stateChangedBy?: string;
@@ -40,9 +65,12 @@ export interface Certificate {
 
 export interface CertificateHistoryItem {
   date: Date;
-  action: string; // 'created', 'updated', 'printed', 'delivered', 'revoked'
-  performedBy: string; // User ID or Name
+  action: string;
+  performedBy: string;
   details?: string;
 }
 
-export type CreateCertificateDTO = Omit<Certificate, 'id' | 'createdAt' | 'updatedAt' | 'qrCodeUrl' | 'pdfUrl' | 'publicVerificationCode'>;
+export type CreateCertificateDTO = Omit<
+  Certificate,
+  'id' | 'createdAt' | 'updatedAt' | 'qrCodeUrl' | 'pdfUrl' | 'publicVerificationCode'
+>;

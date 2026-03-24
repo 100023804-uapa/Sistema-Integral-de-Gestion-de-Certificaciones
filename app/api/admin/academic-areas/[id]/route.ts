@@ -4,16 +4,17 @@ import { requireInternalUserRole } from '@/lib/auth/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireInternalUserRole(request, ['administrator']);
     if (auth.response) {
       return auth.response;
     }
+    const { id } = await params;
 
     const academicAreaRepository = getAcademicAreaRepository();
-    const academicArea = await academicAreaRepository.findById(params.id);
+    const academicArea = await academicAreaRepository.findById(id);
 
     if (!academicArea) {
       return NextResponse.json(
@@ -38,17 +39,18 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireInternalUserRole(request, ['administrator']);
     if (auth.response) {
       return auth.response;
     }
+    const { id } = await params;
 
     const body = await request.json();
     const updateAcademicAreaUseCase = getUpdateAcademicAreaUseCase();
-    const academicArea = await updateAcademicAreaUseCase.execute(params.id, body);
+    const academicArea = await updateAcademicAreaUseCase.execute(id, body);
 
     return NextResponse.json({ 
       success: true, 
@@ -66,16 +68,17 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireInternalUserRole(request, ['administrator']);
     if (auth.response) {
       return auth.response;
     }
+    const { id } = await params;
 
     const deleteAcademicAreaUseCase = getDeleteAcademicAreaUseCase();
-    await deleteAcademicAreaUseCase.execute(params.id);
+    await deleteAcademicAreaUseCase.execute(id);
 
     return NextResponse.json({ 
       success: true, 

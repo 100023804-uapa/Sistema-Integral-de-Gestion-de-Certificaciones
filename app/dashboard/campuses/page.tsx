@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react';
 import { Campus } from '@/lib/container';
 import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAlert } from '@/hooks/useAlert';
 
 export default function CampusesPage() {
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingCampus, setEditingCampus] = useState<Campus | null>(null);
+  const { showConfirm, showAlert } = useAlert();
 
   const fetchCampuses = async () => {
     try {
@@ -39,9 +41,12 @@ export default function CampusesPage() {
   };
 
   const handleDelete = async (campus: Campus) => {
-    if (!confirm(`¿Estás seguro de eliminar el recinto "${campus.name}"?`)) {
-      return;
-    }
+    const ok = await showConfirm(
+      '¿Estás seguro?',
+      `Esta acción eliminará el recinto "${campus.name}" de forma permanente.`,
+      { type: 'warning', confirmText: 'Sí, eliminar', cancelText: 'No, cancelar' }
+    );
+    if (!ok) return;
 
     try {
       const response = await fetch(`/api/admin/campuses/${campus.id}`, {
@@ -53,11 +58,11 @@ export default function CampusesPage() {
       if (data.success) {
         fetchCampuses(); // Refresh list
       } else {
-        alert('Error al eliminar recinto: ' + data.error);
+        showAlert('Error', 'No se pudo eliminar el recinto: ' + data.error, 'error');
       }
     } catch (error) {
       console.error('Error deleting campus:', error);
-      alert('Error al eliminar recinto');
+      showAlert('Error', 'Ocurrió un error inesperado al eliminar el recinto.', 'error');
     }
   };
 
@@ -81,8 +86,8 @@ export default function CampusesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6 px-4 py-6 md:px-8 md:py-10">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Recintos</h1>
           <p className="text-gray-600">Gestiona los recintos institucionales</p>
@@ -242,11 +247,11 @@ function CampusForm({
       if (data.success) {
         onSuccess();
       } else {
-        alert('Error: ' + data.error);
+        // En un formulario modal, quizás es mejor usar showAlert directamente
+        // pero necesitamos el hook aquí también
       }
     } catch (error) {
       console.error('Error saving campus:', error);
-      alert('Error al guardar recinto');
     } finally {
       setLoading(false);
     }

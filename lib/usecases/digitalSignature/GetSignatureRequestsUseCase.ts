@@ -4,7 +4,7 @@ import { FirebaseDigitalSignatureRepository } from '@/lib/infrastructure/reposit
 export class GetSignatureRequestsUseCase {
   constructor(
     private signatureRepository: FirebaseDigitalSignatureRepository
-  ) {}
+  ) { }
 
   async getRequestsBySigner(signerId: string, status?: string): Promise<SignatureRequest[]> {
     if (!signerId?.trim()) {
@@ -12,7 +12,7 @@ export class GetSignatureRequestsUseCase {
     }
 
     return await this.signatureRepository.getSignatureRequestsBySigner(
-      signerId, 
+      signerId,
       status as any
     );
   }
@@ -23,6 +23,10 @@ export class GetSignatureRequestsUseCase {
     }
 
     return await this.signatureRepository.getSignatureRequestsByRequester(requestedBy);
+  }
+
+  async getAllRequests(): Promise<SignatureRequest[]> {
+    return await this.signatureRepository.getAllSignatureRequests();
   }
 
   async getRequestByCertificate(certificateId: string): Promise<SignatureRequest | null> {

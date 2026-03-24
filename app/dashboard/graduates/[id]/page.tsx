@@ -128,7 +128,7 @@ export default function GraduateDetailsPage() {
     }
 
     return (
-        <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+        <div className="max-w-5xl mx-auto mt-8 space-y-8 animate-in fade-in duration-500">
             {/* Header */}
             <div>
                 <button 
@@ -147,7 +147,14 @@ export default function GraduateDetailsPage() {
                         </h1>
                         <p className="text-gray-500 mt-1 ml-14">Perfil detallado del participante</p>
                     </div>
-                    {/* Acciones futuras: Editar, Eliminar */}
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => router.push(`/dashboard/graduates/${student.id}/edit`)}
+                            className="px-6 py-2 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                        >
+                            Editar Participante
+                        </button>
+                    </div>
                 </div>
             </div>
 

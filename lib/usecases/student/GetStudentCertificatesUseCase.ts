@@ -1,8 +1,8 @@
 import { StudentCertificate, StudentCertificateFilter } from '@/lib/domain/entities/StudentCertificate';
-import { ICertificateRepository } from '@/lib/domain/repositories/ICertificateRepository';
+import { IStudentCertificateRepository } from '@/lib/domain/repositories/IStudentCertificateRepository';
 
 export class GetStudentCertificatesUseCase {
-  constructor(private certificateRepository: ICertificateRepository) {}
+  constructor(private certificateRepository: IStudentCertificateRepository) {}
 
   async execute(studentId: string, filter?: StudentCertificateFilter): Promise<StudentCertificate[]> {
     // Construir query base

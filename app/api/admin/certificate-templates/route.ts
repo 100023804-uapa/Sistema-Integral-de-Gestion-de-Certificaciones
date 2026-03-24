@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getListTemplatesUseCase, getCreateTemplateUseCase } from '@/lib/container';
+
 import { requireInternalUserRole } from '@/lib/auth/server';
+import { getListTemplatesUseCase, getCreateTemplateUseCase } from '@/lib/container';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,32 +14,30 @@ export async function GET(request: NextRequest) {
     const activeOnly = searchParams.get('activeOnly') === 'true';
     const type = searchParams.get('type') as 'horizontal' | 'vertical' | 'institutional_macro' | null;
     const certificateTypeId = searchParams.get('certificateTypeId');
-    
+
     const listTemplatesUseCase = getListTemplatesUseCase();
-    
+
     if (type) {
-      // Filtrar por tipo
       const templates = await listTemplatesUseCase.findByType(type);
-      return NextResponse.json({ 
-        success: true, 
-        data: templates 
-      });
-    } else if (certificateTypeId) {
-      // Filtrar por tipo de certificado
-      const templates = await listTemplatesUseCase.findByCertificateType(certificateTypeId);
-      return NextResponse.json({ 
-        success: true, 
-        data: templates 
-      });
-    } else {
-      // Listar todas
-      const templates = await listTemplatesUseCase.execute(activeOnly);
-      return NextResponse.json({ 
-        success: true, 
-        data: templates 
+      return NextResponse.json({
+        success: true,
+        data: templates,
       });
     }
 
+    if (certificateTypeId) {
+      const templates = await listTemplatesUseCase.findByCertificateType(certificateTypeId);
+      return NextResponse.json({
+        success: true,
+        data: templates,
+      });
+    }
+
+    const templates = await listTemplatesUseCase.execute(activeOnly);
+    return NextResponse.json({
+      success: true,
+      data: templates,
+    });
   } catch (error) {
     console.error('Error fetching certificate templates:', error);
     return NextResponse.json(
@@ -55,8 +54,9 @@ export async function POST(request: NextRequest) {
       return auth.response;
     }
     const currentUser = auth.user!;
+
     const body = await request.json();
-    
+
     const createTemplateUseCase = getCreateTemplateUseCase();
     const template = await createTemplateUseCase.execute(
       {
@@ -64,17 +64,19 @@ export async function POST(request: NextRequest) {
         description: body.description,
         type: body.type,
         certificateTypeId: body.certificateTypeId,
+        htmlContent: body.htmlContent,
+        cssStyles: body.cssStyles,
+        fontRefs: body.fontRefs,
         layout: body.layout,
-        placeholders: body.placeholders
+        placeholders: body.placeholders,
       },
       currentUser.uid
     );
 
-    return NextResponse.json({ 
-      success: true, 
-      data: template 
+    return NextResponse.json({
+      success: true,
+      data: template,
     });
-
   } catch (error) {
     console.error('Error creating certificate template:', error);
     return NextResponse.json(

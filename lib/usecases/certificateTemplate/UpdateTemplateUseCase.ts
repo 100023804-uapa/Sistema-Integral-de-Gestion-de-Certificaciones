@@ -1,11 +1,11 @@
-import { CertificateTemplate } from '@/lib/types/certificateTemplate';
+import { CertificateTemplate, TemplateFontRef } from '@/lib/types/certificateTemplate';
 import { FirebaseCertificateTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateTemplateRepository';
 import { getListCertificateTypesUseCase } from '@/lib/container';
 
 export class UpdateTemplateUseCase {
   constructor(
     private templateRepository: FirebaseCertificateTemplateRepository
-  ) {}
+  ) { }
 
   async execute(
     id: string,
@@ -14,6 +14,7 @@ export class UpdateTemplateUseCase {
       description?: string;
       htmlContent?: string;
       cssStyles?: string;
+      fontRefs?: TemplateFontRef[];
       layout?: any;
       placeholders?: any[];
       isActive?: boolean;
@@ -33,12 +34,12 @@ export class UpdateTemplateUseCase {
     // Si se actualiza el nombre, verificar que no exista otra con el mismo nombre
     if (data.name) {
       const templates = await this.templateRepository.findByCertificateType(existingTemplate.certificateTypeId);
-      const nameExists = templates.some(template => 
-        template.name.toLowerCase() === data.name!.toLowerCase() && 
-        template.id !== id && 
+      const nameExists = templates.some(template =>
+        template.name.toLowerCase() === data.name!.toLowerCase() &&
+        template.id !== id &&
         template.isActive
       );
-      
+
       if (nameExists) {
         throw new Error('Ya existe otra plantilla activa con ese nombre para este tipo de certificado');
       }
@@ -67,11 +68,13 @@ export class UpdateTemplateUseCase {
     }
 
     // Validar que contenga placeholders básicos
-    const requiredPlaceholders = ['{{studentName}}', '{{academicProgram}}', '{{folio}}'];
-    const missingPlaceholders = requiredPlaceholders.filter(placeholder => !html.includes(placeholder));
-    
-    if (missingPlaceholders.length > 0) {
-      throw new Error(`El HTML debe contener los placeholders obligatorios: ${missingPlaceholders.join(', ')}`);
+    const requiredPlaceholders = ['{{studentName}}', '{{folio}}'];
+    const missingBasic = requiredPlaceholders.filter(p => !html.includes(p));
+    const hasProgram = html.includes('{{academicProgram}}') || html.includes('{{programName}}');
+
+    if (missingBasic.length > 0 || !hasProgram) {
+      const msg = [...missingBasic, !hasProgram ? '{{programName}}' : ''].filter(Boolean).join(', ');
+      throw new Error(`El HTML debe contener los placeholders obligatorios: ${msg}`);
     }
 
     // Validar estructura básica de HTML

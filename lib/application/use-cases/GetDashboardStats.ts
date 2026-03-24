@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { collection, getCountFromServer, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { collection, getCountFromServer, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 import {
     getCertificateStatusLabel,
     isCertificateBlocked,
@@ -17,62 +17,83 @@ export interface DashboardStats {
         title: string;
         description: string;
         time: string;
+        href?: string;
     }>;
 }
 
 export class GetDashboardStats {
-    async execute(): Promise<DashboardStats> {
+    async execute(scope?: { type: string; campusIds?: string[]; academicAreaIds?: string[]; signerIds?: string[]; userId?: string }): Promise<DashboardStats> {
         try {
             const certificatesRef = collection(db, "certificates");
-            // 1. Total Issued
-            const issuedQuery = query(certificatesRef, where("status", "in", ["issued", "active"]));
+            const applyScopeFilters = (baseQuery: any, isCertificate: boolean = true) => {
+                if (!scope || scope.type === 'global') return baseQuery;
+
+                let q = baseQuery;
+                if (scope.type === 'campus' && scope.campusIds?.length) {
+                    q = query(q, where("campusId", "in", scope.campusIds));
+                } else if (scope.type === 'area' && scope.academicAreaIds?.length) {
+                    q = query(q, where("academicAreaId", "in", scope.academicAreaIds));
+                } else if (scope.type === 'personal' && isCertificate && scope.userId) {
+                    q = query(q, where("createdBy", "==", scope.userId));
+                }
+
+                return q;
+            };
+
+            const issuedQuery = applyScopeFilters(
+                query(certificatesRef, where("status", "in", ["issued", "available", "active"]))
+            );
             const issuedSnapshot = await getCountFromServer(issuedQuery);
 
-            // 2. Pendientes de validación/firma sobre estado actual
-            const pendingQuery = query(certificatesRef, where("status", "in", ["pending_review", "pending_signature"]));
+            const pendingQuery = applyScopeFilters(
+                query(certificatesRef, where("status", "in", ["pending_review", "pending_signature"]))
+            );
             const pendingSnapshot = await getCountFromServer(pendingQuery);
 
-            // 3. Bloqueados o cancelados
-            const blockedQuery = query(certificatesRef, where("status", "in", ["revoked", "cancelled", "blocked_payment", "blocked_documents", "blocked_administrative"]));
+            const blockedQuery = applyScopeFilters(
+                query(
+                    certificatesRef,
+                    where("status", "in", ["revoked", "cancelled", "blocked_payment", "blocked_documents", "blocked_administrative"])
+                )
+            );
             const blockedSnapshot = await getCountFromServer(blockedQuery);
 
-            // 4. Breakdown by Type
-            const capQuery = query(certificatesRef, where("type", "==", "CAP"));
+            const capQuery = applyScopeFilters(query(certificatesRef, where("type", "==", "CAP")));
             const capSnapshot = await getCountFromServer(capQuery);
-            
-            const profundoQuery = query(certificatesRef, where("type", "==", "PROFUNDO"));
+
+            const profundoQuery = applyScopeFilters(query(certificatesRef, where("type", "==", "PROFUNDO")));
             const profundoSnapshot = await getCountFromServer(profundoQuery);
 
-            // 5. Recent Activity & Active Programs
-            const recentQuery = query(certificatesRef, orderBy("createdAt", "desc"), limit(50));
+            const recentQuery = applyScopeFilters(query(certificatesRef, orderBy("createdAt", "desc"), limit(50)));
             const recentDocs = await getDocs(recentQuery);
 
-            const recentActivity = recentDocs.docs.slice(0, 5).map(doc => {
-                const data = doc.data();
+            const recentActivity: DashboardStats['recentActivity'] = recentDocs.docs.slice(0, 5).map((doc) => {
+                const data = doc.data() as any;
                 const statusLabel = getCertificateStatusLabel(data.status);
                 const blocked = isCertificateBlocked(data.status);
-                const activityType: 'error' | 'success' = blocked ? 'error' : 'success';
+
                 return {
                     id: doc.id,
-                    type: activityType,
-                    title: blocked ? `Certificado ${statusLabel}` : `Certificado ${statusLabel}`,
+                    type: blocked ? 'error' : 'success',
+                    title: `Certificado ${statusLabel}`,
                     description: `${data.studentName || 'Estudiante'} - ${data.folio || ''}`,
-                    time: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString() : 'Reciente'
+                    time: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString() : 'Reciente',
+                    href: `/dashboard/certificates/${doc.id}`,
                 };
             });
 
-            const uniquePrograms = new Set(recentDocs.docs.map(doc => doc.data().academicProgram).filter(Boolean));
+            const uniquePrograms = new Set(recentDocs.docs.map((doc) => (doc.data() as any).academicProgram).filter(Boolean));
 
             return {
-                totalIssued: issuedSnapshot.data().count,
-                pendingValidation: pendingSnapshot.data().count,
+                totalIssued: Number((issuedSnapshot.data() as any)?.count || 0),
+                pendingValidation: Number((pendingSnapshot.data() as any)?.count || 0),
                 activePrograms: uniquePrograms.size,
-                blockedCertificates: blockedSnapshot.data().count,
+                blockedCertificates: Number((blockedSnapshot.data() as any)?.count || 0),
                 byType: {
-                    CAP: capSnapshot.data().count,
-                    PROFUNDO: profundoSnapshot.data().count
+                    CAP: Number((capSnapshot.data() as any)?.count || 0),
+                    PROFUNDO: Number((profundoSnapshot.data() as any)?.count || 0)
                 },
-                recentActivity: recentActivity,
+                recentActivity,
             };
         } catch (error) {
             console.error("Error fetching dashboard stats:", error);

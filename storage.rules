@@ -14,6 +14,16 @@ service firebase.storage {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
+    // Media Center (Logos, seals, etc.)
+    match /media/{allPaths=**} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Digital Signatures
+    match /signatures/{allPaths=**} {
+      allow read, write: if isSignedIn();
+    }
+
     // Deny everything else by default.
     match /{allPaths=**} {
       allow read, write: if false;

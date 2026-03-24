@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { AcademicArea, Campus } from '@/lib/container';
 import { Plus, Edit, Trash2, Building, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAlert } from '@/hooks/useAlert';
 
 export default function AcademicAreasPage() {
   const [academicAreas, setAcademicAreas] = useState<AcademicArea[]>([]);
@@ -12,6 +13,7 @@ export default function AcademicAreasPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingAcademicArea, setEditingAcademicArea] = useState<AcademicArea | null>(null);
   const [selectedCampus, setSelectedCampus] = useState<string>('');
+  const { showConfirm, showAlert } = useAlert();
 
   const fetchData = async () => {
     try {
@@ -79,9 +81,12 @@ export default function AcademicAreasPage() {
   };
 
   const handleDelete = async (academicArea: AcademicArea) => {
-    if (!confirm(`¿Estás seguro de eliminar el área académica "${academicArea.name}"?`)) {
-      return;
-    }
+    const ok = await showConfirm(
+      '¿Estás seguro?',
+      `Esta acción eliminará el área académica "${academicArea.name}" de forma permanente.`,
+      { type: 'warning', confirmText: 'Sí, eliminar', cancelText: 'No, cancelar' }
+    );
+    if (!ok) return;
 
     try {
       const response = await fetch(`/api/admin/academic-areas/${academicArea.id}`, {
@@ -93,11 +98,11 @@ export default function AcademicAreasPage() {
       if (data.success) {
         fetchFilteredAcademicAreas();
       } else {
-        alert('Error al eliminar área académica: ' + data.error);
+        showAlert('Error', 'No se pudo eliminar el área académica: ' + data.error, 'error');
       }
     } catch (error) {
       console.error('Error deleting academic area:', error);
-      alert('Error al eliminar área académica');
+      showAlert('Error', 'Ocurrió un error inesperado al eliminar el área académica.', 'error');
     }
   };
 
@@ -126,8 +131,8 @@ export default function AcademicAreasPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6 px-4 py-6 md:px-8 md:py-10">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Áreas Académicas</h1>
           <p className="text-gray-600">Gestiona las áreas académicas por recinto</p>
@@ -292,6 +297,7 @@ function AcademicAreaForm({
     isActive: academicArea?.isActive ?? true,
   });
   const [loading, setLoading] = useState(false);
+  const { showAlert } = useAlert();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -317,11 +323,11 @@ function AcademicAreaForm({
       if (data.success) {
         onSuccess();
       } else {
-        alert('Error: ' + data.error);
+        showAlert('Error', 'No se pudo guardar el área académica: ' + data.error, 'error');
       }
     } catch (error) {
       console.error('Error saving academic area:', error);
-      alert('Error al guardar área académica');
+      showAlert('Error', 'Ocurrió un error inesperado al guardar el área académica.', 'error');
     } finally {
       setLoading(false);
     }

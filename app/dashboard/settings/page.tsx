@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, User, Lock, Bell, Camera, Loader2 } from 'lucide-react';
+import { Save, User, Lock, Bell, Camera, Loader2, Mail } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, storage } from '@/lib/firebase';
 import { toast } from 'sonner';
+import { saveEmailSettings, getEmailSettings } from '@/app/actions/system-settings';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -15,6 +16,48 @@ export default function SettingsPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState('');
+
+  useEffect(() => {
+      if (user) {
+          setDisplayName(user.displayName || '');
+      }
+  }, [user]);
+
+  // Email Config State
+  const [emailConfig, setEmailConfig] = useState({
+      provider: 'gmail' as 'gmail' | 'smtp' | 'resend',
+      user: '',
+      password: '',
+      fromName: 'Sistema SIGCE'
+  });
+  const [savingEmail, setSavingEmail] = useState(false);
+
+  useEffect(() => {
+      const loadConfig = async () => {
+          const result = await getEmailSettings();
+          if (result.success && result.data) {
+              setEmailConfig(result.data);
+          }
+      };
+      loadConfig();
+  }, []);
+
+  const handleEmailConfigSave = async () => {
+      setSavingEmail(true);
+      try {
+          const result = await saveEmailSettings(emailConfig);
+          if (result.success) {
+              toast.success('Configuración de correo guardada exitosamente');
+          } else {
+              toast.error('Error al guardar la configuración');
+          }
+      } catch (e) {
+          toast.error('Error de conexión');
+      } finally {
+          setSavingEmail(false);
+      }
+  };
 
   const handleImageClick = () => {
     fileInputRef.current?.click();
@@ -56,6 +99,22 @@ export default function SettingsPage() {
     } finally {
         setUploading(false);
     }
+  };
+
+  const handleSaveProfile = async () => {
+      if (!user) return;
+      try {
+          await updateProfile(user, { displayName });
+          toast.success("Perfil actualizado correctamente");
+          
+          // Force refresh logic or just let auth context handle string change (Firebase Auth is sometimes slow)
+          // Just a visual feedback is fine since React will trigger re-renders everywhere the user object is used 
+          // However, to ensure immediate header update:
+          window.location.reload();
+      } catch (error) {
+          console.error("Error updating profile:", error);
+          toast.error("Error al actualizar el perfil");
+      }
   };
 
   return (
@@ -111,9 +170,10 @@ export default function SettingsPage() {
                         <label className="text-sm font-semibold text-gray-700 block mb-2">Nombre Completo</label>
                         <input 
                             type="text" 
-                            defaultValue={user?.displayName || ''}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
-                            disabled
+                            value={displayName}
+                            onChange={(e) => setDisplayName(e.target.value)}
+                            placeholder="Ej: Juan Pérez"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 bg-white"
                         />
                     </div>
                     <div>
@@ -156,12 +216,82 @@ export default function SettingsPage() {
             </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Section: Email Configuration */}
+        <div className="p-8 border-b border-gray-100">
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2 mb-6">
+                <Mail size={20} className="text-primary" /> Servidor de Correo Centralizado
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
+                <div className="md:col-span-2">
+                    <p className="text-sm text-gray-500 mb-4">
+                        Configura las credenciales que utilizará el sistema para enviar notificaciones a los directivos y certificados a los participantes. Actualmente diseñado para conexiones Gmail/Workspace.
+                    </p>
+                </div>
+                <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-2">Nombre del Remitente</label>
+                    <input 
+                        type="text" 
+                        value={emailConfig.fromName}
+                        onChange={(e) => setEmailConfig({...emailConfig, fromName: e.target.value})}
+                        placeholder="Ej: Universidad Abierta para Adultos"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 bg-white"
+                    />
+                </div>
+                <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-2">Proveedor</label>
+                    <select 
+                        value={emailConfig.provider}
+                        onChange={(e) => setEmailConfig({...emailConfig, provider: e.target.value as any})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 bg-white"
+                    >
+                        <option value="gmail">Google Workspace / Gmail</option>
+                        <option value="smtp" disabled>SMTP Personalizado (Pronto)</option>
+                        <option value="resend" disabled>Resend API (Pronto)</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-2">Correo Emisor (Usuario)</label>
+                    <input 
+                        type="email" 
+                        value={emailConfig.user}
+                        onChange={(e) => setEmailConfig({...emailConfig, user: e.target.value})}
+                        placeholder="notificaciones@universidad.edu"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 bg-white"
+                    />
+                </div>
+                <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-2">Contraseña de Aplicación</label>
+                    <input 
+                        type="password" 
+                        value={emailConfig.password}
+                        onChange={(e) => setEmailConfig({...emailConfig, password: e.target.value})}
+                        placeholder="••••••••••••••••"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 bg-white"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Usa una &ldquo;App Password&rdquo; de Google, no tu contraseña personal.</p>
+                </div>
+                <div className="md:col-span-2 pt-2">
+                    <button 
+                        onClick={handleEmailConfigSave}
+                        disabled={savingEmail}
+                        className="px-6 py-3 rounded-xl bg-gray-900 text-white font-bold hover:bg-gray-800 transition-all flex items-center gap-2 disabled:opacity-70"
+                    >
+                        {savingEmail ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} 
+                        Guardar Configuración de Correo
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {/* Action Buttons (General) */}
         <div className="p-8 bg-gray-50 flex justify-end gap-3">
             <button className="px-6 py-3 rounded-xl text-gray-500 font-medium hover:bg-gray-100 transition-colors">
                 Cancelar
             </button>
-            <button className="px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2">
+            <button 
+                onClick={handleSaveProfile}
+                className="px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+            >
                 <Save size={20} /> Guardar Cambios
             </button>
         </div>

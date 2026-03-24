@@ -3,6 +3,7 @@ import { GenerateFolio } from './GenerateFolio';
 import { Certificate, CertificateType, CertificateStatus, CreateCertificateDTO } from '../../domain/entities/Certificate';
 import { IStudentRepository } from '../../domain/repositories/IStudentRepository';
 import { getCreateCertificateStateUseCase } from '../../container';
+import { createCertificateTemplateSnapshot } from '../utils/certificate-template-snapshot';
 import crypto from 'crypto';
 
 export interface CreateCertificateInput {
@@ -12,20 +13,28 @@ export interface CreateCertificateInput {
     type: CertificateType;
     academicProgram: string;
     issueDate: Date;
+    expirationDate?: Date; // Nuevo: opcional
     prefix?: string;
+    folioOverride?: string;
     metadata?: Record<string, any>;
     studentEmail?: string; // Added for student creation
     templateId?: string;
     campusId: string; // Nuevo: obligatorio
     academicAreaId?: string; // Nuevo: opcional por ahora
     createdBy: string; // Nuevo: ID del usuario que crea el certificado
+    signer1Id?: string;
+    signer2Id?: string;
 }
 
 export class CreateCertificate {
     constructor(
         private certificateRepository: ICertificateRepository,
         private studentRepository: IStudentRepository,
-        private generateFolio: GenerateFolio
+        private generateFolio: GenerateFolio,
+        private campusRepository: any,
+        private academicAreaRepository: any,
+        private signerRepository: any,
+        private templateRepository: any
     ) { }
 
     async execute(input: CreateCertificateInput): Promise<Certificate> {
@@ -64,26 +73,83 @@ export class CreateCertificate {
             throw new Error("El ID del usuario que crea el certificado es obligatorio.");
         }
 
-        // 4. Generar Folio
-        const folio = await this.generateFolio.execute(input.type, input.prefix);
+        // 4. Resolver Folio
+        let folio = input.folioOverride?.trim() || '';
+
+        if (folio) {
+            const existingCertificate = await this.certificateRepository.findByFolio(folio);
+            if (existingCertificate) {
+                throw new Error(`Ya existe un certificado con el folio ${folio}.`);
+            }
+        } else {
+            folio = await this.generateFolio.execute(input.type, input.prefix);
+        }
 
         // 5. Generar Código de Verificación Público (Hash US-13)
         const publicVerificationCode = crypto.randomBytes(8).toString('hex').toUpperCase();
 
-        // 6. Preparar datos (DTO)
+        // 6. Enriquecer metadatos con nombres reales para el PDF
+        const enrichedMetadata = { ...input.metadata };
+
+        // Resolver nombre de recinto
+        if (input.campusId) {
+            const campus = await this.campusRepository.findById(input.campusId);
+            if (campus) enrichedMetadata.campusName = campus.name;
+        }
+
+        // Resolver nombre de área académica
+        if (input.academicAreaId) {
+            const area = await this.academicAreaRepository.findById(input.academicAreaId);
+            if (area) enrichedMetadata.academicArea = area.name;
+        }
+
+        // Resolver detalles de firmantes
+        if (input.signer1Id) {
+            enrichedMetadata.signer1Id = input.signer1Id;
+            const signer1 = await this.signerRepository.findById(input.signer1Id);
+            if (signer1) {
+                enrichedMetadata.signer1_Name = signer1.name;
+                enrichedMetadata.signer1_Title = signer1.title;
+                enrichedMetadata.signer1_SignatureImage = signer1.signatureUrl;
+            }
+        }
+        if (input.signer2Id) {
+            enrichedMetadata.signer2Id = input.signer2Id;
+            const signer2 = await this.signerRepository.findById(input.signer2Id);
+            if (signer2) {
+                enrichedMetadata.signer2_Name = signer2.name;
+                enrichedMetadata.signer2_Title = signer2.title;
+                enrichedMetadata.signer2_SignatureImage = signer2.signatureUrl;
+            }
+        }
+
+        // 7. Preparar datos (DTO)
+        const templateSnapshot =
+            input.templateId && this.templateRepository?.findById
+                ? await this.templateRepository
+                    .findById(input.templateId)
+                    .then((selectedTemplate: any) =>
+                        selectedTemplate ? createCertificateTemplateSnapshot(selectedTemplate) : null
+                    )
+                : null;
+
         const certificateData: CreateCertificateDTO & { publicVerificationCode: string } = {
             folio,
             publicVerificationCode,
             studentName: input.studentName,
             studentId: studentId,
+            studentEmail: input.studentEmail || null,
+            cedula: input.cedula || null,
             type: input.type,
             academicProgram: input.academicProgram,
             issueDate: input.issueDate,
+            expirationDate: input.expirationDate || null,
             status: 'draft' as CertificateStatus,
-            metadata: input.metadata || {},
-            templateId: input.templateId,
+            metadata: enrichedMetadata,
+            templateId: input.templateId || null,
+            templateSnapshot,
             campusId: input.campusId,
-            academicAreaId: input.academicAreaId,
+            academicAreaId: input.academicAreaId || null,
         };
 
         // 7. Guardar en repositorio de certificados

@@ -12,9 +12,5 @@ export interface ICertificateRepository {
     findAll(): Promise<Certificate[]>;
     findByStudentId(studentId: string): Promise<Certificate[]>;
     updateStatus(id: string, status: Certificate['status']): Promise<void>;
-    
-    // Métodos para el historial del estudiante (US-12)
-    findByStudentConstraints(constraints: any[][]): Promise<any[]>;
-    findByStudentIdPaginated(studentId: string, pageSize?: number, cursor?: any): Promise<{ data: any[]; hasMore: boolean; lastVisible?: any }>;
-    getCertificateDetails(certificateId: string): Promise<any>;
+    updatePdfAsset(id: string, pdfUrl: string | null, storageKey?: string | null): Promise<void>;
 }

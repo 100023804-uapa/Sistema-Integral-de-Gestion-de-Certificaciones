@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
@@ -93,7 +93,6 @@ const statusLabels = {
 export default function StudentCertificatesPage() {
   const router = useRouter();
   const [certificates, setCertificates] = useState(mockCertificates);
-  const [filteredCertificates, setFilteredCertificates] = useState(mockCertificates);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
@@ -106,19 +105,16 @@ export default function StudentCertificatesPage() {
   const campuses = ['Santo Domingo', 'Santiago', 'Puerto Plata', 'La Romana'];
   const statuses = Object.keys(statusLabels);
 
-  useEffect(() => {
-    // Filtrar certificados
-    let filtered = certificates.filter(cert => {
+  const filteredCertificates = useMemo(() => {
+    return certificates.filter((cert) => {
       const matchesSearch = cert.folio.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           cert.programName.toLowerCase().includes(searchTerm.toLowerCase());
+        cert.programName.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = !selectedStatus || cert.status === selectedStatus;
       const matchesArea = !selectedArea || cert.academicAreaName === selectedArea;
       const matchesCampus = !selectedCampus || cert.campusName === selectedCampus;
-      
+
       return matchesSearch && matchesStatus && matchesArea && matchesCampus;
     });
-    
-    setFilteredCertificates(filtered);
   }, [certificates, searchTerm, selectedStatus, selectedArea, selectedCampus]);
 
   const handleViewCertificate = (certificate: any) => {

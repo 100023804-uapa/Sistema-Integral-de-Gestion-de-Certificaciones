@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FirebaseRoleRepository } from '@/lib/infrastructure/repositories/FirebaseRoleRepository';
-import { RoleValue } from '@/lib/types/role';
+import { RoleValue, Role } from '@/lib/types/role';
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: {
@@ -17,7 +17,7 @@ export class RBACMiddleware {
     this.roleRepository = new FirebaseRoleRepository();
   }
 
-  async requireRole(allowedRoles: RoleValue[], handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
+  requireRole(allowedRoles: RoleValue[], handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
     return async (req: AuthenticatedRequest): Promise<NextResponse> => {
       try {
         // Obtener usuario del request (debería venir del auth middleware)
@@ -63,7 +63,7 @@ export class RBACMiddleware {
     };
   }
 
-  async requirePermission(resource: string, action: string, handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
+  requirePermission(resource: string, action: string, handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
     return async (req: AuthenticatedRequest): Promise<NextResponse> => {
       try {
         const user = req.user;
@@ -78,7 +78,7 @@ export class RBACMiddleware {
         const userRoles = await this.roleRepository.getUserRoles(user.id);
         const permissions = await Promise.all(
           userRoles.map(async (userRole) => {
-            const role = await this.roleRepository.findById(userRole.roleId);
+            const role = await this.roleRepository.findById(userRole.roleId) as any;
             return role?.permissions || [];
           })
         );
@@ -115,7 +115,11 @@ export class RBACMiddleware {
 // Helper functions para uso común
 export const rbac = new RBACMiddleware();
 
-export const requireAdmin = rbac.requireRole(['administrator']);
-export const requireSigner = rbac.requireRole(['signer', 'administrator']);
-export const requireVerifier = rbac.requireRole(['verifier', 'signer', 'administrator']);
-export const requireCoordinator = rbac.requireRole(['coordinator', 'verifier', 'signer', 'administrator']);
+export const requireAdmin = (handler: (req: AuthenticatedRequest) => Promise<NextResponse>) =>
+  rbac.requireRole(['administrator'], handler);
+export const requireSigner = (handler: (req: AuthenticatedRequest) => Promise<NextResponse>) =>
+  rbac.requireRole(['signer', 'administrator'], handler);
+export const requireVerifier = (handler: (req: AuthenticatedRequest) => Promise<NextResponse>) =>
+  rbac.requireRole(['verifier', 'signer', 'administrator'], handler);
+export const requireCoordinator = (handler: (req: AuthenticatedRequest) => Promise<NextResponse>) =>
+  rbac.requireRole(['coordinator', 'verifier', 'signer', 'administrator'], handler);

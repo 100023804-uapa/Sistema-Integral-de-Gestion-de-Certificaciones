@@ -22,8 +22,18 @@ export interface CertificateData {
   academicAreaName?: string;
   certificateType: string;
   duration?: string;
+  grade?: string;
+  description?: string;
+  verificationUrl?: string;
   digitalSignature?: string;
   signatureDate?: string;
+  signer1_Name?: string;
+  signer1_Title?: string;
+  signer1_SignatureImage?: string;
+  signer2_Name?: string;
+  signer2_Title?: string;
+  signer2_SignatureImage?: string;
+  sealImage?: string;
 }
 
 export class CertificateGenerationService {
@@ -65,11 +75,13 @@ export class CertificateGenerationService {
 
       // 3. Generar código QR si es necesario
       let qrCodeUrl = '';
+      const verificationUrlBase = process.env.NEXT_PUBLIC_VERIFICATION_URL || 'https://certificados.uapa.edu/verify';
+      const actualVerificationUrl = `${verificationUrlBase}/${data.id}`;
+
       if (options.includeQR !== false) {
-        const verificationUrl = process.env.VERIFICATION_URL || 'https://certificados.uapa.edu/verify';
         const qrBuffer = await this.qrService.generateVerificationQRCode(
           data.id,
-          verificationUrl,
+          actualVerificationUrl,
           {
             size: 150,
             margin: 2,
@@ -77,10 +89,17 @@ export class CertificateGenerationService {
             type: 'png'
           }
         );
-        
+
         // Simular subida del QR a storage
-        qrCodeUrl = `${verificationUrl}/qr/${data.id}.png`;
+        qrCodeUrl = `${verificationUrlBase}/qr/${data.id}.png`;
       }
+
+      // Actualizar datos con la URL real de verificación
+      const dataWithUrls = {
+        ...data,
+        verificationUrl: actualVerificationUrl,
+        qrCode: qrCodeUrl
+      };
 
       // 4. Optimizar PDF si es necesario
       let optimizedPDF = pdfBuffer;
@@ -111,10 +130,10 @@ export class CertificateGenerationService {
         generatedAt: new Date(),
         generatedBy,
         metadata: {
-        fileSize: finalPDF.length,
-        pageCount: 1,
-        templateVersion: '1.0'
-      } as any
+          fileSize: finalPDF.length,
+          pageCount: 1,
+          templateVersion: '1.0'
+        } as any
       };
 
       return generatedCertificate;
@@ -124,13 +143,14 @@ export class CertificateGenerationService {
     }
   }
 
-  private processTemplate(htmlTemplate: string, data: CertificateData, options: CertificateGenerationOptions): string {
+  private processTemplate(htmlTemplate: string, data: any, options: CertificateGenerationOptions): string {
     let processedHTML = htmlTemplate;
 
     // Reemplazar placeholders con datos del certificado
     const placeholders = {
       '{{studentName}}': data.studentName || '',
       '{{academicProgram}}': data.academicProgram || '',
+      '{{programName}}': data.academicProgram || '', // Alias
       '{{folio}}': data.folio || '',
       '{{issueDate}}': data.issueDate ? new Date(data.issueDate).toLocaleDateString('es-ES', {
         year: 'numeric',
@@ -138,14 +158,26 @@ export class CertificateGenerationService {
         day: 'numeric'
       }) : '',
       '{{campusName}}': data.campusName || '',
+      '{{academicArea}}': data.academicAreaName || '', // Alias
       '{{academicAreaName}}': data.academicAreaName || '',
       '{{certificateType}}': data.certificateType || '',
       '{{duration}}': data.duration || '',
+      '{{grade}}': data.grade || '',
+      '{{description}}': data.description || '',
+      '{{verificationUrl}}': data.verificationUrl || '',
       '{{digitalSignature}}': options.includeSignature ? (data.digitalSignature || '<div class="signature-placeholder">Firma Digital</div>') : '',
       '{{signatureDate}}': data.signatureDate || new Date().toLocaleDateString('es-ES'),
-      '{{verificationQR}}': options.includeQR ? '<img src="/qr-placeholder.png" alt="QR" class="qr-code" />' : '',
+      '{{verificationQR}}': data.qrCode ? `<img src="${data.qrCode}" alt="QR" class="qr-code" />` : (options.includeQR ? '<img src="/qr-placeholder.png" alt="QR" class="qr-code" />' : ''),
+      '{{qrCode}}': data.qrCode ? `<img src="${data.qrCode}" alt="QR" class="qr-code" />` : '',
       '{{logo}}': '<img src="/logo-placeholder.png" alt="Logo" class="logo" />',
-      '{{seal}}': '<div class="seal">SELO</div>'
+      '{{seal}}': data.sealImage ? `<img src="${data.sealImage}" alt="Sello" class="seal-img" />` : '<div class="seal">SELLO</div>',
+      '{{sealImage}}': data.sealImage ? `<img src="${data.sealImage}" alt="Sello" class="seal-img" />` : '',
+      '{{signer1_Name}}': data.signer1_Name || '',
+      '{{signer1_Title}}': data.signer1_Title || '',
+      '{{signer1_SignatureImage}}': data.signer1_SignatureImage ? `<img src="${data.signer1_SignatureImage}" alt="Firma 1" class="signature-img" />` : '',
+      '{{signer2_Name}}': data.signer2_Name || '',
+      '{{signer2_Title}}': data.signer2_Title || '',
+      '{{signer2_SignatureImage}}': data.signer2_SignatureImage ? `<img src="${data.signer2_SignatureImage}" alt="Firma 2" class="signature-img" />` : '',
     };
 
     // Reemplazar todos los placeholders
@@ -214,14 +246,14 @@ export class CertificateGenerationService {
   private async uploadPDF(pdfBuffer: Buffer, certificateId: string, templateId: string): Promise<string> {
     // Simulación de subida a storage
     // En producción, esto usaría Firebase Storage, AWS S3, etc.
-    
+
     const fileName = `certificates/${certificateId}/${templateId}.pdf`;
     const storageUrl = `https://storage.googleapis.com/certificates-bucket/${fileName}`;
-    
+
     // Simulación de subida
     console.log(`PDF would be uploaded to: ${fileName}`);
     console.log(`PDF size: ${pdfBuffer.length} bytes`);
-    
+
     return storageUrl;
   }
 
@@ -346,7 +378,7 @@ export class CertificateGenerationService {
     try {
       // Simulación de estadísticas
       // En producción, esto consultaría la base de datos
-      
+
       return {
         total: 0,
         byType: {},
@@ -372,7 +404,7 @@ export class CertificateGenerationService {
       // Obtener datos del certificado
       const certificateRepository = getCertificateRepository();
       const certificate = await certificateRepository.findById(certificateId);
-      
+
       if (!certificate) {
         throw new Error('Certificado no encontrado');
       }

@@ -74,13 +74,17 @@ export default function CreateCertificatePage() {
 
         const createCertificate = getCreateCertificateUseCase();
         await createCertificate.execute({
-            ...formData,
-            issueDate: new Date(formData.issueDate),
-            prefix: formData.folioPrefix || undefined,
+            studentName: formData.studentName,
+            studentId: formData.studentId,
             cedula: formData.cedula,
+            academicProgram: formData.academicProgram,
+            type: formData.type,
+            issueDate: new Date(formData.issueDate),
+            expirationDate: formData.expirationDate ? new Date(formData.expirationDate) : undefined,
+            prefix: formData.folioPrefix || undefined,
             studentEmail: '', // Podríamos agregar campo email al form si se desea
             templateId: formData.templateId || undefined,
-            campusId: formData.campusId, // Nuevo: obligatorio
+            campusId: formData.campusId,
             createdBy: user.uid,
         });
 

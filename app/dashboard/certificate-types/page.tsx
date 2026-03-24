@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react';
 import { CertificateType } from '@/lib/container';
 import { Plus, Edit, Trash2, FileText, Shield, ShieldOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAlert } from '@/hooks/useAlert';
 
 export default function CertificateTypesPage() {
   const [certificateTypes, setCertificateTypes] = useState<CertificateType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingCertificateType, setEditingCertificateType] = useState<CertificateType | null>(null);
+  const { showConfirm, showAlert } = useAlert();
 
   const fetchCertificateTypes = async () => {
     try {
@@ -39,9 +41,12 @@ export default function CertificateTypesPage() {
   };
 
   const handleDelete = async (certificateType: CertificateType) => {
-    if (!confirm(`¿Estás seguro de eliminar el tipo de certificado "${certificateType.name}"?`)) {
-      return;
-    }
+    const ok = await showConfirm(
+      '¿Eliminar tipo de certificado?',
+      `¿Estás seguro de que deseas eliminar el tipo de certificado "${certificateType.name}"? Esta acción no se puede deshacer.`,
+      { type: 'warning', confirmText: 'Eliminar', cancelText: 'Cancelar' }
+    );
+    if (!ok) return;
 
     try {
       const response = await fetch(`/api/admin/certificate-types/${certificateType.id}`, {
@@ -53,11 +58,11 @@ export default function CertificateTypesPage() {
       if (data.success) {
         fetchCertificateTypes();
       } else {
-        alert('Error al eliminar tipo de certificado: ' + data.error);
+        showAlert('Error', 'No se pudo eliminar el tipo de certificado: ' + data.error, 'error');
       }
     } catch (error) {
       console.error('Error deleting certificate type:', error);
-      alert('Error al eliminar tipo de certificado');
+      showAlert('Error', 'Ocurrió un error inesperado al eliminar el tipo de certificado.', 'error');
     }
   };
 
@@ -99,8 +104,8 @@ export default function CertificateTypesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6 px-4 py-6 md:px-8 md:py-10">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Tipos de Certificado</h1>
           <p className="text-gray-600">Gestiona las tipologías de certificados disponibles</p>
@@ -156,6 +161,13 @@ export default function CertificateTypesPage() {
                   {certificateType.description || getTypeDescription(certificateType.code)}
                 </p>
               </div>
+
+              {certificateType.defaultFolioPrefix && (
+                <div>
+                  <span className="text-sm text-gray-500">Prefijo Folio:</span>
+                  <p className="font-medium bg-gray-100 px-2 py-0.5 rounded text-sm inline-block ml-2">{certificateType.defaultFolioPrefix}</p>
+                </div>
+              )}
               
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-500">Requiere firma:</span>
@@ -231,10 +243,12 @@ function CertificateTypeForm({
     name: certificateType?.name || '',
     code: certificateType?.code || 'horizontal',
     description: certificateType?.description || '',
+    defaultFolioPrefix: certificateType?.defaultFolioPrefix || '',
     requiresSignature: certificateType?.requiresSignature ?? true,
     isActive: certificateType?.isActive ?? true,
   });
   const [loading, setLoading] = useState(false);
+  const { showAlert } = useAlert();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -260,11 +274,11 @@ function CertificateTypeForm({
       if (data.success) {
         onSuccess();
       } else {
-        alert('Error: ' + data.error);
+        showAlert('Error', 'No se pudo guardar el tipo de certificado: ' + data.error, 'error');
       }
     } catch (error) {
       console.error('Error saving certificate type:', error);
-      alert('Error al guardar tipo de certificado');
+      showAlert('Error', 'Ocurrió un error inesperado al guardar el tipo de certificado.', 'error');
     } finally {
       setLoading(false);
     }
@@ -339,6 +353,22 @@ function CertificateTypeForm({
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Prefijo Folio por Defecto (Opcional)
+            </label>
+            <input
+              type="text"
+              value={formData.defaultFolioPrefix}
+              onChange={(e) => setFormData({ ...formData, defaultFolioPrefix: e.target.value })}
+              placeholder="Ej. CAP, SIGCE, DP"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent uppercase"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Se autocompletará en el formulario al crear un certificado.
+            </p>
           </div>
 
           <div className="flex items-center">
