@@ -5,6 +5,7 @@ import {
   BarChart3,
   Building,
   Clock,
+  Database,
   FileText,
   GraduationCap,
   Image as ImageIcon,
@@ -154,6 +155,13 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
     label: "Usuarios del Sistema",
     icon: Users,
     href: "/dashboard/users",
+    allowedRoles: ["administrator"],
+  },
+  {
+    kind: "link",
+    label: "Integridad de Datos",
+    icon: Database,
+    href: "/dashboard/data-integrity",
     allowedRoles: ["administrator"],
   },
   {

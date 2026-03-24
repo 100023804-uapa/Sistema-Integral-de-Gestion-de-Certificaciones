@@ -24,6 +24,7 @@ export const DASHBOARD_ROUTE_RULES: DashboardRouteRule[] = [
   { path: '/dashboard/digital-signatures', allowedRoles: ['administrator', 'signer'] },
   { path: '/dashboard/certificate-templates', allowedRoles: ['administrator', 'coordinator'] },
   { path: '/dashboard/users', allowedRoles: ['administrator'] },
+  { path: '/dashboard/data-integrity', allowedRoles: ['administrator'] },
   { path: '/dashboard/settings', allowedRoles: ['administrator'] },
 ];
 
