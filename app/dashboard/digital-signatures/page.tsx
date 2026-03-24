@@ -1,44 +1,34 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { SignatureRequest, DigitalSignature } from '@/lib/container';
+import React, { useState, useEffect } from 'react';
+import { SignatureRequest } from '@/lib/container';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import { 
   PenTool, 
   Clock, 
   CheckCircle, 
   XCircle, 
   AlertCircle,
-  Send,
-  Eye,
-  FileText,
   Calendar,
-  User,
-  Mail,
-  MapPin,
   Filter
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SIGNATURE_STATUS_LABELS } from '@/lib/types/digitalSignature';
+import { SignatureCanvas } from '@/components/signatures/SignatureCanvas';
 
 export default function DigitalSignaturesPage() {
+  const { user } = useAuth();
   const [requests, setRequests] = useState<SignatureRequest[]>([]);
-  const [signatures, setSignatures] = useState<DigitalSignature[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<SignatureRequest | null>(null);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
-  const [showRequestModal, setShowRequestModal] = useState(false);
   const [filter, setFilter] = useState<string>('all');
 
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      
-      // Simular usuario actual - TODO: obtener de auth context
-      const currentUserId = 'current-user-id';
-      const currentUserRole = 'signer'; // Cambiar según el usuario
-      
-      // Obtener solicitudes donde el usuario es el firmante
-      const response = await fetch(`/api/admin/digital-signatures?signerId=${currentUserId}`);
+
+      const response = await fetch('/api/admin/digital-signatures?signerId=self');
       const data = await response.json();
       
       if (data.success) {
@@ -55,8 +45,9 @@ export default function DigitalSignaturesPage() {
   };
 
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    if (!user) return;
+    void fetchRequests();
+  }, [user]);
 
   const handleSign = async (request: SignatureRequest) => {
     setSelectedRequest(request);
@@ -76,8 +67,7 @@ export default function DigitalSignaturesPage() {
         body: JSON.stringify({
           action: 'reject',
           certificateId: request.certificateId,
-          rejectionReason: reason,
-          signerId: 'current-user-id' // TODO: obtener de auth
+          rejectionReason: reason
         }),
       });
 
@@ -95,7 +85,7 @@ export default function DigitalSignaturesPage() {
   };
 
   const getStatusIcon = (status: string) => {
-    const icons: Record<string, JSX.Element> = {
+    const icons: Record<string, React.ReactNode> = {
       'pending': <Clock size={20} />,
       'signed': <CheckCircle size={20} />,
       'rejected': <XCircle size={20} />,
@@ -262,7 +252,9 @@ export default function DigitalSignaturesPage() {
 
               <div>
                 <span className="text-sm text-gray-500">Solicitado por:</span>
-                <p className="text-sm text-gray-600">{request.requestedBy}</p>
+                <p className="text-sm text-gray-600">
+                  {request.requestedByName || request.requestedBy}
+                </p>
               </div>
               
               <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -339,7 +331,6 @@ function SignatureModal({
   const [signatureData, setSignatureData] = useState('');
   const [comments, setComments] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isDrawing, setIsDrawing] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -357,8 +348,7 @@ function SignatureModal({
           action: 'sign',
           certificateId: request.certificateId,
           signatureBase64: signatureData,
-          comments,
-          signerId: 'current-user-id' // TODO: obtener de auth
+          comments
         }),
       });
 
@@ -404,13 +394,7 @@ function SignatureModal({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Firma Digital *
             </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
-              <div className="text-center text-gray-500">
-                <PenTool size={48} className="mx-auto mb-2" />
-                <p className="text-sm">Área de firma digital</p>
-                <p className="text-xs">Dibuja tu firma aquí</p>
-              </div>
-            </div>
+            <SignatureCanvas value={signatureData} onChange={setSignatureData} disabled={loading} />
             <p className="text-xs text-gray-500 mt-1">
               * La firma digital es obligatoria y debe ser clara y legible
             </p>
@@ -496,7 +480,7 @@ function RequestDetailsModal({
 
           <div>
             <span className="text-sm text-gray-500">Solicitado por:</span>
-            <p className="font-medium">{request.requestedBy}</p>
+            <p className="font-medium">{request.requestedByName || request.requestedBy}</p>
           </div>
 
           <div>

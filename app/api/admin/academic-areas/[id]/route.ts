@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUpdateAcademicAreaUseCase, getDeleteAcademicAreaUseCase, getAcademicAreaRepository } from '@/lib/container';
+import { requireInternalUserRole } from '@/lib/auth/server';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const academicAreaRepository = getAcademicAreaRepository();
     const academicArea = await academicAreaRepository.findById(params.id);
 
@@ -35,6 +41,11 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const body = await request.json();
     const updateAcademicAreaUseCase = getUpdateAcademicAreaUseCase();
     const academicArea = await updateAcademicAreaUseCase.execute(params.id, body);
@@ -58,6 +69,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const deleteAcademicAreaUseCase = getDeleteAcademicAreaUseCase();
     await deleteAcademicAreaUseCase.execute(params.id);
 

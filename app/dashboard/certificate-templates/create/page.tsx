@@ -124,8 +124,7 @@ export default function CreateTemplatePage() {
         body: JSON.stringify({
           ...formData,
           layout,
-          placeholders,
-          createdBy: 'current-user-id' // TODO: obtener de auth
+          placeholders
         }),
       });
 

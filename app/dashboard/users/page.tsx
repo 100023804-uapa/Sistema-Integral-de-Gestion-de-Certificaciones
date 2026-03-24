@@ -1,328 +1,395 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from 'react';
-import { getAccessRepository, getRoleRepository, type AccessRequest, type AccessUser } from '@/lib/container';
-import { Role } from '@/lib/types/role';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Loader2, CheckCircle, XCircle, Shield, Clock, Trash2, Edit } from 'lucide-react';
+import { Input } from '@/components/ui/Input';
+import { Loader2, Mail, Shield, UserPlus, RefreshCw, Power, PencilLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import type { InternalUser, InternalUserStatus } from '@/lib/types/internalUser';
+import type { RoleValue } from '@/lib/types/role';
+
+const ROLE_OPTIONS: { value: RoleValue; label: string; description: string }[] = [
+  { value: 'administrator', label: 'Administrador', description: 'Acceso total al sistema' },
+  { value: 'coordinator', label: 'Coordinador', description: 'Opera certificados y programas' },
+  { value: 'verifier', label: 'Verificador', description: 'Valida información y revisa expedientes' },
+  { value: 'signer', label: 'Firmante', description: 'Firma certificados pendientes' },
+];
+
+const DEFAULT_FORM = {
+  displayName: '',
+  email: '',
+  roleCode: 'coordinator' as RoleValue,
+};
+
+function getStatusLabel(status: InternalUserStatus) {
+  switch (status) {
+    case 'active':
+      return 'Activo';
+    case 'disabled':
+      return 'Deshabilitado';
+    default:
+      return 'Invitado';
+  }
+}
+
+function getStatusClass(status: InternalUserStatus) {
+  switch (status) {
+    case 'active':
+      return 'bg-green-100 text-green-800';
+    case 'disabled':
+      return 'bg-gray-200 text-gray-700';
+    default:
+      return 'bg-yellow-100 text-yellow-800';
+  }
+}
+
+function formatDate(value?: Date | string | null) {
+  if (!value) return '-';
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+}
 
 export default function UsersPage() {
   const { user } = useAuth();
-  const [requests, setRequests] = useState<AccessRequest[]>([]);
-  const [users, setUsers] = useState<AccessUser[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [users, setUsers] = useState<InternalUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
-
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<AccessRequest | null>(null);
-  const [selectedUser, setSelectedUser] = useState<AccessUser | null>(null);
-  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
+  const [editingUser, setEditingUser] = useState<InternalUser | null>(null);
+  const [form, setForm] = useState(DEFAULT_FORM);
 
-  const accessRepo = getAccessRepository();
-  const roleRepo = getRoleRepository();
-
-  const loadData = async () => {
+  const loadUsers = async () => {
     try {
       setLoading(true);
-      const [reqs, usrs, rls] = await Promise.all([
-        accessRepo.listAccessRequests(),
-        accessRepo.listAdmins(), // En este punto listAdmins trae todos los users de access_users
-        roleRepo.findActive()
-      ]);
-      setRequests(reqs);
-      
-      // Mapear los roles a cada usuario
-      const usersWithRoles = await Promise.all(usrs.map(async (u) => {
-         const userRoles = await roleRepo.getUserRoles(u.email); // Usamos email como ID temporal para compatibilidad
-         const mainRole = userRoles.length > 0 ? rls.find(r => r.id === userRoles[0].roleId) : null;
-         return { ...u, roleName: mainRole?.name || 'Administrador (Legacy)', roleId: mainRole?.id || 'admin' };
-      }));
+      const response = await fetch('/api/admin/internal-users');
+      const payload = await response.json();
 
-      setUsers(usersWithRoles);
-      setRoles(rls);
-      
-      // Set default role in select
-      if (rls.length > 0) setSelectedRoleId(rls[0].id);
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || 'No fue posible cargar los usuarios internos');
+      }
 
+      setUsers(payload.data || []);
     } catch (error) {
-      console.error("Error loading users data:", error);
-      toast.error("Error al cargar los datos");
+      console.error(error);
+      toast.error('No fue posible cargar los usuarios internos');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    void loadUsers();
   }, []);
 
-  const openApprovalModal = (req: AccessRequest) => {
-    setSelectedRequest(req);
-    setSelectedUser(null);
+  const openCreateModal = () => {
+    setEditingUser(null);
+    setForm(DEFAULT_FORM);
     setIsModalOpen(true);
   };
 
-  const openEditModal = (usr: AccessUser) => {
-    setSelectedUser(usr);
-    setSelectedRequest(null);
-    setSelectedRoleId((usr as any).roleId || '');
+  const openEditModal = (selectedUser: InternalUser) => {
+    setEditingUser(selectedUser);
+    setForm({
+      displayName: selectedUser.displayName,
+      email: selectedUser.email,
+      roleCode: selectedUser.roleCode,
+    });
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
+    if (saving) return;
     setIsModalOpen(false);
-    setSelectedRequest(null);
-    setSelectedUser(null);
+    setEditingUser(null);
+    setForm(DEFAULT_FORM);
   };
 
-  const submitRoleAssignment = async () => {
+  const saveUser = async () => {
     if (!user) return;
-    setProcessingId('modal-action');
-    
+    setSaving(true);
+
     try {
-      if (selectedRequest) {
-          // Es una aprobación nueva
-          await accessRepo.approveRequest(selectedRequest.id, user.uid);
-          // Asignar el rol específico
-          await roleRepo.assignRole({ userId: selectedRequest.email, roleId: selectedRoleId }, user.uid);
-          toast.success(`Acceso aprobado para ${selectedRequest.email}`);
-      } else if (selectedUser) {
-          // Editar un usuario existente (Simulación de actualización)
-          // Nota: Aquí en producción harías un update del UserRole anterior por el nuevo
-          await roleRepo.assignRole({ userId: selectedUser.email, roleId: selectedRoleId }, user.uid);
-          toast.success(`Rol actualizado para ${selectedUser.email}`);
+      const response = await fetch(
+        editingUser ? `/api/admin/internal-users/${editingUser.uid}` : '/api/admin/internal-users',
+        {
+          method: editingUser ? 'PATCH' : 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(
+            editingUser
+              ? {
+                  displayName: form.displayName,
+                  roleCode: form.roleCode,
+                }
+              : {
+                  displayName: form.displayName,
+                  email: form.email,
+                  roleCode: form.roleCode,
+                }
+          ),
+        }
+      );
+
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || 'No fue posible guardar el usuario');
       }
-      
+
+      toast.success(
+        editingUser
+          ? `Usuario actualizado: ${payload.data.displayName}`
+          : `Usuario creado: ${payload.data.email}`
+      );
       closeModal();
-      await loadData();
+      await loadUsers();
     } catch (error) {
       console.error(error);
-      toast.error("Error al procesar la asignación de rol");
+      toast.error(error instanceof Error ? error.message : 'No fue posible guardar el usuario');
     } finally {
-      setProcessingId(null);
+      setSaving(false);
     }
   };
 
-  const handleReject = async (req: AccessRequest) => {
-    if(!confirm('¿Estás seguro de rechazar esta solicitud?')) return;
-    setProcessingId(req.id);
-    try {
-      await accessRepo.rejectRequest(req.id);
-      toast.info(`Solicitud rechazada`);
-      await loadData();
-    } catch (error) {
-      console.error(error);
-      toast.error("Error al rechazar");
-    } finally {
-      setProcessingId(null);
-    }
-  };
+  const updateUser = async (selectedUser: InternalUser, data: Record<string, unknown>, successMessage: string) => {
+    setProcessingId(selectedUser.uid);
 
-  const handleDeleteUser = async (u: AccessUser) => {
-    if(!confirm(`¿Eliminar acceso al sistema a ${u.email}?`)) return;
-    setProcessingId(u.email);
     try {
-      await accessRepo.removeAdmin(u.email); // Usando Soft Delete configurado en Fase 2
-      toast.success("Usuario desactivado");
-      await loadData();
+      const response = await fetch(`/api/admin/internal-users/${selectedUser.uid}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const payload = await response.json();
+
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || 'No fue posible actualizar el usuario');
+      }
+
+      toast.success(successMessage);
+      await loadUsers();
     } catch (error) {
       console.error(error);
-      toast.error("Error al desactivar");
+      toast.error(error instanceof Error ? error.message : 'No fue posible actualizar el usuario');
     } finally {
       setProcessingId(null);
     }
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-[60vh]"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+    return (
+      <div className="flex justify-center items-center h-[60vh]">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
   }
-
-  const pendingRequests = requests.filter(r => r.status === 'pending');
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
-           <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Gestión de Usuarios</h2>
-           <p className="text-gray-500 mt-1">Administra los accesos y roles (RBAC) del sistema.</p>
+          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Usuarios Internos</h2>
+          <p className="text-gray-500 mt-1">
+            Alta administrada, activación por correo y roles ligados a identidad estable.
+          </p>
         </div>
-        <Button onClick={loadData} variant="outline" size="sm">
+        <div className="flex gap-2">
+          <Button onClick={() => void loadUsers()} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-2" />
             Actualizar
-        </Button>
+          </Button>
+          <Button onClick={openCreateModal}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Nuevo Usuario
+          </Button>
+        </div>
       </div>
 
-      {/* PENDING REQUESTS */}
-      <section className="space-y-4">
-        <h3 className="text-lg font-bold flex items-center gap-2 text-primary">
-            <Clock className="w-5 h-5" /> Solicitudes Pendientes
-            {pendingRequests.length > 0 && (
-                <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full">{pendingRequests.length}</span>
+      <Card className="border border-gray-100 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg font-bold text-gray-900">Flujo activo de acceso interno</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-gray-600 space-y-2">
+          <p>1. El administrador crea el usuario interno desde este panel.</p>
+          <p>2. El sistema envía un enlace seguro de activación y definición de contraseña.</p>
+          <p>3. El usuario activa su acceso y queda habilitado según el rol asignado.</p>
+        </CardContent>
+      </Card>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <table className="w-full text-sm text-left text-gray-600">
+          <thead className="bg-gray-50 text-gray-900 font-bold uppercase text-xs">
+            <tr>
+              <th className="px-6 py-4">Usuario</th>
+              <th className="px-6 py-4">Rol</th>
+              <th className="px-6 py-4">Estado</th>
+              <th className="px-6 py-4">Invitación</th>
+              <th className="px-6 py-4">Último Acceso</th>
+              <th className="px-6 py-4 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {users.map((internalUser) => (
+              <tr key={internalUser.uid} className="hover:bg-gray-50/60 transition-colors">
+                <td className="px-6 py-4">
+                  <p className="font-semibold text-gray-900">{internalUser.displayName}</p>
+                  <p className="text-xs text-gray-500">{internalUser.email}</p>
+                </td>
+                <td className="px-6 py-4">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <Shield className="w-3 h-3" />
+                    {ROLE_OPTIONS.find((role) => role.value === internalUser.roleCode)?.label || internalUser.roleCode}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  <span
+                    className={cn(
+                      'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium',
+                      getStatusClass(internalUser.status)
+                    )}
+                  >
+                    {getStatusLabel(internalUser.status)}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-xs text-gray-500">
+                  <div>Enviado: {formatDate(internalUser.inviteSentAt)}</div>
+                  <div>Activado: {formatDate(internalUser.activatedAt)}</div>
+                </td>
+                <td className="px-6 py-4 text-xs text-gray-500">
+                  {formatDate(internalUser.lastLoginAt)}
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-600 hover:text-primary hover:bg-gray-100"
+                      onClick={() => openEditModal(internalUser)}
+                      disabled={processingId === internalUser.uid}
+                    >
+                      <PencilLine className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      onClick={() =>
+                        void updateUser(
+                          internalUser,
+                          { resendInvite: true },
+                          `Invitación reenviada a ${internalUser.email}`
+                        )
+                      }
+                      disabled={processingId === internalUser.uid}
+                    >
+                      {processingId === internalUser.uid ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Mail className="w-4 h-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        internalUser.status === 'disabled'
+                          ? 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                          : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                      )}
+                      onClick={() =>
+                        void updateUser(
+                          internalUser,
+                          { status: internalUser.status === 'disabled' ? 'active' : 'disabled' },
+                          internalUser.status === 'disabled'
+                            ? `Usuario habilitado: ${internalUser.email}`
+                            : `Usuario deshabilitado: ${internalUser.email}`
+                        )
+                      }
+                      disabled={processingId === internalUser.uid}
+                    >
+                      <Power className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-6 py-10 text-center text-gray-400">
+                  No hay usuarios internos creados todavía.
+                </td>
+              </tr>
             )}
-        </h3>
-        
-        {pendingRequests.length === 0 ? (
-            <Card className="bg-gray-50 border-dashed border-gray-200">
-                <CardContent className="flex flex-col items-center justify-center py-8 text-gray-400">
-                    <CheckCircle className="w-8 h-8 mb-2 opacity-50" />
-                    <p>No hay solicitudes pendientes</p>
-                </CardContent>
-            </Card>
-        ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {pendingRequests.map(req => (
-                    <Card key={req.id} className="border-l-4 border-l-orange-500 shadow-sm hover:shadow-md transition-shadow">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base font-bold text-gray-800 flex justify-between items-start">
-                                {req.name}
-                                <span className="text-[10px] font-normal px-2 py-1 bg-orange-100 text-orange-700 rounded-full uppercase">Pendiente</span>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4 text-sm">
-                            <div>
-                                <p className="text-gray-500 text-xs font-bold uppercase">Email</p>
-                                <p className="font-medium text-gray-900">{req.email}</p>
-                            </div>
-                            <div>
-                                <p className="text-gray-500 text-xs font-bold uppercase">Motivo</p>
-                                <p className="text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100 mt-1 line-clamp-2">
-                                    "{req.reason}"
-                                </p>
-                            </div>
-                            <div className="flex gap-2 pt-2">
-                                <Button 
-                                    className="flex-1 bg-green-600 hover:bg-green-700" 
-                                    size="sm"
-                                    onClick={() => openApprovalModal(req)}
-                                    disabled={!!processingId}
-                                >
-                                    {processingId === req.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-1" />}
-                                    Evaluar
-                                </Button>
-                                <Button 
-                                    variant="outline" 
-                                    className="flex-1 text-red-600 hover:bg-red-50 hover:text-red-700 border-red-100" 
-                                    size="sm"
-                                    onClick={() => handleReject(req)}
-                                    disabled={!!processingId}
-                                >
-                                    <XCircle className="w-4 h-4 mr-1" />
-                                    Rechazar
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-        )}
-      </section>
+          </tbody>
+        </table>
+      </div>
 
-      {/* ACTIVE USERS */}
-      <section className="space-y-4 pt-8 border-t border-gray-100">
-        <h3 className="text-lg font-bold flex items-center gap-2 text-gray-700">
-            <Shield className="w-5 h-5" /> Usuarios Activos
-        </h3>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <table className="w-full text-sm text-left text-gray-600">
-                <thead className="bg-gray-50 text-gray-900 font-bold uppercase text-xs">
-                    <tr>
-                        <th className="px-6 py-4">Usuario (Email)</th>
-                        <th className="px-6 py-4">Rol Asignado</th>
-                        <th className="px-6 py-4">Fecha Alta</th>
-                        <th className="px-6 py-4 text-right">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                    {users.map((u) => (
-                        <tr key={u.id} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="px-6 py-4 font-medium text-gray-900">
-                                {u.email}
-                                {u.createdBy === user?.uid && <span className="ml-2 text-xs text-gray-400">(Tú)</span>}
-                            </td>
-                            <td className="px-6 py-4">
-                                <span className={cn(
-                                    "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium",
-                                    (u as any).roleId === 'admin' ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"
-                                )}>
-                                    <Shield className="w-3 h-3" /> {(u as any).roleName}
-                                </span>
-                            </td>
-                            <td className="px-6 py-4">
-                                {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-'}
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="text-gray-500 hover:text-primary hover:bg-gray-100 mr-2"
-                                    onClick={() => openEditModal(u)}
-                                    disabled={!!processingId}
-                                >
-                                    <Edit className="w-4 h-4" />
-                                </Button>
-                                {u.email !== user?.email && (
-                                    <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="text-red-400 hover:text-red-600 hover:bg-red-50"
-                                        onClick={() => handleDeleteUser(u)}
-                                        disabled={!!processingId}
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                )}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-      </section>
-
-      {/* MODAL DE ASIGNACIÓN DE ROL */}
       {isModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in">
-              <div className="bg-white p-8 rounded-3xl max-w-md w-full shadow-2xl">
-                  <h3 className="text-2xl font-black text-gray-900 mb-2">
-                      {selectedRequest ? 'Aprobar Solicitud' : 'Modificar Rol'}
-                  </h3>
-                  <p className="text-sm text-gray-500 mb-6">
-                      Selecciona el nivel de acceso para <strong className="text-gray-800">{selectedRequest?.email || selectedUser?.email}</strong>.
-                  </p>
-                  
-                  <div className="space-y-4">
-                      <div className="space-y-2">
-                          <label className="text-xs font-bold text-gray-700 uppercase">Rol a asignar</label>
-                          <select 
-                              value={selectedRoleId}
-                              onChange={(e) => setSelectedRoleId(e.target.value)}
-                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 bg-white"
-                          >
-                              <option value="admin">Administrador (Total)</option>
-                              {roles.map(r => (
-                                  <option key={r.id} value={r.id}>{r.name} - {r.description}</option>
-                              ))}
-                          </select>
-                      </div>
-                  </div>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in">
+          <div className="bg-white p-8 rounded-3xl max-w-lg w-full shadow-2xl">
+            <h3 className="text-2xl font-black text-gray-900 mb-2">
+              {editingUser ? 'Editar Usuario Interno' : 'Crear Usuario Interno'}
+            </h3>
+            <p className="text-sm text-gray-500 mb-6">
+              {editingUser
+                ? 'Actualiza nombre y rol del usuario. El acceso se mantiene ligado a su identidad.'
+                : 'Se creará la cuenta interna y se enviará un enlace seguro de activación.'}
+            </p>
 
-                  <div className="flex gap-3 mt-8">
-                      <Button variant="outline" className="flex-1" onClick={closeModal} disabled={processingId === 'modal-action'}>
-                          Cancelar
-                      </Button>
-                      <Button className="flex-1" onClick={submitRoleAssignment} disabled={processingId === 'modal-action'}>
-                          {processingId === 'modal-action' ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <CheckCircle className="w-4 h-4 mr-2"/>}
-                          Confirmar
-                      </Button>
-                  </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-gray-700 uppercase">Nombre</label>
+                <Input
+                  value={form.displayName}
+                  onChange={(e) => setForm((prev) => ({ ...prev, displayName: e.target.value }))}
+                  placeholder="Nombre completo"
+                  className="mt-2"
+                />
               </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 uppercase">Correo institucional</label>
+                <Input
+                  value={form.email}
+                  onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                  placeholder="usuario@uapa.edu.do"
+                  type="email"
+                  className="mt-2"
+                  disabled={Boolean(editingUser)}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 uppercase">Rol</label>
+                <select
+                  value={form.roleCode}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, roleCode: e.target.value as RoleValue }))
+                  }
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 bg-white mt-2"
+                >
+                  {ROLE_OPTIONS.map((role) => (
+                    <option key={role.value} value={role.value}>
+                      {role.label} - {role.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <Button variant="outline" className="flex-1" onClick={closeModal} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button className="flex-1" onClick={() => void saveUser()} disabled={saving}>
+                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {editingUser ? 'Guardar Cambios' : 'Crear y Enviar Activación'}
+              </Button>
+            </div>
           </div>
+        </div>
       )}
     </div>
   );

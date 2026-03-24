@@ -20,6 +20,7 @@ import {
 } from 'firebase/firestore';
 import { Certificate, CertificateType, CreateCertificateDTO } from '../../domain/entities/Certificate';
 import { ICertificateRepository } from '../../domain/repositories/ICertificateRepository';
+import type { CertificateRestriction } from '@/lib/types/certificateRestriction';
 
 const COLLECTION_NAME = 'certificates';
 const COUNTERS_COLLECTION = 'folio_counters';
@@ -209,6 +210,76 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
         });
     }
 
+    async updateWorkflowState(
+        id: string,
+        data: {
+            status: Certificate['status'];
+            changedBy: string;
+            changedAt?: Date;
+            comments?: string;
+            previousStatus?: Certificate['status'];
+        }
+    ): Promise<void> {
+        const docRef = doc(db, COLLECTION_NAME, id);
+        const changedAt = data.changedAt ? Timestamp.fromDate(data.changedAt) : Timestamp.now();
+        const updateData: Record<string, unknown> = {
+            status: data.status,
+            updatedAt: Timestamp.now(),
+            stateChangedAt: changedAt,
+            stateChangedBy: data.changedBy,
+            lastStateComment: data.comments || null,
+        };
+
+        if (data.previousStatus) {
+            updateData.previousStatus = data.previousStatus;
+        }
+
+        if (data.status === 'verified') {
+            updateData.verifiedAt = changedAt;
+            updateData.verifiedBy = data.changedBy;
+        }
+
+        if (data.status === 'signed') {
+            updateData.signedAt = changedAt;
+            updateData.signedBy = data.changedBy;
+        }
+
+        if (data.status === 'issued' || data.status === 'available' || data.status === 'active') {
+            updateData.issuedAt = changedAt;
+            updateData.issuedBy = data.changedBy;
+        }
+
+        await updateDoc(docRef, updateData);
+    }
+
+    async updateGeneratedAssets(
+        id: string,
+        data: {
+            pdfUrl?: string;
+            qrCodeUrl?: string;
+            templateId?: string;
+        }
+    ): Promise<void> {
+        const docRef = doc(db, COLLECTION_NAME, id);
+        const updateData: Record<string, unknown> = {
+            updatedAt: Timestamp.now(),
+        };
+
+        if (typeof data.pdfUrl === 'string' && data.pdfUrl.trim()) {
+            updateData.pdfUrl = data.pdfUrl.trim();
+        }
+
+        if (typeof data.qrCodeUrl === 'string' && data.qrCodeUrl.trim()) {
+            updateData.qrCodeUrl = data.qrCodeUrl.trim();
+        }
+
+        if (typeof data.templateId === 'string' && data.templateId.trim()) {
+            updateData.templateId = data.templateId.trim();
+        }
+
+        await updateDoc(docRef, updateData);
+    }
+
     private async upsertProgramStats(data: CreateCertificateDTO): Promise<void> {
         const programKey = this.toProgramKey(data.academicProgram);
         const statRef = doc(db, PROGRAM_STATS_COLLECTION, programKey);
@@ -241,12 +312,61 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
             return new Date();
         };
 
+        const mapRestriction = (value: any): CertificateRestriction | undefined => {
+            if (!value || typeof value !== 'object') {
+                return undefined;
+            }
+
+            const type =
+                value.type === 'payment' ||
+                value.type === 'documents' ||
+                value.type === 'administrative'
+                    ? value.type
+                    : null;
+
+            const previousStatus =
+                typeof value.previousStatus === 'string' ? value.previousStatus : null;
+
+            const blockedBy =
+                typeof value.blockedBy === 'string' ? value.blockedBy : null;
+
+            const reason =
+                typeof value.reason === 'string' ? value.reason : null;
+
+            if (!type || !previousStatus || !blockedBy || !reason) {
+                return undefined;
+            }
+
+            return {
+                active: value.active !== false,
+                type,
+                reason,
+                blockedAt: safeToDate(value.blockedAt),
+                blockedBy,
+                previousStatus,
+                releasedAt: value.releasedAt ? safeToDate(value.releasedAt) : undefined,
+                releasedBy: typeof value.releasedBy === 'string' ? value.releasedBy : undefined,
+                releaseReason: typeof value.releaseReason === 'string' ? value.releaseReason : undefined,
+            };
+        };
+
         return {
             id: docSnap.id,
             ...data,
             qrCodeUrl: data.qrCodeUrl || `${APP_URL}/verify/${data.folio}`,
             issueDate: safeToDate(data.issueDate),
             expirationDate: data.expirationDate ? safeToDate(data.expirationDate) : undefined,
+            previousStatus: data.previousStatus,
+            stateChangedAt: data.stateChangedAt ? safeToDate(data.stateChangedAt) : undefined,
+            stateChangedBy: typeof data.stateChangedBy === 'string' ? data.stateChangedBy : undefined,
+            lastStateComment: typeof data.lastStateComment === 'string' ? data.lastStateComment : undefined,
+            verifiedAt: data.verifiedAt ? safeToDate(data.verifiedAt) : undefined,
+            verifiedBy: typeof data.verifiedBy === 'string' ? data.verifiedBy : undefined,
+            signedAt: data.signedAt ? safeToDate(data.signedAt) : undefined,
+            signedBy: typeof data.signedBy === 'string' ? data.signedBy : undefined,
+            issuedAt: data.issuedAt ? safeToDate(data.issuedAt) : undefined,
+            issuedBy: typeof data.issuedBy === 'string' ? data.issuedBy : undefined,
+            restriction: mapRestriction(data.restriction),
             createdAt: safeToDate(data.createdAt),
             updatedAt: safeToDate(data.updatedAt),
         } as Certificate;

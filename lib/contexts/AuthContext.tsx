@@ -5,6 +5,7 @@ import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 import { getAccessRepository, getRoleRepository } from '@/lib/container';
+import { getRoleFromClaims, hasInternalAccessClaim } from '@/lib/auth/claims';
 
 interface AuthContextType {
   user: User | null;
@@ -40,31 +41,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           // Obtener token para la sesión del servidor
           const idToken = await authUser.getIdToken();
-          await fetch('/api/auth/session/login', {
+          const idTokenResult = await authUser.getIdTokenResult(true);
+          const sessionResponse = await fetch('/api/auth/session/login', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ idToken }),
           });
 
-          // Obtener roles del usuario
-          const roles = new Set<string>();
-          
-          // 1. Validar si es administrador legacy (access_users)
-          const accessRepo = getAccessRepository();
-          const hasAdmin = await accessRepo.hasAdminAccess(authUser.email);
-          if (hasAdmin) {
-            roles.add('admin');
-            roles.add('administrator');
+          if (!sessionResponse.ok) {
+            await signOut(auth);
+            throw new Error('No fue posible crear la sesión del servidor');
           }
 
-          // 2. Validar roles del nuevo sistema (userRoles)
-          const roleRepo = getRoleRepository();
-          const userRolesData = await roleRepo.getUserRoles(authUser.uid);
+          // Obtener roles del usuario
+          const roles = new Set<string>();
+          const roleFromClaims = getRoleFromClaims(idTokenResult.claims);
+
+          if (hasInternalAccessClaim(idTokenResult.claims) && roleFromClaims) {
+            roles.add(roleFromClaims);
+          }
           
-          for (const ur of userRolesData) {
-            const roleDetails = await roleRepo.findById(ur.roleId);
-            if (roleDetails && roleDetails.code) {
-               roles.add(roleDetails.code);
+          if (roles.size === 0) {
+            // 1. Validar si es administrador legacy (access_users)
+            const accessRepo = getAccessRepository();
+            const hasAdmin = await accessRepo.hasAdminAccess(authUser.email);
+            if (hasAdmin) {
+              roles.add('admin');
+              roles.add('administrator');
+            }
+          }
+
+          if (roles.size === 0) {
+            // 2. Fallback de roles legacy por userRoles
+            const roleRepo = getRoleRepository();
+            const userRolesData = await roleRepo.getUserRoles(authUser.uid);
+            
+            for (const ur of userRolesData) {
+              const roleDetails = await roleRepo.findById(ur.roleId);
+              if (roleDetails && roleDetails.code) {
+                 roles.add(roleDetails.code);
+              }
             }
           }
 
@@ -72,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (roles.size === 0 && authUser.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
              roles.add('admin');
              roles.add('administrator');
-          }
+           }
 
           setUserRoles(Array.from(roles));
 

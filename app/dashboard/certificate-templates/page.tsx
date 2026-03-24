@@ -10,6 +10,7 @@ import {
   Layout, 
   Monitor, 
   File,
+  FileText,
   Plus,
   Trash2,
   Settings,
@@ -116,8 +117,7 @@ export default function CertificateTemplatesPage() {
           type: template.type,
           certificateTypeId: template.certificateTypeId,
           layout: template.layout,
-          placeholders: template.placeholders,
-          createdBy: 'current-user-id' // TODO: obtener de auth
+          placeholders: template.placeholders
         }),
       });
 
@@ -493,8 +493,7 @@ function CreateTemplateModal({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...formData,
-          createdBy: 'current-user-id' // TODO: obtener de auth
+          ...formData
         }),
       });
 

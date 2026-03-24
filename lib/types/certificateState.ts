@@ -23,6 +23,7 @@ export interface StateTransition {
   to: CertificateStateValue;
   allowedRoles: string[];
   requiresAction: boolean;
+  flow?: 'direct' | 'signature_request' | 'signature' | 'generation';
   actionLabel?: string;
   description?: string;
 }
@@ -42,6 +43,7 @@ export const STATE_TRANSITIONS: StateTransition[] = [
     to: 'pending_review',
     allowedRoles: ['coordinator', 'administrator'],
     requiresAction: true,
+    flow: 'direct',
     actionLabel: 'Enviar a Verificación',
     description: 'El coordinador envía el certificado para verificación'
   },
@@ -52,6 +54,7 @@ export const STATE_TRANSITIONS: StateTransition[] = [
     to: 'verified',
     allowedRoles: ['verifier', 'administrator'],
     requiresAction: true,
+    flow: 'direct',
     actionLabel: 'Verificar',
     description: 'El verificador aprueba la información del certificado'
   },
@@ -62,6 +65,7 @@ export const STATE_TRANSITIONS: StateTransition[] = [
     to: 'draft',
     allowedRoles: ['verifier', 'administrator'],
     requiresAction: true,
+    flow: 'direct',
     actionLabel: 'Rechazar',
     description: 'Devolver al coordinador para correcciones'
   },
@@ -72,6 +76,7 @@ export const STATE_TRANSITIONS: StateTransition[] = [
     to: 'pending_signature',
     allowedRoles: ['coordinator', 'administrator'],
     requiresAction: true,
+    flow: 'signature_request',
     actionLabel: 'Enviar a Firma',
     description: 'Enviar al firmante para firma digital'
   },
@@ -82,6 +87,7 @@ export const STATE_TRANSITIONS: StateTransition[] = [
     to: 'signed',
     allowedRoles: ['signer', 'administrator'],
     requiresAction: true,
+    flow: 'signature',
     actionLabel: 'Firmar',
     description: 'Firma digital del certificado'
   },
@@ -92,6 +98,7 @@ export const STATE_TRANSITIONS: StateTransition[] = [
     to: 'verified',
     allowedRoles: ['signer', 'administrator'],
     requiresAction: true,
+    flow: 'signature',
     actionLabel: 'Rechazar Firma',
     description: 'Devolver para correcciones antes de firmar'
   },
@@ -102,6 +109,7 @@ export const STATE_TRANSITIONS: StateTransition[] = [
     to: 'issued',
     allowedRoles: ['coordinator', 'administrator'],
     requiresAction: true,
+    flow: 'generation',
     actionLabel: 'Emitir',
     description: 'Hacer disponible el certificado para el participante'
   },
@@ -112,6 +120,7 @@ export const STATE_TRANSITIONS: StateTransition[] = [
     to: 'cancelled',
     allowedRoles: ['administrator'],
     requiresAction: true,
+    flow: 'direct',
     actionLabel: 'Cancelar',
     description: 'Anular el certificado'
   }

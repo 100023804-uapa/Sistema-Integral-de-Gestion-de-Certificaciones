@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGetStateHistoryUseCase, getCreateCertificateStateUseCase } from '@/lib/container';
+import { requireAuthenticatedInternalUser } from '@/lib/auth/server';
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuthenticatedInternalUser(request);
+    if (auth.response) {
+      return auth.response;
+    }
+    const currentUser = auth.user!;
+
     const { searchParams } = new URL(request.url);
     const certificateId = searchParams.get('certificateId');
     const userId = searchParams.get('userId');
@@ -18,8 +25,17 @@ export async function GET(request: NextRequest) {
         data: history 
       });
     } else if (userId) {
-      // Obtener estados por usuario
-      const states = await getStateHistoryUseCase.getStatesByUser(userId, state || undefined);
+      // Obtener estados actuales visibles para el rol del usuario
+      const states =
+        userId === 'self'
+          ? await getStateHistoryUseCase.getVisibleCurrentStates(
+              currentUser.primaryRole,
+              state || undefined
+            )
+          : await getStateHistoryUseCase.getStatesByUser(
+              currentUser.uid,
+              state || undefined
+            );
       return NextResponse.json({ 
         success: true, 
         data: states 
@@ -42,13 +58,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuthenticatedInternalUser(request);
+    if (auth.response) {
+      return auth.response;
+    }
+    const currentUser = auth.user!;
+
     const body = await request.json();
     
     const createCertificateStateUseCase = getCreateCertificateStateUseCase();
     const state = await createCertificateStateUseCase.execute(
       body.certificateId,
       body.initialState,
-      body.changedBy
+      currentUser.uid
     );
 
     return NextResponse.json({ 

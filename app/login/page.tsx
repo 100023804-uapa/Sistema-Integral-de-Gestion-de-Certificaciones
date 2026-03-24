@@ -12,8 +12,16 @@ import { cn } from '@/lib/utils';
 import { APP_VERSION } from '@/lib/config/changelog';
 import { ChangelogModal } from '@/components/ui/ChangelogModal';
 import { getAccessRepository } from '@/lib/container';
+import { getRoleFromClaims, hasInternalAccessClaim } from '@/lib/auth/claims';
 
 type LoginRole = 'admin' | 'student';
+type SessionLoginPayload = {
+  success: boolean;
+  internalAccess: boolean;
+  studentAccess: boolean;
+  studentStatus?: 'inactive' | 'invited' | 'active' | 'disabled' | null;
+  mustChangePassword?: boolean;
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,6 +33,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+  const passwordChanged = searchParams.get('passwordChanged') === '1';
 
   const getRedirectPath = () => {
     const nextPath = searchParams.get('next');
@@ -32,8 +41,30 @@ export default function LoginPage() {
     return nextPath;
   };
 
+  const createServerSession = async (idToken: string): Promise<SessionLoginPayload> => {
+    const sessionRes = await fetch('/api/auth/session/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+
+    const payload = await sessionRes.json().catch(() => null);
+
+    if (!sessionRes.ok || !payload?.success) {
+      throw new Error('session-create-failed');
+    }
+
+    return payload as SessionLoginPayload;
+  };
+
   const ensureAdminAccess = async (credential: UserCredential) => {
     const user = credential.user;
+    const tokenResult = await user.getIdTokenResult(true);
+
+    if (hasInternalAccessClaim(tokenResult.claims) && getRoleFromClaims(tokenResult.claims)) {
+      return;
+    }
+
     const bootstrapped = await accessRepo.ensureBootstrapAdmin({ uid: user.uid, email: user.email });
     if (bootstrapped) return;
 
@@ -53,13 +84,31 @@ export default function LoginPage() {
 
     try {
       if (role === 'student') {
-        // Para participantes, redirigimos a la consulta pÃºblica
-        if (!email.trim()) {
-           setError('Por favor ingrese una matrícula, cédula o folio válido.');
-           setLoading(false);
-           return;
+        const credential = await signInWithEmailAndPassword(auth, email, password);
+        const idToken = await credential.user.getIdToken();
+        const sessionPayload = await createServerSession(idToken);
+
+        if (sessionPayload.internalAccess) {
+          router.push(getRedirectPath());
+          return;
         }
-        router.push(`/verify?query=${encodeURIComponent(email)}`);
+
+        if (!sessionPayload.studentAccess) {
+          await signOut(auth);
+          await fetch('/api/auth/session/logout', { method: 'POST' });
+          throw new Error(
+            sessionPayload.studentStatus === 'disabled'
+              ? 'student-access-disabled'
+              : 'student-not-linked'
+          );
+        }
+
+        if (sessionPayload.mustChangePassword) {
+          router.push('/student/change-password');
+          return;
+        }
+
+        router.push('/student');
         return;
       }
 
@@ -68,15 +117,7 @@ export default function LoginPage() {
       await ensureAdminAccess(credential);
 
       const idToken = await credential.user.getIdToken();
-      const sessionRes = await fetch('/api/auth/session/login', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!sessionRes.ok) {
-        throw new Error('session-create-failed');
-      }
+      await createServerSession(idToken);
 
       router.push(getRedirectPath());
     } catch (err: any) {
@@ -87,6 +128,10 @@ export default function LoginPage() {
         setError('Esta cuenta no tiene permisos administrativos.');
       } else if (err.code === 'auth/too-many-requests') {
         setError('Demasiados intentos. Espere unos minutos.');
+      } else if (err.message === 'student-access-disabled') {
+        setError('El acceso del participante está deshabilitado. Solicite apoyo al administrador.');
+      } else if (err.message === 'student-not-linked') {
+        setError('La cuenta no está habilitada para el portal del participante. Solicite activación al administrador.');
       } else if (err.message === 'session-create-failed') {
         setError('No fue posible crear la sesión. Inténtelo de nuevo.');
       } else {
@@ -109,15 +154,7 @@ export default function LoginPage() {
       await ensureAdminAccess(credential);
 
       const idToken = await credential.user.getIdToken();
-      const sessionRes = await fetch('/api/auth/session/login', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!sessionRes.ok) {
-        throw new Error('session-create-failed');
-      }
+      await createServerSession(idToken);
 
       router.push(getRedirectPath());
     } catch (err: any) {
@@ -206,40 +243,44 @@ export default function LoginPage() {
                 {error}
             </div>
         )}
+        {!error && passwordChanged && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 text-green-700 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+                <ShieldCheck size={16} />
+                Contraseña actualizada. Inicia sesión con tu nueva clave para continuar.
+            </div>
+        )}
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-bold text-gray-700 mb-1 ml-1">
-                {role === 'admin' ? 'Correo Institucional' : 'Matrícula o Cédula'}
+                {role === 'admin' ? 'Correo Institucional' : 'Correo Electrónico'}
               </label>
               <Input
                 id="email"
-                type={role === 'admin' ? 'email' : 'text'}
-                placeholder={role === 'admin' ? "admin@sigce.edu.do" : "Ej: 2023-1234 o 402-..."}
+                type="email"
+                placeholder={role === 'admin' ? "admin@sigce.edu.do" : "participante@correo.com"}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="h-12 rounded-xl"
               />
             </div>
-            {role === 'admin' && (
-              <div>
-                <label htmlFor="password" className="block text-sm font-bold text-gray-700 mb-1 ml-1">
-                  Contraseña
-                </label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="h-12 rounded-xl"
-                />
-              </div>
-            )}
+            <div>
+              <label htmlFor="password" className="block text-sm font-bold text-gray-700 mb-1 ml-1">
+                Contraseña
+              </label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="h-12 rounded-xl"
+              />
+            </div>
           </div>
 
           <Button 
@@ -253,7 +294,7 @@ export default function LoginPage() {
                 Iniciando...
               </>
             ) : (
-                role === 'admin' ? 'Entrar como Admin' : 'Consultar Certificados'
+                role === 'admin' ? 'Entrar como Admin' : 'Entrar como Participante'
             )}
           </Button>
 
@@ -302,16 +343,19 @@ export default function LoginPage() {
 
           {role === 'admin' && (
             <p className="text-center text-xs text-gray-500 mt-6 px-4 animate-in fade-in slide-in-from-bottom-3">
-              ¿No tienes cuenta? Para registrarte como administrador, <br/>
-              <Link href="/request-access" className="font-medium text-primary hover:underline hover:text-orange-600 transition-colors">
-                solicita acceso aquí.
-              </Link>
+              El acceso administrativo ahora se gestiona internamente.
               <br/>
               <span className="opacity-80 mt-1 block">
-                ¿Ya fuiste aprobado? {' '}
-                <Link href="/register-admin" className="font-medium text-primary hover:underline hover:text-orange-600 transition-colors">
-                  Completa tu registro aquí.
-                </Link>
+                Si necesitas acceso, un administrador del sistema debe crearte y activarte la cuenta.
+              </span>
+            </p>
+          )}
+          {role === 'student' && (
+            <p className="text-center text-xs text-gray-500 mt-6 px-4 animate-in fade-in slide-in-from-bottom-3">
+              La consulta pública solo valida la autenticidad del certificado.
+              <br/>
+              <span className="opacity-80 mt-1 block">
+                Para ver y descargar tus documentos debes ingresar con la cuenta de participante activada por administración.
               </span>
             </p>
           )}

@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUpdateTemplateUseCase, getDeleteTemplateUseCase, getListTemplatesUseCase } from '@/lib/container';
+import { requireInternalUserRole } from '@/lib/auth/server';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator', 'coordinator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const { id } = await params;
     const listTemplatesUseCase = getListTemplatesUseCase();
     const template = await listTemplatesUseCase.findById(id);
@@ -36,6 +42,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator', 'coordinator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const { id } = await params;
     const body = await request.json();
     const updateTemplateUseCase = getUpdateTemplateUseCase();
@@ -60,6 +71,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator', 'coordinator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const { id } = await params;
     const deleteTemplateUseCase = getDeleteTemplateUseCase();
     await deleteTemplateUseCase.execute(id);

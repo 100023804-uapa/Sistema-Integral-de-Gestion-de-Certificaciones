@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGetSignatureRequestsUseCase } from '@/lib/container';
+import { requireAuthenticatedInternalUser } from '@/lib/auth/server';
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuthenticatedInternalUser(request);
+    if (auth.response) {
+      return auth.response;
+    }
+    const currentUser = auth.user!;
+
     const { searchParams } = new URL(request.url);
     const signerId = searchParams.get('signerId');
     const requestedBy = searchParams.get('requestedBy');
@@ -13,14 +20,17 @@ export async function GET(request: NextRequest) {
     
     if (signerId) {
       // Obtener solicitudes por firmante
-      const requests = await getSignatureRequestsUseCase.getRequestsBySigner(signerId, status || undefined);
+      const requests = await getSignatureRequestsUseCase.getRequestsBySigner(
+        currentUser.uid,
+        status || undefined
+      );
       return NextResponse.json({ 
         success: true, 
         data: requests 
       });
     } else if (requestedBy) {
       // Obtener solicitudes por solicitante
-      const requests = await getSignatureRequestsUseCase.getRequestsByRequester(requestedBy);
+      const requests = await getSignatureRequestsUseCase.getRequestsByRequester(currentUser.uid);
       return NextResponse.json({ 
         success: true, 
         data: requests 

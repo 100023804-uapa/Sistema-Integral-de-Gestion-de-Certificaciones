@@ -7,12 +7,14 @@ import { ArrowLeft, User, FileText, Calendar, Save, CheckCircle, AlertCircle, Ma
 import { getCreateCertificateUseCase, getCertificateTemplateRepository, getListCampusesUseCase } from '@/lib/container';
 import { CertificateType } from '@/lib/domain/entities/Certificate';
 import { Campus } from '@/lib/container';
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 import { CertificateTemplate } from '@/lib/types/certificateTemplate';
 import { LayoutTemplate } from 'lucide-react';
 
 export default function CreateCertificatePage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +68,10 @@ export default function CreateCertificatePage() {
     setError(null);
     
     try {
+        if (!user?.uid) {
+            throw new Error('No se pudo identificar el usuario autenticado.');
+        }
+
         const createCertificate = getCreateCertificateUseCase();
         await createCertificate.execute({
             ...formData,
@@ -75,7 +81,7 @@ export default function CreateCertificatePage() {
             studentEmail: '', // Podríamos agregar campo email al form si se desea
             templateId: formData.templateId || undefined,
             campusId: formData.campusId, // Nuevo: obligatorio
-            createdBy: 'current-user-id', // TODO: Obtener del contexto de autenticación
+            createdBy: user.uid,
         });
 
         setSuccess(true);

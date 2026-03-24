@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getListTemplatesUseCase, getCreateTemplateUseCase } from '@/lib/container';
+import { requireInternalUserRole } from '@/lib/auth/server';
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator', 'coordinator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const { searchParams } = new URL(request.url);
     const activeOnly = searchParams.get('activeOnly') === 'true';
     const type = searchParams.get('type') as 'horizontal' | 'vertical' | 'institutional_macro' | null;
@@ -44,6 +50,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator', 'coordinator']);
+    if (auth.response) {
+      return auth.response;
+    }
+    const currentUser = auth.user!;
     const body = await request.json();
     
     const createTemplateUseCase = getCreateTemplateUseCase();
@@ -56,7 +67,7 @@ export async function POST(request: NextRequest) {
         layout: body.layout,
         placeholders: body.placeholders
       },
-      body.createdBy
+      currentUser.uid
     );
 
     return NextResponse.json({ 

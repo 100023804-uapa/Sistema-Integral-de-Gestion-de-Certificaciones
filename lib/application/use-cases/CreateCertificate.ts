@@ -79,7 +79,7 @@ export class CreateCertificate {
             type: input.type,
             academicProgram: input.academicProgram,
             issueDate: input.issueDate,
-            status: 'active' as CertificateStatus,
+            status: 'draft' as CertificateStatus,
             metadata: input.metadata || {},
             templateId: input.templateId,
             campusId: input.campusId,

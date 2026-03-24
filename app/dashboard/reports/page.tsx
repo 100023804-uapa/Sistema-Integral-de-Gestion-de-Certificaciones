@@ -7,6 +7,11 @@ import { getCertificateRepository, getListCampusesUseCase, getListAcademicAreasU
 import { Certificate } from '@/lib/domain/entities/Certificate';
 import { Campus } from '@/lib/container';
 import { AcademicArea } from '@/lib/container';
+import {
+  getCertificateStatusLabel,
+  isCertificateBlocked,
+  isCertificateEmitted,
+} from '@/lib/types/certificateStatus';
 
 interface MonthlyPoint {
   label: string;
@@ -60,10 +65,8 @@ export default function ReportsPage() {
       setLoading(true);
       setError('');
       
-      // Nota: En una app real, el repo debería soportar estos filtros server-side
-      // Para este MVP/Hito, filtramos en cliente sobre los primeros 500 registros
-      const result = await certRepo.listPaginated(undefined, 500);
-      let filtered = result.data;
+      const allCertificates = await certRepo.findAll();
+      let filtered = allCertificates;
 
       if (filters.campusId) {
         filtered = filtered.filter(c => c.campusId === filters.campusId);
@@ -101,7 +104,7 @@ export default function ReportsPage() {
       cert.studentName,
       cert.studentId,
       cert.type,
-      cert.status,
+      getCertificateStatusLabel(cert.status),
       cert.academicProgram,
       cert.issueDate.toISOString(),
     ].map(csvEscape).join(','));
@@ -180,9 +183,16 @@ export default function ReportsPage() {
               className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
             >
               <option value="">Todos los Estados</option>
-              <option value="active">Activo</option>
-              <option value="revoked">Revocado</option>
-              <option value="expired">Expirado</option>
+              <option value="draft">Borrador</option>
+              <option value="pending_review">Espera de verificación</option>
+              <option value="verified">Verificado</option>
+              <option value="pending_signature">Espera de firma</option>
+              <option value="signed">Firmado</option>
+              <option value="issued">Emitido</option>
+              <option value="blocked_payment">Bloqueado por pago</option>
+              <option value="blocked_documents">Bloqueado por documentacion</option>
+              <option value="blocked_administrative">Bloqueado administrativo</option>
+              <option value="cancelled">Cancelado</option>
             </select>
           </div>
           <div className="space-y-1">
@@ -211,11 +221,15 @@ export default function ReportsPage() {
         </div>
       ) : (
         <>
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            Los reportes se estan calculando con todos los certificados recuperados del repositorio actual, no con una carga parcial.
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard icon={FileText} label="Certificados Analizados" value={report.total.toString()} />
-            <MetricCard icon={CheckCircle2} label="Activos" value={report.active.toString()} tone="green" />
-            <MetricCard icon={AlertTriangle} label="Revocados" value={report.revoked.toString()} tone="red" />
-            <MetricCard icon={Clock3} label="Expirados" value={report.expired.toString()} tone="gray" />
+            <MetricCard icon={CheckCircle2} label="Emitidos" value={report.active.toString()} tone="green" />
+            <MetricCard icon={AlertTriangle} label="Bloqueados" value={report.revoked.toString()} tone="red" />
+            <MetricCard icon={Clock3} label="En Flujo" value={report.expired.toString()} tone="gray" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -302,9 +316,11 @@ function TypeRow({ label, value, total }: { label: string; value: number; total:
 
 function buildReport(certificates: Certificate[]) {
   const total = certificates.length;
-  const active = certificates.filter((c) => c.status === 'active').length;
-  const revoked = certificates.filter((c) => c.status === 'revoked').length;
-  const expired = certificates.filter((c) => c.status === 'expired').length;
+  const active = certificates.filter((c) => isCertificateEmitted(c.status)).length;
+  const revoked = certificates.filter((c) => isCertificateBlocked(c.status)).length;
+  const expired = certificates.filter(
+    (c) => !isCertificateEmitted(c.status) && !isCertificateBlocked(c.status)
+  ).length;
 
   const byType = {
     CAP: certificates.filter((c) => c.type === 'CAP').length,

@@ -1,18 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTransitionStateUseCase } from '@/lib/container';
+import { requireAuthenticatedInternalUser } from '@/lib/auth/server';
+import {
+  notifyPendingReview,
+  notifyReturnedToDraft,
+} from '@/lib/server/certificateWorkflowNotifications';
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuthenticatedInternalUser(request);
+    if (auth.response) {
+      return auth.response;
+    }
+    const currentUser = auth.user!;
+
     const body = await request.json();
     
     const transitionStateUseCase = getTransitionStateUseCase();
     const newState = await transitionStateUseCase.execute(
       body.certificateId,
       body.newState,
-      body.changedBy,
-      body.userRole,
+      currentUser.uid,
+      currentUser.primaryRole,
       body.comments
     );
+
+    if (newState.currentState === 'pending_review') {
+      await notifyPendingReview(newState.certificateId, newState.comments);
+    }
+
+    if (
+      newState.currentState === 'draft' &&
+      newState.previousState === 'pending_review' &&
+      newState.metadata &&
+      typeof newState.metadata.previousChangedBy === 'string'
+    ) {
+      await notifyReturnedToDraft(
+        newState.certificateId,
+        newState.metadata.previousChangedBy,
+        newState.comments
+      );
+    }
 
     return NextResponse.json({ 
       success: true, 
@@ -30,23 +58,31 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuthenticatedInternalUser(request);
+    if (auth.response) {
+      return auth.response;
+    }
+    const currentUser = auth.user!;
+
     const { searchParams } = new URL(request.url);
     const certificateId = searchParams.get('certificateId');
-    const userRole = searchParams.get('userRole');
     const pendingActions = searchParams.get('pendingActions') === 'true';
     
     const transitionStateUseCase = getTransitionStateUseCase();
     
-    if (pendingActions && userRole) {
+    if (pendingActions) {
       // Obtener acciones pendientes para el rol del usuario
-      const pendingStates = await transitionStateUseCase.getPendingActions(userRole);
+      const pendingStates = await transitionStateUseCase.getPendingActions(currentUser.primaryRole);
       return NextResponse.json({ 
         success: true, 
         data: pendingStates 
       });
-    } else if (certificateId && userRole) {
+    } else if (certificateId) {
       // Obtener transiciones disponibles para un certificado
-      const transitions = await transitionStateUseCase.getAvailableTransitions(certificateId, userRole);
+      const transitions = await transitionStateUseCase.getAvailableManualTransitions(
+        certificateId,
+        currentUser.primaryRole
+      );
       return NextResponse.json({ 
         success: true, 
         data: transitions 

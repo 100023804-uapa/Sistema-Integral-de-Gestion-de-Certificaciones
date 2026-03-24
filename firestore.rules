@@ -1,4 +1,4 @@
-﻿rules_version='2';
+rules_version='2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -14,7 +14,7 @@ service cloud.firestore {
       return userEmail().lower();
     }
 
-    function isAdmin() {
+    function hasLegacyAdminAccess() {
       return isSignedIn()
         && userEmail() != null
         && exists(/databases/$(database)/documents/access_users/$(userEmailLower()))
@@ -22,52 +22,175 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/access_users/$(userEmailLower())).data.disabled != true;
     }
 
-    // Public verification flow relies on read access to certificates.
+    function hasClaimedInternalAccess() {
+      return isSignedIn()
+        && request.auth.token.sigce_internal == true
+        && request.auth.token.sigce_role is string;
+    }
+
+    function roleIs(role) {
+      return hasClaimedInternalAccess() && request.auth.token.sigce_role == role;
+    }
+
+    function isInternalStaff() {
+      return hasClaimedInternalAccess() || hasLegacyAdminAccess();
+    }
+
+    function isAdministrator() {
+      return roleIs('administrator') || hasLegacyAdminAccess();
+    }
+
+    function isCoordinator() {
+      return roleIs('coordinator');
+    }
+
+    function isVerifier() {
+      return roleIs('verifier');
+    }
+
+    function isSigner() {
+      return roleIs('signer');
+    }
+
+    function canOperateCertificates() {
+      return isAdministrator() || isCoordinator();
+    }
+
+    function canAccessParticipants() {
+      return isAdministrator() || isCoordinator() || isVerifier();
+    }
+
+    function canOperateStates() {
+      return isAdministrator() || isCoordinator() || isVerifier() || isSigner();
+    }
+
+    function canManageTemplates() {
+      return isAdministrator() || isCoordinator();
+    }
+
+    function canManageSignatures() {
+      return isAdministrator() || isCoordinator() || isSigner();
+    }
+
     match /certificates/{certificateId} {
-      allow read: if true;
-      allow create, update: if isAdmin();
+      allow read: if isInternalStaff();
+      allow create, update: if canOperateCertificates();
       allow delete: if false;
     }
 
     match /students/{studentId} {
-      allow read, create, update: if isAdmin();
+      allow read, create, update: if canAccessParticipants();
       allow delete: if false;
     }
 
     match /templates/{templateId} {
-      allow read, create, update: if isAdmin();
+      allow read, create, update: if canManageTemplates();
       allow delete: if false;
     }
 
     match /program_stats/{programId} {
-      allow read, create, update: if isAdmin();
+      allow read: if isInternalStaff();
+      allow create, update: if canOperateCertificates();
       allow delete: if false;
     }
 
     match /folio_counters/{counterId} {
-      allow read, write: if isAdmin();
+      allow read, write: if canOperateCertificates();
     }
 
     match /access_users/{userId} {
       allow get: if true;
-      allow list: if isAdmin();
-      allow create, update, delete: if isAdmin();
+      allow list: if isAdministrator();
+      allow create, update, delete: if isAdministrator();
     }
 
     match /access_requests/{requestId} {
-      allow create: if true
-        && request.resource.id == requestId
-        && request.resource.data.email is string
-        && request.resource.data.name is string
-        && request.resource.data.reason is string
-        && request.resource.data.status == 'pending'
-        && requestId == request.resource.data.email.lower();
-
-      allow read, update, delete: if isAdmin();
+      allow create: if false;
+      allow read, update, delete: if isAdministrator();
     }
 
     match /programs/{programId} {
-      allow read, create, update: if isAdmin();
+      allow read: if isInternalStaff();
+      allow create, update: if canOperateCertificates();
+      allow delete: if false;
+    }
+
+    match /campuses/{campusId} {
+      allow read: if isInternalStaff();
+      allow create, update: if isAdministrator();
+      allow delete: if false;
+    }
+
+    match /academicAreas/{academicAreaId} {
+      allow read: if isInternalStaff();
+      allow create, update: if isAdministrator();
+      allow delete: if false;
+    }
+
+    match /certificateTypes/{certificateTypeId} {
+      allow read: if isInternalStaff();
+      allow create, update: if isAdministrator();
+      allow delete: if false;
+    }
+
+    match /roles/{roleId} {
+      allow read: if isInternalStaff();
+      allow create, update: if isAdministrator();
+      allow delete: if false;
+    }
+
+    match /userRoles/{userRoleId} {
+      allow read, create, update: if isAdministrator();
+      allow delete: if false;
+    }
+
+    match /certificateStates/{stateId} {
+      allow read: if isInternalStaff();
+      allow create, update: if canOperateStates();
+      allow delete: if false;
+    }
+
+    match /certificateRestrictions/{restrictionId} {
+      allow read: if isInternalStaff();
+      allow create, update: if canOperateCertificates();
+      allow delete: if false;
+    }
+
+    match /stateHistories/{historyId} {
+      allow read: if isInternalStaff();
+      allow create, update: if canOperateStates();
+      allow delete: if false;
+    }
+
+    match /certificateTemplates/{templateId} {
+      allow read: if isInternalStaff();
+      allow create, update: if canManageTemplates();
+      allow delete: if false;
+    }
+
+    match /generatedCertificates/{generatedCertificateId} {
+      allow read: if isInternalStaff();
+      allow create, update: if canManageTemplates();
+      allow delete: if false;
+    }
+
+    match /signatureRequests/{requestId} {
+      allow read, create, update: if canManageSignatures();
+      allow delete: if false;
+    }
+
+    match /digitalSignatures/{signatureId} {
+      allow read, create, update: if canManageSignatures();
+      allow delete: if false;
+    }
+
+    match /signatureTemplates/{templateId} {
+      allow read, create, update: if canManageSignatures();
+      allow delete: if false;
+    }
+
+    match /internal_users/{userId} {
+      allow read, create, update: if isAdministrator();
       allow delete: if false;
     }
 

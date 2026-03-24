@@ -1,5 +1,9 @@
 import { db } from "@/lib/firebase";
 import { collection, getCountFromServer, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import {
+    getCertificateStatusLabel,
+    isCertificateBlocked,
+} from "@/lib/types/certificateStatus";
 
 export interface DashboardStats {
     totalIssued: number;
@@ -20,18 +24,16 @@ export class GetDashboardStats {
     async execute(): Promise<DashboardStats> {
         try {
             const certificatesRef = collection(db, "certificates");
-            const statesRef = collection(db, "certificateStates");
-
-            // 1. Total Issued (Status: active)
-            const issuedQuery = query(certificatesRef, where("status", "==", "active"));
+            // 1. Total Issued
+            const issuedQuery = query(certificatesRef, where("status", "in", ["issued", "active"]));
             const issuedSnapshot = await getCountFromServer(issuedQuery);
 
-            // 2. Pending Validation / Signatures (Using States)
-            const pendingQuery = query(statesRef, where("currentState", "in", ["pending_review", "pending_signature"]));
+            // 2. Pendientes de validación/firma sobre estado actual
+            const pendingQuery = query(certificatesRef, where("status", "in", ["pending_review", "pending_signature"]));
             const pendingSnapshot = await getCountFromServer(pendingQuery);
 
-            // 3. Blocked or Revoked
-            const blockedQuery = query(certificatesRef, where("status", "==", "revoked"));
+            // 3. Bloqueados o cancelados
+            const blockedQuery = query(certificatesRef, where("status", "in", ["revoked", "cancelled", "blocked_payment", "blocked_documents", "blocked_administrative"]));
             const blockedSnapshot = await getCountFromServer(blockedQuery);
 
             // 4. Breakdown by Type
@@ -47,11 +49,14 @@ export class GetDashboardStats {
 
             const recentActivity = recentDocs.docs.slice(0, 5).map(doc => {
                 const data = doc.data();
+                const statusLabel = getCertificateStatusLabel(data.status);
+                const blocked = isCertificateBlocked(data.status);
+                const activityType: 'error' | 'success' = blocked ? 'error' : 'success';
                 return {
                     id: doc.id,
-                    type: data.status === 'revoked' ? 'error' : 'success' as const,
-                    title: data.status === 'revoked' ? 'Certificado Revocado' : 'Nuevo Certificado',
-                    description: `Emitido a ${data.studentName || 'Estudiante'} - ${data.folio || ''}`,
+                    type: activityType,
+                    title: blocked ? `Certificado ${statusLabel}` : `Certificado ${statusLabel}`,
+                    description: `${data.studentName || 'Estudiante'} - ${data.folio || ''}`,
                     time: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString() : 'Reciente'
                 };
             });

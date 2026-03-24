@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CertificateState, StateHistory } from '@/lib/container';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import { 
   Clock, 
   CheckCircle, 
@@ -17,7 +18,21 @@ import {
 import { cn } from '@/lib/utils';
 import { STATE_CONFIG } from '@/lib/types/certificateState';
 
+type SignerCandidate = {
+  uid: string;
+  displayName: string;
+  email: string;
+  roleCode: string;
+};
+
+type TemplateCandidate = {
+  id: string;
+  name: string;
+  description?: string;
+};
+
 export default function CertificateStatesPage() {
+  const { user } = useAuth();
   const [states, setStates] = useState<CertificateState[]>([]);
   const [pendingActions, setPendingActions] = useState<CertificateState[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,16 +43,20 @@ export default function CertificateStatesPage() {
   const fetchStates = async () => {
     try {
       setLoading(true);
-      
-      // Simular usuario actual - TODO: obtener de auth context
-      const currentUserRole = 'coordinator'; // Cambiar según el usuario
-      
-      // Obtener acciones pendientes
-      const pendingResponse = await fetch(`/api/admin/certificate-states/transition?pendingActions=true&userRole=${currentUserRole}`);
+      const [pendingResponse, statesResponse] = await Promise.all([
+        fetch('/api/admin/certificate-states/transition?pendingActions=true'),
+        fetch('/api/admin/certificate-states?userId=self'),
+      ]);
+
       const pendingData = await pendingResponse.json();
-      
+      const statesData = await statesResponse.json();
+
       if (pendingData.success) {
         setPendingActions(pendingData.data);
+      }
+
+      if (statesData.success) {
+        setStates(statesData.data);
       }
 
     } catch (error) {
@@ -48,11 +67,18 @@ export default function CertificateStatesPage() {
   };
 
   useEffect(() => {
-    fetchStates();
-  }, []);
+    if (!user) return;
+    void fetchStates();
+  }, [user]);
 
   const handleTransition = async (certificateId: string, newState: string, comments?: string) => {
     try {
+      if (newState === '__refresh__') {
+        await fetchStates();
+        setSelectedState(null);
+        return;
+      }
+
       const response = await fetch('/api/admin/certificate-states/transition', {
         method: 'POST',
         headers: {
@@ -61,8 +87,6 @@ export default function CertificateStatesPage() {
         body: JSON.stringify({
           certificateId,
           newState,
-          changedBy: 'current-user-id', // TODO: obtener de auth
-          userRole: 'coordinator', // TODO: obtener de auth
           comments
         }),
       });
@@ -70,7 +94,7 @@ export default function CertificateStatesPage() {
       const data = await response.json();
       
       if (data.success) {
-        fetchStates(); // Refresh
+        await fetchStates();
         setSelectedState(null);
       } else {
         alert('Error: ' + data.error);
@@ -82,7 +106,7 @@ export default function CertificateStatesPage() {
   };
 
   const getStateIcon = (state: string) => {
-    const icons: Record<string, JSX.Element> = {
+    const icons: Record<string, React.ReactNode> = {
       'draft': <Edit size={20} />,
       'pending_review': <Clock size={20} />,
       'verified': <CheckCircle size={20} />,
@@ -105,17 +129,6 @@ export default function CertificateStatesPage() {
       'cancelled': 'bg-red-100 text-red-800 border-red-200'
     };
     return colors[state] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getAvailableTransitions = async (certificateId: string) => {
-    try {
-      const response = await fetch(`/api/admin/certificate-states/transition?certificateId=${certificateId}&userRole=coordinator`);
-      const data = await response.json();
-      return data.success ? data.data : [];
-    } catch (error) {
-      console.error('Error getting transitions:', error);
-      return [];
-    }
   };
 
   if (loading) {
@@ -181,7 +194,14 @@ export default function CertificateStatesPage() {
                   </span>
                 </div>
                 <div className="text-sm">
-                  <p className="font-medium">Certificado: {state.certificateId}</p>
+                  <p className="font-medium">
+                    Certificado: {(state.metadata?.folio as string) || state.certificateId}
+                  </p>
+                  {state.metadata?.studentName && (
+                    <p className="text-xs text-gray-600">
+                      Participante: {String(state.metadata.studentName)}
+                    </p>
+                  )}
                   <p className="text-gray-600 text-xs mt-1">
                     {state.comments || 'Sin comentarios'}
                   </p>
@@ -195,7 +215,13 @@ export default function CertificateStatesPage() {
       {/* Lista de Estados */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {states
-          .filter(state => filter === 'all' || state.currentState === filter)
+          .filter((state) =>
+            filter === 'all'
+              ? true
+              : filter === 'pending'
+                ? ['pending_review', 'pending_signature'].includes(state.currentState)
+                : state.currentState === filter
+          )
           .map((state) => (
           <div
             key={state.id}
@@ -227,7 +253,14 @@ export default function CertificateStatesPage() {
             <div className="space-y-2">
               <div>
                 <span className="text-sm text-gray-500">Certificado:</span>
-                <p className="font-medium">{state.certificateId}</p>
+                <p className="font-medium">
+                  {(state.metadata?.folio as string) || state.certificateId}
+                </p>
+                {state.metadata?.studentName && (
+                  <p className="text-xs text-gray-600">
+                    {String(state.metadata.studentName)}
+                  </p>
+                )}
               </div>
               
               <div>
@@ -302,27 +335,47 @@ function TransitionModal({
 }: { 
   state: CertificateState;
   onClose: () => void;
-  onTransition: (certificateId: string, newState: string, comments?: string) => void;
+  onTransition: (certificateId: string, newState: string, comments?: string) => Promise<void>;
 }) {
   const [availableTransitions, setAvailableTransitions] = useState<any[]>([]);
   const [selectedTransition, setSelectedTransition] = useState<string>('');
   const [comments, setComments] = useState('');
   const [loading, setLoading] = useState(false);
+  const [signers, setSigners] = useState<SignerCandidate[]>([]);
+  const [templates, setTemplates] = useState<TemplateCandidate[]>([]);
+  const [selectedSigner, setSelectedSigner] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState('');
 
   useEffect(() => {
-    const fetchTransitions = async () => {
+    const fetchModalData = async () => {
       try {
-        const response = await fetch(`/api/admin/certificate-states/transition?certificateId=${state.certificateId}&userRole=coordinator`);
-        const data = await response.json();
-        if (data.success) {
-          setAvailableTransitions(data.data);
+        const [transitionResponse, signerResponse, templateResponse] = await Promise.all([
+          fetch(`/api/admin/certificate-states/transition?certificateId=${state.certificateId}`),
+          fetch('/api/admin/internal-users/signers'),
+          fetch('/api/admin/certificate-templates?activeOnly=true'),
+        ]);
+
+        const transitionData = await transitionResponse.json();
+        const signerData = await signerResponse.json();
+        const templateData = await templateResponse.json();
+
+        if (transitionData.success) {
+          setAvailableTransitions(transitionData.data);
+        }
+
+        if (signerData.success) {
+          setSigners(signerData.data);
+        }
+
+        if (templateData.success) {
+          setTemplates(templateData.data);
         }
       } catch (error) {
-        console.error('Error fetching transitions:', error);
+        console.error('Error fetching transition modal data:', error);
       }
     };
 
-    fetchTransitions();
+    void fetchModalData();
   }, [state.certificateId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -330,8 +383,71 @@ function TransitionModal({
     if (!selectedTransition) return;
 
     setLoading(true);
-    await onTransition(state.certificateId, selectedTransition, comments);
-    setLoading(false);
+    try {
+      if (selectedTransition === 'pending_signature') {
+        if (!selectedSigner) {
+          alert('Selecciona un firmante para continuar.');
+          return;
+        }
+
+        const response = await fetch('/api/admin/digital-signatures/request', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            certificateId: state.certificateId,
+            requestedTo: selectedSigner,
+            message: comments || undefined,
+          }),
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.error || 'No fue posible solicitar la firma');
+        }
+
+        await onTransition(state.certificateId, '__refresh__', comments);
+        return;
+      }
+
+      if (selectedTransition === 'issued') {
+        if (!selectedTemplate) {
+          alert('Selecciona una plantilla activa para emitir el certificado.');
+          return;
+        }
+
+        const response = await fetch('/api/admin/certificate-templates/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            certificateId: state.certificateId,
+            templateId: selectedTemplate,
+            includeQR: true,
+            includeSignature: true,
+            watermark: false,
+            quality: 'medium',
+          }),
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.error || 'No fue posible emitir el certificado');
+        }
+
+        await onTransition(state.certificateId, '__refresh__', comments);
+        return;
+      }
+
+      await onTransition(state.certificateId, selectedTransition, comments);
+    } catch (error) {
+      console.error('Error executing transition flow:', error);
+      alert(error instanceof Error ? error.message : 'No fue posible completar la acción');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -375,6 +491,54 @@ function TransitionModal({
               ))}
             </select>
           </div>
+
+          {selectedTransition === 'pending_signature' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Firmante asignado
+              </label>
+              <select
+                required
+                value={selectedSigner}
+                onChange={(e) => setSelectedSigner(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Selecciona un firmante</option>
+                {signers.map((signer) => (
+                  <option key={signer.uid} value={signer.uid}>
+                    {signer.displayName} ({signer.roleCode})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Se creará la solicitud de firma y se notificará al firmante.
+              </p>
+            </div>
+          )}
+
+          {selectedTransition === 'issued' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Plantilla para emisión
+              </label>
+              <select
+                required
+                value={selectedTemplate}
+                onChange={(e) => setSelectedTemplate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Selecciona una plantilla</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                La emisión genera el PDF final, persiste el archivo y marca el certificado como emitido.
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

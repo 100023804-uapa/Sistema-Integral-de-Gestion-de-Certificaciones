@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUpdateCertificateTypeUseCase, getDeleteCertificateTypeUseCase, getCertificateTypeRepository } from '@/lib/container';
+import { requireInternalUserRole } from '@/lib/auth/server';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator', 'coordinator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const certificateTypeRepository = getCertificateTypeRepository();
     const certificateType = await certificateTypeRepository.findById(params.id);
 
@@ -35,6 +41,11 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const body = await request.json();
     const updateCertificateTypeUseCase = getUpdateCertificateTypeUseCase();
     const certificateType = await updateCertificateTypeUseCase.execute(params.id, body);
@@ -58,6 +69,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const deleteCertificateTypeUseCase = getDeleteCertificateTypeUseCase();
     await deleteCertificateTypeUseCase.execute(params.id);
 

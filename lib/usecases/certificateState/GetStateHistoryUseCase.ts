@@ -19,4 +19,15 @@ export class GetStateHistoryUseCase {
 
     return await this.certificateStateRepository.getStatesByUser(userId, state as any);
   }
+
+  async getVisibleCurrentStates(userRole: string, state?: string): Promise<any[]> {
+    if (!userRole?.trim()) {
+      throw new Error('El rol del usuario es obligatorio');
+    }
+
+    return await this.certificateStateRepository.getVisibleCurrentStates(
+      userRole,
+      state as any
+    );
+  }
 }

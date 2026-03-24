@@ -5,21 +5,34 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { LayoutDashboard, FileText, Users, Settings, Search, LayoutTemplate } from 'lucide-react';
+import { useAuth } from '@/lib/contexts/AuthContext';
+import { hasAnyAllowedRole } from '@/lib/auth/permissions';
+import type { RoleValue } from '@/lib/types/role';
 
-const navItems = [
+type BottomNavItem = {
+  label: string;
+  icon: typeof LayoutDashboard;
+  href: string;
+  allowedRoles?: readonly RoleValue[];
+};
+
+const navItems: BottomNavItem[] = [
   { label: 'Inicio', icon: LayoutDashboard, href: '/dashboard' },
   { label: 'Certificados', icon: FileText, href: '/dashboard/certificates' },
-  { label: 'Programas', icon: LayoutTemplate, href: '/dashboard/programs' }, // Temporary icon reuse if needed, or import GraduationCap
-  { label: 'Graduados', icon: Users, href: '/dashboard/graduates' },
-  { label: 'Ajustes', icon: Settings, href: '/dashboard/settings' },
+  { label: 'Programas', icon: LayoutTemplate, href: '/dashboard/programs', allowedRoles: ['administrator', 'coordinator'] },
+  { label: 'Graduados', icon: Users, href: '/dashboard/graduates', allowedRoles: ['administrator', 'coordinator', 'verifier'] },
+  { label: 'Ajustes', icon: Settings, href: '/dashboard/settings', allowedRoles: ['administrator'] },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { userRoles } = useAuth();
 
   return (
     <div className="fixed bottom-0 left-0 z-50 w-full h-16 bg-white border-t border-gray-100 md:hidden flex items-center justify-around px-4 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
-      {navItems.map((item) => {
+      {navItems
+        .filter((item) => hasAnyAllowedRole(userRoles, item.allowedRoles))
+        .map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href;
         

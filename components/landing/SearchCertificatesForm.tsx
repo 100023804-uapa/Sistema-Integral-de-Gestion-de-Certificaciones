@@ -27,7 +27,7 @@ export function SearchCertificatesForm() {
           <Search className="absolute left-4 text-gray-400 h-5 w-5 pointer-events-none group-focus-within:text-[var(--color-accent)] transition-colors" />
           <Input 
             type="text" 
-            placeholder="Matrícula o Folio" 
+            placeholder="Folio o código de verificación" 
             className="pl-12 pr-64 h-14 rounded-2xl border-2 border-transparent bg-white/10 backdrop-blur-md text-white placeholder:text-blue-100/60 focus:bg-white focus:text-gray-900 focus:border-[var(--color-accent)] focus:ring-0 transition-all shadow-xl shadow-blue-900/10 text-lg w-full"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -41,7 +41,7 @@ export function SearchCertificatesForm() {
                 {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (
                   <>
                     <Search className="w-4 h-4" />
-                    CONSULTAR CERTIFICADO
+                    VALIDAR CERTIFICADO
                   </>
                 )}
             </Button>

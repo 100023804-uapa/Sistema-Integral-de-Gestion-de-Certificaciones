@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGenerateCertificateUseCase } from '@/lib/container';
+import { requireInternalUserRole } from '@/lib/auth/server';
+import { notifyCertificateIssued } from '@/lib/server/certificateWorkflowNotifications';
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator', 'coordinator']);
+    if (auth.response) {
+      return auth.response;
+    }
+    const currentUser = auth.user!;
+
     const body = await request.json();
     
     const generateCertificateUseCase = getGenerateCertificateUseCase();
@@ -15,8 +23,13 @@ export async function POST(request: NextRequest) {
         watermark: body.watermark || false,
         quality: body.quality || 'medium'
       },
-      body.generatedBy
+      currentUser.uid,
+      currentUser.primaryRole
     );
+
+    await notifyCertificateIssued(body.certificateId).catch((error) => {
+      console.error('Error sending issued certificate notification:', error);
+    });
 
     return NextResponse.json({ 
       success: true, 

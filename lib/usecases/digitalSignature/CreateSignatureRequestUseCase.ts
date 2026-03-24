@@ -14,7 +14,8 @@ export class CreateSignatureRequestUseCase {
       message?: string;
       expiresInHours?: number;
     },
-    requestedBy: string
+    requestedBy: string,
+    requestedByRole = 'administrator'
   ): Promise<SignatureRequest> {
     // Validaciones
     if (!data.certificateId?.trim()) {
@@ -33,7 +34,7 @@ export class CreateSignatureRequestUseCase {
     const transitionStateUseCase = getTransitionStateUseCase();
     const availableTransitions = await transitionStateUseCase.getAvailableTransitions(
       data.certificateId,
-      'coordinator' // TODO: Obtener rol del solicitante
+      requestedByRole
     );
 
     const canRequestSignature = availableTransitions.some(
@@ -58,8 +59,12 @@ export class CreateSignatureRequestUseCase {
       data.certificateId,
       'pending_signature',
       requestedBy,
-      'coordinator', // TODO: Obtener rol del solicitante
-      'Solicitud de firma enviada'
+      requestedByRole,
+      'Solicitud de firma enviada',
+      {
+        signatureRequestId: signatureRequest.id,
+        requestedTo: data.requestedTo,
+      }
     );
 
     return signatureRequest;

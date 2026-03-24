@@ -30,6 +30,8 @@ export interface SignatureRequest {
   id: string;
   certificateId: string;
   requestedBy: string;
+  requestedByName?: string;
+  requestedByEmail?: string;
   requestedTo: string; // ID del firmante
   requestedToName: string;
   requestedToEmail: string;
@@ -39,6 +41,7 @@ export interface SignatureRequest {
   requestedAt: Date;
   respondedAt?: Date;
   expiresAt: Date;
+  rejectionReason?: string;
   certificateData: {
     folio: string;
     studentName: string;
@@ -77,6 +80,8 @@ export interface SignCertificateRequest {
   signatureData: {
     signatureBase64: string;
     comments?: string;
+    ipAddress?: string;
+    userAgent?: string;
     location?: {
       latitude: number;
       longitude: number;

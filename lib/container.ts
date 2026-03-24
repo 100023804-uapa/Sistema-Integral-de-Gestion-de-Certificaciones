@@ -1,6 +1,7 @@
 import { FirebaseAccessRepository, AccessUser, AccessRequest } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
 import { FirebaseCertificateRepository, ProgramStat } from '@/lib/infrastructure/repositories/FirebaseCertificateRepository';
-import { FirebaseStudentRepository } from '@/lib/infrastructure/repositories/FirebaseStudentCertificateRepository';
+import { FirebaseStudentRepository } from '@/lib/infrastructure/repositories/FirebaseStudentRepository';
+import { FirebaseStudentCertificateRepository } from '@/lib/infrastructure/repositories/FirebaseStudentCertificateRepository';
 import { FirebaseCampusRepository } from './infrastructure/repositories/FirebaseCampusRepository';
 import { FirebaseAcademicAreaRepository } from './infrastructure/repositories/FirebaseAcademicAreaRepository';
 import { FirebaseCertificateTypeRepository } from './infrastructure/repositories/FirebaseCertificateTypeRepository';
@@ -40,6 +41,7 @@ import { UpdateTemplateUseCase } from './usecases/certificateTemplate/UpdateTemp
 import { DeleteTemplateUseCase } from './usecases/certificateTemplate/DeleteTemplateUseCase';
 import { GenerateCertificateUseCase } from './usecases/certificateTemplate/GenerateCertificateUseCase';
 import { GenerateFolio } from './application/use-cases/GenerateFolio';
+import { CreateCertificate } from './application/use-cases/CreateCertificate';
 
 // Use Cases nuevos para Estudiantes (US-12)
 import { GetStudentCertificatesUseCase } from './usecases/student/GetStudentCertificatesUseCase';
@@ -69,9 +71,15 @@ export function getStudentRepository() {
     return new FirebaseStudentRepository();
 }
 
-export function getTemplateRepository() {
-    return new FirebaseTemplateRepository();
+export function getStudentCertificateRepository() {
+    return new FirebaseStudentCertificateRepository();
 }
+
+export function getCertificateTemplateRepository() {
+    return new FirebaseCertificateTemplateRepository();
+}
+
+export const getTemplateRepository = getCertificateTemplateRepository;
 
 export function getCampusRepository() {
     return new FirebaseCampusRepository();
@@ -128,7 +136,7 @@ export function getUpdateAcademicAreaUseCase() {
 }
 
 export function getDeleteAcademicAreaUseCase() {
-    return new DeleteAcademicAreaUseCase(getAcademicAreaRepository(), getCampusRepository());
+    return new DeleteAcademicAreaUseCase(getAcademicAreaRepository());
 }
 
 // Certificate Type Use Cases
@@ -235,13 +243,13 @@ export function getCreateCertificateUseCase() {
 
 // Use Cases para Estudiantes (US-12)
 export function getGetStudentCertificatesUseCase() {
-    return new GetStudentCertificatesUseCase(getStudentRepository());
+    return new GetStudentCertificatesUseCase(getStudentCertificateRepository());
 }
 
 export function getGetCertificateDetailsUseCase() {
-    return new GetCertificateDetailsUseCase(getStudentRepository());
+    return new GetCertificateDetailsUseCase(getStudentCertificateRepository());
 }
 
 export function getDownloadCertificateUseCase() {
-    return new DownloadCertificateUseCase(getStudentRepository());
+    return new DownloadCertificateUseCase(getStudentCertificateRepository());
 }

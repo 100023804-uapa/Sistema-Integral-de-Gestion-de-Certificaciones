@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const SESSION_COOKIE = 'session';
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
+import {
+    SESSION_COOKIE,
+    createSessionCookie,
+    getSessionCookieOptions,
+    verifyIdToken,
+} from '@/lib/auth/session';
+import { hasInternalAccessClaim } from '@/lib/auth/claims';
+import { markInternalUserLogin } from '@/lib/server/internalUsers';
+import { resolveSessionAccessFromDecodedToken } from '@/lib/server/studentPortal';
+import { markStudentPortalLogin } from '@/lib/server/studentAccounts';
 
 export async function POST(request: NextRequest) {
     try {
@@ -11,20 +18,29 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Missing idToken' }, { status: 400 });
         }
 
-        // TEMPORAL: Simular login exitoso sin Firebase Admin
-        // TODO: Reimplementar cuando FIREBASE_SERVICE_ACCOUNT_KEY funcione en producción
-        console.log('⚠️ Login temporal sin Firebase Admin - idToken recibido');
+        const decodedToken = await verifyIdToken(idToken);
+        const access = await resolveSessionAccessFromDecodedToken(decodedToken);
+        if (hasInternalAccessClaim(decodedToken as unknown as Record<string, unknown>)) {
+            await markInternalUserLogin(decodedToken.uid);
+        }
+        if (access.studentAccess && access.student) {
+            await markStudentPortalLogin(access.student.studentId);
+        }
+        const sessionCookie = await createSessionCookie(idToken);
 
-        const response = NextResponse.json({ success: true });
-
-        // Setear cookie httpOnly simulada
-        response.cookies.set(SESSION_COOKIE, 'temp-session', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            maxAge: 60 * 60 * 24 * 7, // 7 días
+        const response = NextResponse.json({
+            success: true,
+            uid: decodedToken.uid,
+            email: decodedToken.email ?? null,
+            internalAccess: access.internalAccess,
+            internalRole: access.internalRole,
+            studentAccess: access.studentAccess,
+            studentId: access.student?.studentId ?? null,
+            studentStatus: access.student?.portalAccessStatus ?? null,
+            mustChangePassword: access.student?.mustChangePassword === true,
         });
+
+        response.cookies.set(SESSION_COOKIE, sessionCookie, getSessionCookieOptions());
 
         return response;
 

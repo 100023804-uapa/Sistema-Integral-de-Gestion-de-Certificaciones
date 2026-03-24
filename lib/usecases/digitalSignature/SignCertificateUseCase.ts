@@ -12,12 +12,15 @@ export class SignCertificateUseCase {
       certificateId: string;
       signatureBase64: string;
       comments?: string;
+      ipAddress?: string;
+      userAgent?: string;
       location?: {
         latitude: number;
         longitude: number;
       };
     },
-    signerId: string
+    signerId: string,
+    signerRole = 'administrator'
   ): Promise<DigitalSignature> {
     // Validaciones
     if (!data.certificateId?.trim()) {
@@ -62,6 +65,8 @@ export class SignCertificateUseCase {
       signatureData: {
         signatureBase64: data.signatureBase64,
         comments: data.comments,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
         location: data.location
       },
       signerId
@@ -73,8 +78,12 @@ export class SignCertificateUseCase {
       data.certificateId,
       'signed',
       signerId,
-      'signer', // TODO: Obtener rol del firmante
-      data.comments || 'Certificado firmado digitalmente'
+      signerRole,
+      data.comments || 'Certificado firmado digitalmente',
+      {
+        signerId,
+        signatureId: signature.id,
+      }
     );
 
     return signature;

@@ -1,6 +1,6 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
-import { getAdminAuth } from '@/lib/firebaseAdmin';
+import { verifySessionCookie } from '@/lib/auth/session';
 
 const f = createUploadthing();
 
@@ -31,8 +31,7 @@ export const ourFileRouter = {
             }
 
             try {
-                const adminAuth = getAdminAuth();
-                const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+                const decoded = await verifySessionCookie(sessionCookie, true);
                 return { userId: decoded.uid };
             } catch {
                 throw new UploadThingError("Unauthorized");

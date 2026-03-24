@@ -1,6 +1,6 @@
 'use server';
 
-import nodemailer from 'nodemailer';
+import { getEmailProvider } from '@/lib/email/provider';
 
 interface SendCertificateEmailParams {
   to: string;
@@ -11,23 +11,12 @@ interface SendCertificateEmailParams {
 
 export async function sendCertificateEmail({ to, studentName, certificateUrl, folio }: SendCertificateEmailParams) {
   try {
-    const user = process.env.GMAIL_USER;
-    const pass = process.env.GMAIL_APP_PASSWORD;
-
-    if (!user || !pass) {
-      throw new Error('Variables de entorno GMAIL_USER y GMAIL_APP_PASSWORD no definidas');
+    const provider = getEmailProvider();
+    if (!provider) {
+      throw new Error('No hay proveedor de correo configurado');
     }
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user,
-        pass,
-      },
-    });
-
-    const mailOptions = {
-      from: `"SIGCE UAPA" <${user}>`,
+    const result = await provider.sendEmail({
       to,
       subject: `Tu Certificado UAPA está listo - Folio: ${folio}`,
       html: `
@@ -52,15 +41,16 @@ export async function sendCertificateEmail({ to, studentName, certificateUrl, fo
           </p>
         </div>
       `,
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Email sent: ", info.messageId);
+    if (!result.success) {
+      throw new Error(result.error || 'No fue posible enviar el correo');
+    }
 
-    return { success: true, messageId: info.messageId };
+    return { success: true, messageId: result.messageId, provider: result.provider };
 
   } catch (error) {
-    console.error('SERVER ACTION ERROR (Nodemailer):', error);
+    console.error('SERVER ACTION ERROR (Email Provider):', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -73,25 +63,15 @@ interface SendAdminRequestParams {
 
 export async function sendAdminRequestEmail({ email, name, reason }: SendAdminRequestParams) {
   try {
-    const user = process.env.GMAIL_USER;
-    const pass = process.env.GMAIL_APP_PASSWORD;
     const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    const provider = getEmailProvider();
 
-    if (!user || !pass || !adminEmail) {
+    if (!provider || !adminEmail) {
       console.warn('Missing email configuration. Request saved but email not sent.');
       return { success: false, error: 'Email configuration missing' };
     }
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user,
-        pass,
-      },
-    });
-
-    const mailOptions = {
-      from: `"SIGCE System" <${user}>`,
+    const result = await provider.sendEmail({
       to: adminEmail,
       subject: `Solicitud de Acceso Admin - SIGCE`,
       html: `
@@ -114,12 +94,13 @@ export async function sendAdminRequestEmail({ email, name, reason }: SendAdminRe
           </p>
         </div>
       `,
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Admin Request Email sent: ", info.messageId);
+    if (!result.success) {
+      return { success: false, error: result.error || 'Email configuration missing' };
+    }
 
-    return { success: true, messageId: info.messageId };
+    return { success: true, messageId: result.messageId, provider: result.provider };
 
   } catch (error) {
     console.error('SERVER ACTION ERROR (Admin Request):', error);

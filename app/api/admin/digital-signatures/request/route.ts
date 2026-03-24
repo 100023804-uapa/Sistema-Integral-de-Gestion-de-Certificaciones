@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCreateSignatureRequestUseCase } from '@/lib/container';
+import { requireInternalUserRole } from '@/lib/auth/server';
+import { notifySignatureRequest } from '@/lib/server/certificateWorkflowNotifications';
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator', 'coordinator']);
+    if (auth.response) {
+      return auth.response;
+    }
+    const currentUser = auth.user!;
+
     const body = await request.json();
     
     const createSignatureRequestUseCase = getCreateSignatureRequestUseCase();
@@ -13,8 +21,11 @@ export async function POST(request: NextRequest) {
         message: body.message,
         expiresInHours: body.expiresInHours
       },
-      body.requestedBy
+      currentUser.uid,
+      currentUser.primaryRole
     );
+
+    await notifySignatureRequest(signatureRequest);
 
     return NextResponse.json({ 
       success: true, 

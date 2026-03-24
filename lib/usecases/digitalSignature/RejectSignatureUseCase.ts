@@ -9,7 +9,8 @@ export class RejectSignatureUseCase {
   async execute(
     certificateId: string,
     rejectionReason: string,
-    signerId: string
+    signerId: string,
+    signerRole = 'administrator'
   ): Promise<void> {
     // Validaciones
     if (!certificateId?.trim()) {
@@ -51,8 +52,12 @@ export class RejectSignatureUseCase {
       certificateId,
       'verified',
       signerId,
-      'signer', // TODO: Obtener rol del firmante
-      `Firma rechazada: ${rejectionReason}`
+      signerRole,
+      `Firma rechazada: ${rejectionReason}`,
+      {
+        signerId,
+        rejectionReason,
+      }
     );
   }
 }

@@ -11,6 +11,11 @@ import * as XLSX from 'xlsx';
 import { getCertificateRepository, getListCampusesUseCase, getListAcademicAreasUseCase } from '@/lib/container';
 
 import { Certificate } from '@/lib/domain/entities/Certificate';
+import {
+  getCertificateStatusBadgeClass,
+  getCertificateStatusLabel,
+  isCertificateEmitted,
+} from '@/lib/types/certificateStatus';
 
 import { Campus, AcademicArea } from '@/lib/container';
 
@@ -68,7 +73,7 @@ export default function CertificatesPage() {
 
         const [certData, campusData, areaData] = await Promise.all([
 
-            repository.list(500), // Cargamos una cantidad razonable para filtrar en cliente
+            repository.findAll(),
 
             getListCampusesUseCase().execute(true),
 
@@ -420,11 +425,25 @@ export default function CertificatesPage() {
 
                         <option value="">Cualquier Estado</option>
 
-                        <option value="active">Activo / Emitido</option>
+                        <option value="draft">Borrador</option>
 
-                        <option value="revoked">Revocado</option>
+                        <option value="pending_review">Espera de verificación</option>
 
-                        <option value="expired">Expirado</option>
+                        <option value="verified">Verificado</option>
+
+                        <option value="pending_signature">Espera de firma</option>
+
+                        <option value="signed">Firmado</option>
+
+                        <option value="issued">Emitido</option>
+
+                        <option value="blocked_payment">Bloqueado por pago</option>
+
+                        <option value="blocked_documents">Bloqueado por documentacion</option>
+
+                        <option value="blocked_administrative">Bloqueado administrativo</option>
+
+                        <option value="cancelled">Cancelado</option>
 
                     </select>
 
@@ -504,9 +523,25 @@ export default function CertificatesPage() {
 
               <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
 
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Activos</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Emitidos</p>
 
-                  <p className="text-2xl font-black text-green-600">{filteredCertificates.filter(c => c.status === 'active').length}</p>
+                  <p className="text-2xl font-black text-green-600">{filteredCertificates.filter(c => isCertificateEmitted(c.status)).length}</p>
+
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Bloqueados</p>
+
+                  <p className="text-2xl font-black text-red-600">{filteredCertificates.filter(c => ['blocked_payment', 'blocked_documents', 'blocked_administrative', 'cancelled', 'revoked'].includes(c.status)).length}</p>
+
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">En Flujo</p>
+
+                  <p className="text-2xl font-black text-amber-600">{filteredCertificates.filter(c => !isCertificateEmitted(c.status) && !['blocked_payment', 'blocked_documents', 'blocked_administrative', 'cancelled', 'revoked'].includes(c.status)).length}</p>
 
               </div>
 
@@ -678,17 +713,9 @@ export default function CertificatesPage() {
 
                                     <td className="px-6 py-5">
 
-                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getCertificateStatusBadgeClass(cert.status)}`}>
 
-                                            cert.status === 'active' ? 'bg-green-100 text-green-700' :
-
-                                            cert.status === 'revoked' ? 'bg-red-100 text-red-700' :
-
-                                            'bg-gray-100 text-gray-700'
-
-                                        }`}>
-
-                                            {cert.status === 'active' ? 'Activo' : cert.status === 'revoked' ? 'Revocado' : 'Expirado'}
+                                            {getCertificateStatusLabel(cert.status)}
 
                                         </span>
 

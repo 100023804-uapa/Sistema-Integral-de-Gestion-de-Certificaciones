@@ -2,15 +2,17 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, User, Mail, GraduationCap, Calendar, FileText, Loader2, Award, AlertCircle } from 'lucide-react';
+import { ArrowLeft, User, Mail, GraduationCap, Calendar, FileText, Loader2, Award, AlertCircle, ShieldCheck, KeyRound, RefreshCw } from 'lucide-react';
 import { getCertificateRepository, getStudentRepository } from '@/lib/container';
 import { Student } from '@/lib/domain/entities/Student';
 import { Certificate } from '@/lib/domain/entities/Certificate';
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 export default function GraduateDetailsPage() {
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
+    const { hasRole } = useAuth();
 
     const studentRepo = getStudentRepository();
     const certRepo = getCertificateRepository();
@@ -19,6 +21,9 @@ export default function GraduateDetailsPage() {
     const [certificates, setCertificates] = useState<Certificate[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [portalActionLoading, setPortalActionLoading] = useState(false);
+    const [portalActionError, setPortalActionError] = useState('');
+    const [temporaryPassword, setTemporaryPassword] = useState('');
 
     useEffect(() => {
         if (id) {
@@ -45,6 +50,53 @@ export default function GraduateDetailsPage() {
             setError('Error al cargar datos: ' + err.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const canManagePortalAccess = hasRole('administrator');
+    const portalAccess = student?.portalAccess;
+    const portalStatus = portalAccess?.status || 'inactive';
+
+    const portalStatusLabel = {
+        inactive: 'Sin acceso',
+        invited: 'Contraseña temporal emitida',
+        active: 'Acceso activo',
+        disabled: 'Acceso deshabilitado',
+    }[portalStatus];
+
+    const portalStatusClasses = {
+        inactive: 'bg-gray-100 text-gray-700',
+        invited: 'bg-amber-100 text-amber-700',
+        active: 'bg-green-100 text-green-700',
+        disabled: 'bg-red-100 text-red-700',
+    }[portalStatus];
+
+    const issueTemporaryPassword = async (action: 'activate' | 'reset-temporary-password') => {
+        if (!student) return;
+
+        setPortalActionLoading(true);
+        setPortalActionError('');
+        setTemporaryPassword('');
+
+        try {
+            const response = await fetch(`/api/admin/students/${encodeURIComponent(student.id)}/portal-access`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ action }),
+            });
+
+            const payload = await response.json().catch(() => null);
+
+            if (!response.ok || !payload?.success) {
+                throw new Error(payload?.error || 'No fue posible generar la contraseña temporal');
+            }
+
+            setTemporaryPassword(payload.data.temporaryPassword);
+            await loadData();
+        } catch (actionError: any) {
+            setPortalActionError(actionError.message || 'No fue posible generar la contraseña temporal');
+        } finally {
+            setPortalActionLoading(false);
         }
     };
 
@@ -207,6 +259,111 @@ export default function GraduateDetailsPage() {
                         </div>
                     )}
                 </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-100 pb-4">
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-800">Acceso al portal del participante</h2>
+                        <p className="text-sm text-gray-500">
+                            Gestión del acceso autenticado y reinicio a contraseña temporal.
+                        </p>
+                    </div>
+                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${portalStatusClasses}`}>
+                        <ShieldCheck size={14} />
+                        {portalStatusLabel}
+                    </span>
+                </div>
+
+                {portalActionError && (
+                    <div className="p-4 rounded-2xl bg-red-50 text-red-700 border border-red-100 text-sm">
+                        {portalActionError}
+                    </div>
+                )}
+
+                {temporaryPassword && (
+                    <div className="p-5 rounded-2xl bg-amber-50 border border-amber-100 space-y-3">
+                        <div className="flex items-center gap-2 text-amber-800 font-bold">
+                            <KeyRound size={18} />
+                            Contraseña temporal generada
+                        </div>
+                        <p className="text-sm text-amber-900">
+                            Muestra esta contraseña al participante por un canal verificado. No queda almacenada en texto plano dentro del sistema.
+                        </p>
+                        <div className="bg-white border border-amber-200 rounded-xl px-4 py-3 font-mono text-lg tracking-wide text-gray-900 break-all">
+                            {temporaryPassword}
+                        </div>
+                        <p className="text-xs text-amber-800">
+                            En el próximo ingreso, el participante será obligado a cambiarla antes de usar el portal.
+                        </p>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Correo base de acceso</p>
+                        <p className="mt-2 font-medium text-gray-900">{student.email || 'No registrado'}</p>
+                    </div>
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">UID autenticado</p>
+                        <p className="mt-2 font-mono text-xs text-gray-700 break-all">
+                            {portalAccess?.authUid || 'Aún no vinculado'}
+                        </p>
+                    </div>
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Último acceso</p>
+                        <p className="mt-2 text-gray-900">
+                            {portalAccess?.lastLoginAt
+                                ? new Date(portalAccess.lastLoginAt).toLocaleString('es-DO')
+                                : 'Sin registro'}
+                        </p>
+                    </div>
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Cambio obligatorio</p>
+                        <p className="mt-2 text-gray-900">
+                            {portalAccess?.mustChangePassword ? 'Sí, pendiente' : 'No'}
+                        </p>
+                    </div>
+                </div>
+
+                {!student.email && (
+                    <div className="p-4 rounded-2xl bg-red-50 border border-red-100 text-sm text-red-700">
+                        El participante debe tener un correo registrado antes de habilitar acceso al portal.
+                    </div>
+                )}
+
+                {canManagePortalAccess && student.email && (
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <button
+                            onClick={() => issueTemporaryPassword(portalAccess?.enabled ? 'reset-temporary-password' : 'activate')}
+                            disabled={portalActionLoading}
+                            className="px-5 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {portalActionLoading ? (
+                                <>
+                                    <Loader2 size={18} className="animate-spin" />
+                                    Procesando...
+                                </>
+                            ) : portalAccess?.enabled ? (
+                                <>
+                                    <RefreshCw size={18} />
+                                    Reiniciar a contraseña temporal
+                                </>
+                            ) : (
+                                <>
+                                    <ShieldCheck size={18} />
+                                    Activar acceso al portal
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
+
+                {!canManagePortalAccess && (
+                    <p className="text-sm text-gray-500">
+                        Solo un administrador puede generar o reiniciar contraseñas temporales del participante.
+                    </p>
+                )}
             </div>
         </div>
     );

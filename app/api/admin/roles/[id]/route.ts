@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUpdateRoleUseCase, getDeleteRoleUseCase, getRoleRepository } from '@/lib/container';
+import { requireInternalUserRole } from '@/lib/auth/server';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const roleRepository = getRoleRepository();
     const role = await roleRepository.findById(params.id);
 
@@ -35,6 +41,11 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const body = await request.json();
     const updateRoleUseCase = getUpdateRoleUseCase();
     const role = await updateRoleUseCase.execute(params.id, body);
@@ -58,6 +69,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const deleteRoleUseCase = getDeleteRoleUseCase();
     await deleteRoleUseCase.execute(params.id);
 

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getListCertificateTypesUseCase, getCreateCertificateTypeUseCase } from '@/lib/container';
+import { requireInternalUserRole } from '@/lib/auth/server';
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator', 'coordinator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const { searchParams } = new URL(request.url);
     const activeOnly = searchParams.get('activeOnly') === 'true';
     
@@ -25,6 +31,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireInternalUserRole(request, ['administrator']);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const body = await request.json();
     
     const createCertificateTypeUseCase = getCreateCertificateTypeUseCase();

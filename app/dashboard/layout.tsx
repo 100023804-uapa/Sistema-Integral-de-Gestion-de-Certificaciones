@@ -1,20 +1,21 @@
 "use client";
 
 import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { BottomNav } from '@/components/dashboard/BottomNav';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
-import { getAccessRepository } from '@/lib/container';
+import { getAllowedRolesForDashboardPath, hasAnyAllowedRole } from '@/lib/auth/permissions';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading, logout } = useAuth();
+  const { user, userRoles, loading, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [authorized, setAuthorized] = React.useState(false);
 
   useEffect(() => {
@@ -23,18 +24,25 @@ export default function DashboardLayout({
     const validateAccess = async () => {
       if (loading) return;
 
+      if (isActive) {
+        setAuthorized(false);
+      }
+
       if (!user) {
         router.push('/login');
         return;
       }
 
       try {
-        const accessRepo = getAccessRepository();
-        const hasAccess = await accessRepo.hasAdminAccess(user.email);
-
-        if (!hasAccess) {
+        if (userRoles.length === 0) {
           await logout();
           if (isActive) router.push('/login');
+          return;
+        }
+
+        const allowedRoles = getAllowedRolesForDashboardPath(pathname);
+        if (allowedRoles && !hasAnyAllowedRole(userRoles, allowedRoles)) {
+          if (isActive) router.push('/dashboard');
           return;
         }
 
@@ -51,7 +59,7 @@ export default function DashboardLayout({
     return () => {
       isActive = false;
     };
-  }, [user, loading, logout, router]);
+  }, [loading, logout, pathname, router, user, userRoles]);
 
   if (loading || (user && !authorized)) {
     return (

@@ -1,4 +1,7 @@
-export type CertificateStatus = 'active' | 'revoked' | 'expired';
+import type { CertificateRestriction } from '@/lib/types/certificateRestriction';
+import type { CertificateStatusValue } from '@/lib/types/certificateStatus';
+
+export type CertificateStatus = CertificateStatusValue;
 export type CertificateType = 'CAP' | 'PROFUNDO';
 
 export interface Certificate {
@@ -19,6 +22,17 @@ export interface Certificate {
   academicAreaId?: string; // ID del área académica (obligatorio en futuro)
   certificateTypeId?: string; // ID del tipo de certificado (opcional por ahora)
   metadata: Record<string, any>; // Para datos extra flexibles
+  previousStatus?: CertificateStatus;
+  stateChangedAt?: Date;
+  stateChangedBy?: string;
+  lastStateComment?: string;
+  verifiedAt?: Date;
+  verifiedBy?: string;
+  signedAt?: Date;
+  signedBy?: string;
+  issuedAt?: Date;
+  issuedBy?: string;
+  restriction?: CertificateRestriction;
   createdAt: Date;
   updatedAt: Date;
   history?: CertificateHistoryItem[];

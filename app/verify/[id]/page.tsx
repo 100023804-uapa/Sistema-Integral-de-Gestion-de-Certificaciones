@@ -1,166 +1,143 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
-import { CheckCircle, Download, Share2, Calendar, Clock, Award } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
-import { getCertificateRepository } from '@/lib/container';
-import { notFound } from 'next/navigation';
-import { CertificateActions } from '@/components/certificates/CertificateActions';
+import { CheckCircle, AlertCircle, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { findPublicCertificateValidation } from '@/lib/server/studentPortal';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function CertificateDetailsPage({ params }: PageProps) {
+function formatIssueDate(issueDate: string) {
+  return new Date(issueDate).toLocaleDateString('es-DO', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+export default async function CertificateValidationPage({ params }: PageProps) {
   const { id } = await params;
-  if (!id) return notFound();
-
-  const repository = getCertificateRepository();
-  // Try finding by ID first
-  let certificate = await repository.findById(id);
-
-  // If not found, try finding by Folio
-  if (!certificate) {
-      certificate = await repository.findByFolio(id);
-      
-      // Try uppercase folio
-      if (!certificate) {
-          certificate = await repository.findByFolio(id.toUpperCase());
-      }
-  }
-
-  // If still not found, try finding by publicVerificationCode (Hash US-13)
-  if (!certificate) {
-      certificate = await repository.findByVerificationCode(id);
-      
-      if (!certificate) {
-          certificate = await repository.findByVerificationCode(id.toUpperCase());
-      }
-  }
+  const certificate = await findPublicCertificateValidation(decodeURIComponent(id));
 
   if (!certificate) {
-    return notFound();
+    notFound();
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--background)]">
+    <div className="flex min-h-screen flex-col bg-gray-50">
       <Navbar />
-      <main className="flex-1 container max-w-3xl mx-auto px-4 py-8">
-        <div className="flex justify-center mb-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 border border-green-200">
-            <CheckCircle className="h-5 w-5 text-green-600" />
-            <span className="text-sm font-bold text-green-700 uppercase tracking-wider">Certificado Validado</span>
+      <main className="flex-1 container max-w-4xl mx-auto px-4 py-10">
+        <div className="mb-8 text-center">
+          <div
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold uppercase tracking-wide ${
+              certificate.isValid
+                ? 'bg-green-100 text-green-700'
+                : 'bg-amber-100 text-amber-700'
+            }`}
+          >
+            {certificate.isValid ? (
+              <CheckCircle className="h-4 w-4" />
+            ) : (
+              <AlertCircle className="h-4 w-4" />
+            )}
+            {certificate.isValid ? 'Certificado válido' : 'Certificado no vigente'}
           </div>
+          <h1 className="mt-4 text-3xl font-black tracking-tight text-primary">
+            Resultado de validación pública
+          </h1>
+          <p className="mt-2 text-gray-600">
+            Esta vista pública solo confirma la autenticidad del folio registrado en SIGCE.
+          </p>
         </div>
 
-        <Card className="overflow-hidden border-none shadow-lg mb-8">
-          <div className="relative bg-white p-8 md:p-12 text-center border-b border-gray-100">
-            {/* Decorative background element */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[var(--primary)]/10 to-transparent rounded-bl-full"></div>
-            
-            <div className="flex justify-center mb-6">
-               {/* Logo */}
-               <div className="h-24 w-24 relative flex items-center justify-center">
-                  <img 
-                    src="/logo de la uapa.jpeg" 
-                    alt="Logo UAPA" 
-                    className="object-contain w-full h-full"
-                  />
-               </div>
-            </div>
-
-            <div className="space-y-6">
-              <p className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold">Certifica que</p>
-              <h1 className="font-display text-3xl md:text-4xl text-[var(--primary)] font-bold leading-tight">
-                {certificate.studentName}
-              </h1>
-              <div className="w-20 h-1 bg-[var(--accent)] rounded-full mx-auto my-4"></div>
-              <p className="text-sm text-gray-600 leading-relaxed max-w-lg mx-auto">
-                Ha completado satisfactoriamente los requisitos académicos del programa de educación continuada:
-              </p>
-              <h2 className="font-display text-xl md:text-2xl text-[var(--primary)] font-semibold px-4 leading-tight">
-                {certificate.academicProgram}
-              </h2>
-              <p className="text-xs text-gray-500 mt-4">
-                Otorgado en Santiago de los Caballeros, República Dominicana<br />
-                el día <span className="font-bold text-gray-700">{certificate.issueDate.toLocaleDateString('es-DO', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-              </p>
-            </div>
-
-            <div className="mt-8 pt-8 border-t border-gray-100 flex justify-between items-end">
-              <div className="text-left space-y-2">
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase">ID del Certificado</p>
-                  <p className="text-xs font-mono text-gray-600 font-medium">{certificate.id}</p>
-                </div>
-                {certificate.publicVerificationCode && (
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase">Código de Verificación (Hash)</p>
-                    <p className="text-xs font-mono text-accent font-bold tracking-wider">{certificate.publicVerificationCode}</p>
+        <Card className="overflow-hidden border border-gray-100 shadow-sm">
+          <CardContent className="p-8 md:p-10">
+            <div className="grid gap-6 md:grid-cols-[1.1fr_0.9fr]">
+              <div className="space-y-6">
+                <div className="rounded-3xl border border-gray-100 bg-white p-6">
+                  <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-blue-700">
+                    <ShieldCheck className="h-4 w-4" />
+                    Validación SIGCE
                   </div>
-                )}
+                  <h2 className="text-2xl font-black text-gray-900">
+                    {certificate.message}
+                  </h2>
+                  <p className="mt-3 text-sm leading-6 text-gray-600">
+                    El detalle visual del certificado y la descarga del documento
+                    se encuentran protegidos dentro del portal autenticado del participante.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                      Folio
+                    </p>
+                    <p className="mt-2 font-mono text-sm font-bold text-gray-800">
+                      {certificate.folio}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                      Estado
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-gray-800">
+                      {certificate.statusLabel}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 md:col-span-2">
+                    <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                      Código de verificación
+                    </p>
+                    <p className="mt-2 break-all font-mono text-sm font-bold text-gray-800">
+                      {certificate.verificationCode || 'No disponible'}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 md:col-span-2">
+                    <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                      Fecha de emisión registrada
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-gray-800">
+                      {formatIssueDate(certificate.issueDate)}
+                    </p>
+                  </div>
+                </div>
               </div>
-              {/* QR Code */}
-              <div className="bg-white p-1 rounded shadow-sm border border-gray-100">
-                  <QRCodeSVG 
-                    value={`${process.env.NEXT_PUBLIC_APP_URL || 'https://sigce.app'}/verify/${certificate.folio}`}
-                    size={64}
-                    level="H"
-                    includeMargin={false}
-                    fgColor="#000000"
-                  />
+
+              <div className="space-y-4">
+                <div className="rounded-3xl border border-amber-100 bg-amber-50 p-6">
+                  <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-amber-800">
+                    <LockKeyhole className="h-4 w-4" />
+                    Documento protegido
+                  </div>
+                  <p className="text-sm leading-6 text-amber-900">
+                    Para ver el certificado completo, descargarlo o gestionar solicitudes,
+                    el participante debe ingresar al portal con su cuenta activada.
+                  </p>
+                  <div className="mt-5">
+                    <Link href="/login">
+                      <Button>Ingresar al portal</Button>
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-gray-100 bg-white p-6">
+                  <h3 className="text-lg font-bold text-gray-900">
+                    ¿Necesitas confirmar el documento con el titular?
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-gray-600">
+                    Solicita al participante que acceda al portal autenticado para
+                    compartir o descargar el certificado desde su propia cuenta.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          </CardContent>
         </Card>
-
-        <div className="space-y-4">
-          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide ml-1">Metadatos del Curso</h3>
-          <Card>
-            <CardContent className="p-0">
-              <div className="divide-y divide-gray-100">
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500">
-                      <Calendar className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Fecha de Emisión</p>
-                      <p className="text-sm font-medium text-[var(--primary)]">
-                        {certificate.issueDate.toLocaleDateString('es-DO', { year: 'numeric', month: 'short', day: 'numeric' })}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500">
-                      <Clock className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Duración</p>
-                      <p className="text-sm font-medium text-[var(--primary)]">120 Horas</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500">
-                      <Award className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Modalidad</p>
-                      <p className="text-sm font-medium text-[var(--primary)]">Virtual</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <CertificateActions certificate={JSON.parse(JSON.stringify(certificate))} />
       </main>
       <Footer />
     </div>
