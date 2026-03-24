@@ -49,9 +49,9 @@ const colIcons: Record<string, { icon: any, label: string, isCatalog: boolean, d
   certificateTypes:  { icon: FileText,  label: 'Tipos de Certificado',  isCatalog: true,  dangerLevel: 'low' },
   
   // Sistema / Admin
-  roles:             { icon: Shield,    label: 'Roles y Permisos',      isCatalog: true,  dangerLevel: 'high' },
+  roles:             { icon: Shield,    label: 'Catalogo de Roles',     isCatalog: true,  dangerLevel: 'high' },
   userRoles:         { icon: Shield,    label: 'Asig. de Roles',        isCatalog: false, dangerLevel: 'high' },
-  system_config:     { icon: Settings,  label: 'Configuración Sistema', isCatalog: true,  dangerLevel: 'high' },
+  system_config:     { icon: Settings,  label: 'Perfil y Operacion',    isCatalog: true,  dangerLevel: 'high' },
   access_requests:   { icon: ShieldAlert,label: 'Solicitudes Acceso',   isCatalog: false, dangerLevel: 'medium' },
   access_users:      { icon: Shield,    label: 'Usuarios Admin',        isCatalog: false, dangerLevel: 'high' },
 };

@@ -12,8 +12,7 @@ import {
   Users, 
   Bell,
   AlertCircle,
-  Printer,
-  Loader2
+  Printer
 } from 'lucide-react';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { QuickAction } from '@/components/dashboard/QuickAction';
@@ -24,6 +23,7 @@ import { GetDashboardStats, DashboardStats } from '@/lib/application/use-cases/G
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useDataScope } from '@/hooks/use-data-scope';
 import { AnimatePresence } from 'framer-motion';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -86,9 +86,11 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[80vh]">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
+      <LoadingScreen
+        title="Cargando dashboard"
+        description="Estamos reuniendo tus indicadores, actividad reciente y accesos rápidos."
+        fullScreen={false}
+      />
     );
   }
 

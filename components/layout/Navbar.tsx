@@ -25,8 +25,8 @@ export function Navbar() {
             <Link href="/verify" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors">
                 Validar Certificado
             </Link>
-            <Link href="/status" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors">
-                Estado de Solicitud
+            <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors">
+                Portal del Participante
             </Link>
         </div>
 

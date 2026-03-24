@@ -13,7 +13,8 @@ import {
   XCircle,
   ArrowRight,
   History,
-  Filter
+  Filter,
+  Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { STATE_CONFIG } from '@/lib/types/certificateState';
@@ -341,14 +342,27 @@ function TransitionModal({
   const [selectedTransition, setSelectedTransition] = useState<string>('');
   const [comments, setComments] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingTransitions, setLoadingTransitions] = useState(true);
   const [signers, setSigners] = useState<SignerCandidate[]>([]);
   const [templates, setTemplates] = useState<TemplateCandidate[]>([]);
   const [selectedSigner, setSelectedSigner] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
 
+  const certificateLabel = (state.metadata?.folio as string) || state.certificateId;
+  const currentStateLabel =
+    STATE_CONFIG[state.currentState as keyof typeof STATE_CONFIG]?.label || state.currentState;
+  const hasAvailableTransitions = availableTransitions.length > 0;
+  const noTransitionMessage =
+    state.currentState === 'issued'
+      ? 'El certificado ya fue emitido y no tiene cambios manuales disponibles desde este módulo. Si necesitas afectar su disponibilidad, usa las restricciones del certificado.'
+      : state.currentState === 'cancelled'
+        ? 'El certificado ya está cancelado y no admite nuevos cambios en este flujo.'
+        : 'No hay transiciones manuales disponibles para el estado actual y tu rol.';
+
   useEffect(() => {
     const fetchModalData = async () => {
       try {
+        setLoadingTransitions(true);
         const [transitionResponse, signerResponse, templateResponse] = await Promise.all([
           fetch(`/api/admin/certificate-states/transition?certificateId=${state.certificateId}`),
           fetch('/api/admin/internal-users/signers'),
@@ -372,6 +386,8 @@ function TransitionModal({
         }
       } catch (error) {
         console.error('Error fetching transition modal data:', error);
+      } finally {
+        setLoadingTransitions(false);
       }
     };
 
@@ -465,34 +481,47 @@ function TransitionModal({
 
         <div className="mb-4">
           <p className="text-sm text-gray-600">
-            Certificado: <span className="font-medium">{state.certificateId}</span>
+            Certificado: <span className="font-medium">{certificateLabel}</span>
           </p>
           <p className="text-sm text-gray-600">
-            Estado actual: <span className="font-medium">{STATE_CONFIG[state.currentState as keyof typeof STATE_CONFIG]?.label}</span>
+            Estado actual: <span className="font-medium">{currentStateLabel}</span>
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nuevo Estado
-            </label>
-            <select
-              required
-              value={selectedTransition}
-              onChange={(e) => setSelectedTransition(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">Selecciona un estado</option>
-              {availableTransitions.map((transition) => (
-                <option key={transition.to} value={transition.to}>
-                  {transition.actionLabel}
-                </option>
-              ))}
-            </select>
-          </div>
+          {loadingTransitions ? (
+            <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+              Cargando acciones disponibles...
+            </div>
+          ) : hasAvailableTransitions ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nuevo Estado
+              </label>
+              <select
+                required
+                value={selectedTransition}
+                onChange={(e) => setSelectedTransition(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Selecciona un estado</option>
+                {availableTransitions.map((transition) => (
+                  <option key={transition.to} value={transition.to}>
+                    {transition.actionLabel}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <div className="flex items-start gap-2">
+                <Info size={16} className="mt-0.5 shrink-0" />
+                <p>{noTransitionMessage}</p>
+              </div>
+            </div>
+          )}
 
-          {selectedTransition === 'pending_signature' && (
+          {hasAvailableTransitions && selectedTransition === 'pending_signature' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Firmante asignado
@@ -516,7 +545,7 @@ function TransitionModal({
             </div>
           )}
 
-          {selectedTransition === 'issued' && (
+          {hasAvailableTransitions && selectedTransition === 'issued' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Plantilla para emisión
@@ -540,17 +569,19 @@ function TransitionModal({
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Comentarios (opcional)
-            </label>
-            <textarea
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+          {hasAvailableTransitions && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Comentarios (opcional)
+              </label>
+              <textarea
+                value={comments}
+                onChange={(e) => setComments(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          )}
 
           <div className="flex gap-3 pt-4">
             <button
@@ -562,10 +593,10 @@ function TransitionModal({
             </button>
             <button
               type="submit"
-              disabled={loading || !selectedTransition}
+              disabled={loading || loadingTransitions || !selectedTransition || !hasAvailableTransitions}
               className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50"
             >
-              {loading ? 'Procesando...' : 'Cambiar Estado'}
+              {loading ? 'Procesando...' : hasAvailableTransitions ? 'Cambiar Estado' : 'Sin acciones'}
             </button>
           </div>
         </form>

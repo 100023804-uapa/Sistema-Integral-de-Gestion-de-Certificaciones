@@ -8,6 +8,7 @@ import { getCreateCertificateUseCase, getCertificateTemplateRepository, getListC
 import { CertificateType } from '@/lib/domain/entities/Certificate';
 import { Campus } from '@/lib/container';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import type { AcademicProgram } from '@/lib/types/academicProgram';
 
 import { CertificateTemplate } from '@/lib/types/certificateTemplate';
 import { LayoutTemplate } from 'lucide-react';
@@ -20,6 +21,7 @@ export default function CreateCertificatePage() {
   const [error, setError] = useState<string | null>(null);
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
+  const [programs, setPrograms] = useState<AcademicProgram[]>([]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -38,21 +40,29 @@ export default function CreateCertificatePage() {
   useEffect(() => {
     const fetchData = async () => {
         try {
-            // Fetch templates sin filtrar por formData.type para que salgan todas
             const templateRepo = getCertificateTemplateRepository();
-            const templateData = await templateRepo.list(true);
-            setTemplates(templateData);
-
-            // Fetch campuses
             const listCampusesUseCase = getListCampusesUseCase();
-            const campusData = await listCampusesUseCase.execute(true); // active only
+            const [templateData, campusData, programsResponse] = await Promise.all([
+              templateRepo.list(true),
+              listCampusesUseCase.execute(true),
+              fetch('/api/admin/academic-programs?active=true'),
+            ]);
+
+            setTemplates(templateData);
             setCampuses(campusData);
+
+            const programsPayload = await programsResponse.json();
+            if (programsPayload.success) {
+              setPrograms(programsPayload.data || []);
+            } else {
+              setPrograms([]);
+            }
         } catch (err) {
             console.error("Error loading data", err);
         }
     };
     fetchData();
-  }, [formData.type]); // ← Se actualiza cuando cambia el tipo
+  }, []);
 
   // Las plantillas ya vienen filtradas desde el backend
   const filteredTemplates = templates;
@@ -70,6 +80,10 @@ export default function CreateCertificatePage() {
     try {
         if (!user?.uid) {
             throw new Error('No se pudo identificar el usuario autenticado.');
+        }
+
+        if (!formData.academicProgram) {
+            throw new Error('Debes seleccionar un programa académico activo antes de generar el certificado.');
         }
 
         const createCertificate = getCreateCertificateUseCase();
@@ -116,7 +130,9 @@ export default function CreateCertificatePage() {
           <h1 className="text-3xl font-black text-primary tracking-tighter">
             Nuevo Certificado
           </h1>
-          <p className="text-gray-500">Completa los datos del estudiante para generar un folio único.</p>
+          <p className="text-gray-500">
+            Completa los datos del participante y usa el catálogo institucional para emitir un borrador consistente.
+          </p>
         </div>
       </div>
 
@@ -265,17 +281,30 @@ export default function CreateCertificatePage() {
                 {/* Programa */}
                 <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <FileText size={16} /> Programa Académico
+                    <FileText size={16} /> Programa Académico *
                 </label>
-                <input 
+                <select
                     name="academicProgram"
                     value={formData.academicProgram}
                     onChange={handleChange}
-                    type="text"
                     required
-                    placeholder="Ej. Diplomado en Gestión de Proyectos"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                />
+                    disabled={programs.length === 0}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                    <option value="">
+                        {programs.length === 0 ? 'No hay programas activos disponibles' : 'Selecciona un programa del catálogo'}
+                    </option>
+                    {programs.map((program) => (
+                        <option key={program.id} value={program.name}>
+                            {program.name} ({program.code})
+                        </option>
+                    ))}
+                </select>
+                <p className={`text-xs ${programs.length === 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                    {programs.length === 0
+                        ? 'Debes crear al menos un programa activo en el módulo "Programas" antes de emitir certificados.'
+                        : 'La creación manual ya usa el mismo catálogo académico que la importación masiva y los reportes.'}
+                </p>
                 </div>
 
                 {/* Tipo y Fecha */}

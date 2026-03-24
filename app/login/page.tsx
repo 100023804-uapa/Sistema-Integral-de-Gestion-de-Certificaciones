@@ -23,6 +23,13 @@ type SessionLoginPayload = {
   mustChangePassword?: boolean;
 };
 
+type SessionLoginErrorPayload = {
+  success: false;
+  code?: string;
+  error?: string;
+  detail?: string;
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -31,6 +38,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
   const [error, setError] = useState('');
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const passwordChanged = searchParams.get('passwordChanged') === '1';
@@ -48,13 +56,67 @@ export default function LoginPage() {
       body: JSON.stringify({ idToken }),
     });
 
-    const payload = await sessionRes.json().catch(() => null);
+    const payload = (await sessionRes.json().catch(() => null)) as
+      | SessionLoginPayload
+      | SessionLoginErrorPayload
+      | null;
 
     if (!sessionRes.ok || !payload?.success) {
-      throw new Error('session-create-failed');
+      const sessionError = new Error(
+        typeof payload?.error === 'string'
+          ? payload.error
+          : 'No fue posible crear la sesión segura.'
+      );
+      (
+        sessionError as Error & {
+          code?: string;
+          status?: number;
+          detail?: string;
+        }
+      ).code = typeof payload?.code === 'string' ? payload.code : 'session-create-failed';
+      (
+        sessionError as Error & {
+          code?: string;
+          status?: number;
+          detail?: string;
+        }
+      ).status = sessionRes.status;
+      (
+        sessionError as Error & {
+          code?: string;
+          status?: number;
+          detail?: string;
+        }
+      ).detail = typeof payload?.detail === 'string' ? payload.detail : undefined;
+      throw sessionError;
     }
 
     return payload as SessionLoginPayload;
+  };
+
+  const getSessionCreateErrorMessage = (error: {
+    code?: string;
+    message?: string;
+  }) => {
+    switch (error.code) {
+      case 'firebase-admin-missing-credentials':
+        return 'Google autenticó la cuenta, pero el servidor no tiene configurado Firebase Admin en producción.';
+      case 'firebase-admin-invalid-credentials':
+        return 'Google autenticó la cuenta, pero las credenciales de Firebase Admin en producción son inválidas.';
+      case 'firebase-admin-project-mismatch':
+      case 'firebase-token-project-mismatch':
+        return 'El cliente web y Firebase Admin no están apuntando al mismo proyecto de Firebase en producción.';
+      case 'token-verify-failed':
+        return 'El servidor no pudo validar el token emitido por Firebase. Revise la configuración de producción.';
+      case 'access-resolution-failed':
+        return 'La autenticación funcionó, pero el servidor falló al resolver el acceso interno del usuario.';
+      case 'session-cookie-create-failed':
+        return 'La autenticación funcionó, pero el servidor no pudo crear la cookie segura de sesión.';
+      case 'account-without-access':
+        return error.message || 'La cuenta autenticada no tiene acceso a SIGCE.';
+      default:
+        return null;
+    }
   };
 
   const ensureAdminAccess = async (credential: UserCredential) => {
@@ -81,14 +143,21 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setLoadingMessage(
+      role === 'student'
+        ? 'Validando credenciales del participante...'
+        : 'Validando credenciales administrativas...'
+    );
 
     try {
       if (role === 'student') {
         const credential = await signInWithEmailAndPassword(auth, email, password);
         const idToken = await credential.user.getIdToken();
+        setLoadingMessage('Creando sesión segura para el portal del participante...');
         const sessionPayload = await createServerSession(idToken);
 
         if (sessionPayload.internalAccess) {
+          setLoadingMessage('Redirigiendo al panel administrativo...');
           router.push(getRedirectPath());
           return;
         }
@@ -104,24 +173,30 @@ export default function LoginPage() {
         }
 
         if (sessionPayload.mustChangePassword) {
+          setLoadingMessage('Abriendo el cambio obligatorio de contraseña...');
           router.push('/student/change-password');
           return;
         }
 
+        setLoadingMessage('Abriendo tu portal de certificados...');
         router.push('/student');
         return;
       }
 
       // Para administradores, procedemos con autenticaciÃ³n
       const credential = await signInWithEmailAndPassword(auth, email, password);
+      setLoadingMessage('Validando permisos administrativos...');
       await ensureAdminAccess(credential);
 
       const idToken = await credential.user.getIdToken();
+      setLoadingMessage('Creando sesión segura del panel administrativo...');
       await createServerSession(idToken);
 
+      setLoadingMessage('Abriendo el panel de trabajo...');
       router.push(getRedirectPath());
     } catch (err: any) {
       console.error(err);
+      const sessionCreateErrorMessage = getSessionCreateErrorMessage(err);
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
         setError('Credenciales incorrectas. Verifique sus datos.');
       } else if (err.code === 'auth/not-authorized') {
@@ -132,11 +207,12 @@ export default function LoginPage() {
         setError('El acceso del participante está deshabilitado. Solicite apoyo al administrador.');
       } else if (err.message === 'student-not-linked') {
         setError('La cuenta no está habilitada para el portal del participante. Solicite activación al administrador.');
-      } else if (err.message === 'session-create-failed') {
-        setError('No fue posible crear la sesión. Inténtelo de nuevo.');
+      } else if (sessionCreateErrorMessage) {
+        setError(sessionCreateErrorMessage);
       } else {
         setError('Error al iniciar sesión. Inténtelo de nuevo.');
       }
+      setLoadingMessage('');
       setLoading(false);
     }
     // Nota: No poner setLoading(false) aquí para el caso de éxito de admin, 
@@ -147,26 +223,31 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
+    setLoadingMessage('Conectando con Google...');
     const provider = new GoogleAuthProvider();
     
     try {
       const credential = await signInWithPopup(auth, provider);
+      setLoadingMessage('Validando acceso administrativo...');
       await ensureAdminAccess(credential);
 
       const idToken = await credential.user.getIdToken();
+      setLoadingMessage('Creando sesión segura del panel administrativo...');
       await createServerSession(idToken);
 
+      setLoadingMessage('Abriendo el panel de trabajo...');
       router.push(getRedirectPath());
     } catch (err: any) {
       console.error(err);
+      const sessionCreateErrorMessage = getSessionCreateErrorMessage(err);
       if (err.code === 'auth/not-authorized') {
         setError('Esta cuenta no tiene permisos administrativos.');
-      } else if (err.message === 'session-create-failed') {
-        setError('No fue posible crear la sesión. Inténtelo de nuevo.');
+      } else if (sessionCreateErrorMessage) {
+        setError(sessionCreateErrorMessage);
       } else {
         setError('No se pudo iniciar sesión con Google.');
       }
-    } finally {
+      setLoadingMessage('');
       setLoading(false);
     }
   };
@@ -249,6 +330,12 @@ export default function LoginPage() {
                 Contraseña actualizada. Inicia sesión con tu nueva clave para continuar.
             </div>
         )}
+        {loading && loadingMessage && (
+            <div className="flex items-center gap-3 rounded-lg border border-primary/15 bg-primary/5 p-3 text-sm font-medium text-primary animate-in fade-in slide-in-from-top-2">
+                <Loader2 size={16} className="animate-spin" />
+                <span>{loadingMessage}</span>
+            </div>
+        )}
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-6">
@@ -291,7 +378,7 @@ export default function LoginPage() {
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Iniciando...
+                Procesando acceso...
               </>
             ) : (
                 role === 'admin' ? 'Entrar como Admin' : 'Entrar como Participante'

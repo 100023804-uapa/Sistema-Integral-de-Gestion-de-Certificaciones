@@ -5,8 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { BottomNav } from '@/components/dashboard/BottomNav';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
 import { getAllowedRolesForDashboardPath, hasAnyAllowedRole } from '@/lib/auth/permissions';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 export default function DashboardLayout({
   children,
@@ -63,9 +63,10 @@ export default function DashboardLayout({
 
   if (loading || (user && !authorized)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
+      <LoadingScreen
+        title="Verificando acceso al panel"
+        description="Estamos validando tu perfil y los permisos disponibles para esta sección."
+      />
     );
   }
 

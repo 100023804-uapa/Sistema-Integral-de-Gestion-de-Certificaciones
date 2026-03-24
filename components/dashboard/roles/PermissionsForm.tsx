@@ -48,6 +48,10 @@ export function PermissionsForm({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        Los menus y capacidades de este formulario sirven como apoyo de visibilidad y alcance dentro del
+        dashboard. No reemplazan las validaciones duras que protegen rutas y APIs administrativas.
+      </div>
       
       {/* SECCIÓN DE ALCANCE */}
       <Card className="border-2 border-primary/5 shadow-sm overflow-hidden bg-white/50 backdrop-blur-sm">
@@ -89,7 +93,7 @@ export function PermissionsForm({
         <Card className="shadow-sm border-gray-100 bg-white/50 backdrop-blur-sm">
           <CardHeader className="pb-3 border-b border-gray-50">
             <CardTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2 text-gray-800">
-              <Layout className="w-4 h-4 text-blue-500" /> Acceso a Menús
+              <Layout className="w-4 h-4 text-blue-500" /> Visibilidad de Menus
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4 max-h-[400px] overflow-y-auto custom-scrollbar">
@@ -122,7 +126,7 @@ export function PermissionsForm({
         <Card className="shadow-sm border-gray-100 bg-white/50 backdrop-blur-sm">
           <CardHeader className="pb-3 border-b border-gray-50">
             <CardTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2 text-gray-800">
-              <Zap className="w-4 h-4 text-orange-500" /> Capacidades Funcionales
+              <Zap className="w-4 h-4 text-orange-500" /> Capacidades Declaradas
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">

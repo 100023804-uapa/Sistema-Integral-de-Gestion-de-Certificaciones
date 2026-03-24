@@ -3,6 +3,9 @@
 **Fecha:** 5 de Marzo de 2026
 **Objetivo:** Mapear todos los procesos del sistema, desde la perspectiva de diferentes actores (Estudiantes, Coordinadores, Verificadores, Firmantes, Administradores), identificando los módulos que intervienen, evaluando la seguridad actual y proponiendo mejoras donde sea necesario.
 
+> Actualización de vigencia, 24 de Marzo de 2026:
+> Este documento describe una etapa anterior del proyecto. El flujo actual de referencia quedó consolidado en [estado_actual_y_alineacion_de_flujos_2026-03-24.md](./estado_actual_y_alineacion_de_flujos_2026-03-24.md) y en los planes por fases de marzo de 2026.
+
 ---
 
 ## 1. Ciclo de Onboarding y Gobernanza (Administradores)

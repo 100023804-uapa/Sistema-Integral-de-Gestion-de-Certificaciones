@@ -114,8 +114,10 @@ export default function RolesPage() {
     <div className="space-y-6 px-4 py-6 md:px-8 md:py-10">
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Roles del Sistema</h1>
-          <p className="text-gray-600">Gestiona los roles y permisos del sistema</p>
+          <h1 className="text-2xl font-bold text-gray-900">Catalogo de Roles y Alcances</h1>
+          <p className="text-gray-600">
+            Complementa menus visibles, capacidades declaradas y alcance de datos para la operacion.
+          </p>
         </div>
         <button
           onClick={() => setShowForm(true)}
@@ -124,6 +126,15 @@ export default function RolesPage() {
           <Plus size={20} />
           Nuevo Rol
         </button>
+      </div>
+
+      <div className="rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+        <p className="font-bold">Importante</p>
+        <p className="mt-1">
+          Este catalogo complementa la visibilidad de menus y el alcance operativo. La proteccion critica
+          de rutas y APIs administrativas sigue validada por los roles internos base del sistema:
+          administrador, coordinador, verificador y firmante.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -172,11 +183,11 @@ export default function RolesPage() {
               </div>
               
               <div>
-                <span className="text-sm text-gray-500">Capacidades:</span>
+                <span className="text-sm text-gray-500">Cobertura declarada:</span>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {role.menuPermissions?.length > 0 && (
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {role.menuPermissions.length} Menús
+                      {role.menuPermissions.length} vistas
                     </span>
                   )}
                   {role.capabilities?.map((cap, index) => (
@@ -322,9 +333,11 @@ function RoleForm({
         <div className="bg-primary p-6 text-white flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-black">
-              {role ? 'Editar Rol' : 'Crear Nuevo Rol'}
+              {role ? 'Editar Rol de Catalogo' : 'Crear Rol de Catalogo'}
             </h2>
-            <p className="text-primary-foreground/80 text-sm">Configura accesos y capacidades del sistema.</p>
+            <p className="text-primary-foreground/80 text-sm">
+              Configura visibilidad, capacidades declaradas y alcance de datos para apoyo operativo.
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -370,7 +383,9 @@ function RoleForm({
                   <div className={`w-3 h-3 rounded-full ${formData.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
                   <span className="text-sm font-bold">{formData.isActive ? 'Rol Activo' : 'Rol Inactivo'}</span>
                </div>
-               <p className="text-xs text-gray-500 mb-4">Un rol inactivo impedirá que cualquier usuario asignado acceda al sistema.</p>
+               <p className="text-xs text-gray-500 mb-4">
+                 Un rol inactivo sale del catalogo operativo y no deberia seguir asignandose a nuevos usuarios.
+               </p>
                <button 
                  type="button"
                  onClick={() => setFormData({...formData, isActive: !formData.isActive})}
@@ -378,8 +393,8 @@ function RoleForm({
                   ${formData.isActive ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}
                  `}
                >
-                 {formData.isActive ? 'Desactivar Rol' : 'Activar Rol'}
-               </button>
+                  {formData.isActive ? 'Marcar como inactivo' : 'Reactivar en catalogo'}
+                </button>
             </div>
           </div>
 
@@ -409,8 +424,8 @@ function RoleForm({
                 <span className="flex items-center justify-center gap-2">
                   <Zap className="animate-spin w-5 h-5" /> Guardando...
                 </span>
-              ) : (role ? 'Actualizar Rol' : 'Crear Rol Maestro')}
-            </button>
+                ) : (role ? 'Actualizar Rol' : 'Crear Rol de Catalogo')}
+              </button>
           </div>
         </form>
       </div>

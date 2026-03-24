@@ -5,6 +5,9 @@
 **Fuente de requerimientos:** `docs/requerimientos_pdf.txt` (extraído de `Requerimientos-Pasantia-Proyecto.pdf`)  
 **Repositorio analizado:** `c:\Users\LENOVO i7 7TH GAMERS\Downloads\sigce`  
 
+> Actualización de vigencia, 24 de Marzo de 2026:
+> Este informe quedó como línea base histórica. El comportamiento vigente del sistema, los cambios de acceso interno, el portal autenticado del participante y la validación pública limitada quedaron resumidos en [estado_actual_y_alineacion_de_flujos_2026-03-24.md](./estado_actual_y_alineacion_de_flujos_2026-03-24.md).
+
 ---
 
 ## 1. Objetivo del informe

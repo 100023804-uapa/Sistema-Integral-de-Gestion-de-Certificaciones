@@ -2,12 +2,12 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signOut } from 'firebase/auth';
-import { Loader2 } from 'lucide-react';
 
 import { auth } from '@/lib/firebase';
 import { getAccessRepository, getRoleRepository } from '@/lib/container';
 import { getRoleFromClaims, hasInternalAccessClaim } from '@/lib/auth/claims';
 import { ScopeType } from '@/lib/types/role';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 interface AuthContextType {
   user: User | null;
@@ -55,29 +55,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState(emptyPermissions);
   const [scope, setScope] = useState(emptyScope);
   const [loading, setLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState(
+    'Validando la sesión y cargando tus permisos.'
+  );
 
   useEffect(() => {
     let settled = false;
 
+    const ensureServerSession = async (authUser: User) => {
+      const verifyResponse = await fetch('/api/auth/session/verify', {
+        method: 'GET',
+        cache: 'no-store',
+      });
+
+      if (verifyResponse.ok) {
+        return;
+      }
+
+      const idToken = await authUser.getIdToken();
+      const sessionResponse = await fetch('/api/auth/session/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!sessionResponse.ok) {
+        const payload = (await sessionResponse.json().catch(() => null)) as
+          | {
+              code?: string;
+              error?: string;
+              detail?: string;
+            }
+          | null;
+        const sessionError = new Error(
+          typeof payload?.error === 'string'
+            ? payload.error
+            : 'No fue posible crear la sesión segura.'
+        );
+        (
+          sessionError as Error & {
+            status?: number;
+            code?: string;
+            detail?: string;
+          }
+        ).status = sessionResponse.status;
+        (
+          sessionError as Error & {
+            status?: number;
+            code?: string;
+            detail?: string;
+          }
+        ).code = typeof payload?.code === 'string' ? payload.code : 'session-create-failed';
+        (
+          sessionError as Error & {
+            status?: number;
+            code?: string;
+            detail?: string;
+          }
+        ).detail = typeof payload?.detail === 'string' ? payload.detail : undefined;
+        throw sessionError;
+      }
+    };
+
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       settled = true;
       setUser(authUser);
+      setLoading(true);
 
       if (authUser) {
         try {
-          const idToken = await authUser.getIdToken();
-          const idTokenResult = await authUser.getIdTokenResult(true);
-          const sessionResponse = await fetch('/api/auth/session/login', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ idToken }),
-          });
-
-          if (!sessionResponse.ok) {
-            const sessionError = new Error('session-create-failed');
-            (sessionError as Error & { status?: number }).status = sessionResponse.status;
-            throw sessionError;
-          }
+          setLoadingMessage('Validando la sesión del usuario...');
+          await ensureServerSession(authUser);
+          setLoadingMessage('Cargando permisos y alcance de trabajo...');
+          const idTokenResult = await authUser.getIdTokenResult();
 
           const rolesSet = new Set<string>();
           const menusSet = new Set<string>();
@@ -162,6 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setScope(emptyScope);
         }
       } else {
+        setLoadingMessage('Cerrando sesión previa...');
         setUserRoles([]);
         setPermissions(emptyPermissions);
         setScope(emptyScope);
@@ -224,9 +275,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {!loading ? (
         children
       ) : (
-        <div className="flex min-h-screen items-center justify-center bg-[var(--color-background)]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <LoadingScreen
+          title="Preparando tu acceso"
+          description={loadingMessage}
+        />
       )}
     </AuthContext.Provider>
   );

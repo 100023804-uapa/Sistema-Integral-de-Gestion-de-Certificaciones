@@ -28,7 +28,7 @@ export function Footer() {
               <li><Link href="/" className="hover:text-white transition-colors">Inicio</Link></li>
               <li><Link href="/about" className="hover:text-white transition-colors">Sobre Nosotros</Link></li>
               <li><Link href="/verify" className="hover:text-white transition-colors">Validar Certificado</Link></li>
-              <li><Link href="/status" className="hover:text-white transition-colors">Estado de Solicitud</Link></li>
+              <li><Link href="/login" className="hover:text-white transition-colors">Portal del Participante</Link></li>
             </ul>
           </div>
           <div className="space-y-3">

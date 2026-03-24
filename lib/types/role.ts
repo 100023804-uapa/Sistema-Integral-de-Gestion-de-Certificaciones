@@ -6,10 +6,10 @@ export interface Role {
   name: string;
   code: string;
   description?: string;
-  menuPermissions: string[]; // Lista de IDs de menús (ej: '/dashboard', '/dashboard/certificates')
-  capabilities: string[];    // Lista de acciones (ej: 'can_sign', 'can_verify')
-  permissions?: Permission[]; // Compatible con middleware RBAC legacy
-  scopeType: ScopeType;      // Define el alcance de la visión del rol
+  menuPermissions: string[]; // Visibilidad declarada de menus dentro del dashboard
+  capabilities: string[];    // Capacidades declaradas para acciones de UI y apoyo operativo
+  permissions?: Permission[]; // Compatible con integraciones o middleware legacy
+  scopeType: ScopeType;      // Define el alcance de datos asociado al rol de catalogo
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

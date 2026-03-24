@@ -72,7 +72,7 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
   },
   {
     kind: "link",
-    label: "Roles y Permisos",
+    label: "Catalogo de Roles",
     icon: Shield,
     href: "/dashboard/roles",
     allowedRoles: ["administrator"],
@@ -158,7 +158,7 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
   },
   {
     kind: "link",
-    label: "Configuracion",
+    label: "Perfil y Operacion",
     icon: Settings,
     href: "/dashboard/settings",
     allowedRoles: ["administrator"],
