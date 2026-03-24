@@ -16,7 +16,7 @@ import { getRoleFromClaims, hasInternalAccessClaim } from '@/lib/auth/claims';
 
 type LoginRole = 'admin' | 'student';
 type SessionLoginPayload = {
-  success: boolean;
+  success: true;
   internalAccess: boolean;
   studentAccess: boolean;
   studentStatus?: 'inactive' | 'invited' | 'active' | 'disabled' | null;
@@ -29,6 +29,12 @@ type SessionLoginErrorPayload = {
   error?: string;
   detail?: string;
 };
+
+function isSessionLoginErrorPayload(
+  payload: SessionLoginPayload | SessionLoginErrorPayload | null
+): payload is SessionLoginErrorPayload {
+  return payload?.success === false;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -62,9 +68,10 @@ export default function LoginPage() {
       | null;
 
     if (!sessionRes.ok || !payload?.success) {
+      const errorPayload = isSessionLoginErrorPayload(payload) ? payload : null;
       const sessionError = new Error(
-        typeof payload?.error === 'string'
-          ? payload.error
+        typeof errorPayload?.error === 'string'
+          ? errorPayload.error
           : 'No fue posible crear la sesión segura.'
       );
       (
@@ -73,7 +80,10 @@ export default function LoginPage() {
           status?: number;
           detail?: string;
         }
-      ).code = typeof payload?.code === 'string' ? payload.code : 'session-create-failed';
+      ).code =
+        typeof errorPayload?.code === 'string'
+          ? errorPayload.code
+          : 'session-create-failed';
       (
         sessionError as Error & {
           code?: string;
@@ -87,7 +97,8 @@ export default function LoginPage() {
           status?: number;
           detail?: string;
         }
-      ).detail = typeof payload?.detail === 'string' ? payload.detail : undefined;
+      ).detail =
+        typeof errorPayload?.detail === 'string' ? errorPayload.detail : undefined;
       throw sessionError;
     }
 
