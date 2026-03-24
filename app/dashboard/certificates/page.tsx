@@ -721,20 +721,36 @@ export default function CertificatesPage() {
 
                                     </td>
 
-                                    <td className="px-6 py-5 text-right">
+                                    <td className="px-6 py-5">
+ 
+                                        <div className="flex flex-col items-end gap-2">
+ 
+                                            <button 
+ 
+                                                onClick={() => router.push(`/dashboard/certificates/${cert.id}`)}
+ 
+                                                className="px-4 py-2 rounded-xl text-primary font-bold hover:bg-primary/5 transition-all text-sm border border-transparent hover:border-primary/10"
+ 
+                                            >
+ 
+                                                Ver Historial
+ 
+                                            </button>
 
-                                        <button 
+                                            <button
 
-                                            onClick={() => router.push(`/dashboard/certificates/${cert.id}`)}
+                                                onClick={() => router.push(`/dashboard/graduates/${encodeURIComponent(cert.studentId)}`)}
 
-                                            className="px-4 py-2 rounded-xl text-primary font-bold hover:bg-primary/5 transition-all text-sm border border-transparent hover:border-primary/10"
+                                                className="px-4 py-2 rounded-xl text-gray-700 font-bold hover:bg-gray-50 transition-all text-sm border border-gray-200"
 
-                                        >
+                                            >
 
-                                            Ver Historial
+                                                Ver Participante
 
-                                        </button>
+                                            </button>
 
+                                        </div>
+ 
                                     </td>
 
                                 </tr>
