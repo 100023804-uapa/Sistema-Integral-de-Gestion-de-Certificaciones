@@ -28,11 +28,11 @@ export class FirebaseCertificateStateRepository {
   private readonly certificateRepository = new FirebaseCertificateRepository();
 
   async create(state: Omit<CertificateState, 'id'>): Promise<CertificateState> {
-    const stateData = {
+    const stateData = this.sanitizeForFirestore({
       ...state,
       changedAt: Timestamp.fromDate(state.changedAt || new Date()),
       metadata: state.metadata || {},
-    };
+    });
 
     const docRef = await addDoc(collection(db, this.collectionName), stateData);
     const docSnap = await getDoc(docRef);
@@ -179,7 +179,7 @@ export class FirebaseCertificateStateRepository {
       history.transitions.push(newState);
       history.updatedAt = new Date();
 
-      await updateDoc(docRef, {
+      await updateDoc(docRef, this.sanitizeForFirestore({
         transitions: history.transitions.map((transition) => ({
           id: transition.id,
           certificateId: transition.certificateId,
@@ -191,11 +191,11 @@ export class FirebaseCertificateStateRepository {
           metadata: transition.metadata || {},
         })),
         updatedAt: Timestamp.fromDate(history.updatedAt),
-      });
+      }));
       return;
     }
 
-    await setDoc(docRef, {
+    await setDoc(docRef, this.sanitizeForFirestore({
       certificateId,
       transitions: [
         {
@@ -211,7 +211,29 @@ export class FirebaseCertificateStateRepository {
       ],
       createdAt: Timestamp.fromDate(new Date()),
       updatedAt: Timestamp.fromDate(new Date()),
-    });
+    }));
+  }
+
+  private sanitizeForFirestore<T>(value: T): T {
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => this.sanitizeForFirestore(item))
+        .filter((item) => item !== undefined) as T;
+    }
+
+    if (
+      value &&
+      typeof value === 'object' &&
+      value.constructor === Object
+    ) {
+      const sanitizedEntries = Object.entries(value as Record<string, unknown>)
+        .map(([key, entryValue]) => [key, this.sanitizeForFirestore(entryValue)] as const)
+        .filter(([, entryValue]) => entryValue !== undefined);
+
+      return Object.fromEntries(sanitizedEntries) as T;
+    }
+
+    return value;
   }
 
   private getPendingStatesForRole(userRole: string): CertificateStateValue[] {
