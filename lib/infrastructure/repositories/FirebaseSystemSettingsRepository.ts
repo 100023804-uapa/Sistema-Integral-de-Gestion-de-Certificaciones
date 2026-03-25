@@ -11,7 +11,7 @@ export class FirebaseSystemSettingsRepository {
             .doc(this.docId)
             .get();
 
-        if (!docSnap.exists()) {
+        if (!docSnap.exists) {
             return null;
         }
 
