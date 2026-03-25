@@ -34,6 +34,12 @@ type TemplateCandidate = {
   description?: string;
 };
 
+type InternalUserDirectoryEntry = {
+  uid: string;
+  displayName: string;
+  email: string;
+};
+
 type TransitionExecutionRequest = {
   certificateId: string;
   newState: string;
@@ -61,6 +67,7 @@ export default function CertificateStatesPage() {
   const { user } = useAuth();
   const [states, setStates] = useState<CertificateState[]>([]);
   const [pendingActions, setPendingActions] = useState<CertificateState[]>([]);
+  const [userDirectory, setUserDirectory] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [selectedState, setSelectedState] = useState<CertificateState | null>(null);
   const [selectedCertificateIds, setSelectedCertificateIds] = useState<string[]>([]);
@@ -71,13 +78,15 @@ export default function CertificateStatesPage() {
   const fetchStates = async () => {
     try {
       setLoading(true);
-      const [pendingResponse, statesResponse] = await Promise.all([
+      const [pendingResponse, statesResponse, directoryResponse] = await Promise.all([
         fetch('/api/admin/certificate-states/transition?pendingActions=true'),
         fetch('/api/admin/certificate-states?userId=self'),
+        fetch('/api/admin/internal-users/directory'),
       ]);
 
       const pendingData = await pendingResponse.json();
       const statesData = await statesResponse.json();
+      const directoryData = await directoryResponse.json();
 
       if (pendingData.success) {
         setPendingActions(pendingData.data);
@@ -85,6 +94,17 @@ export default function CertificateStatesPage() {
 
       if (statesData.success) {
         setStates(statesData.data);
+      }
+
+      if (directoryData.success && Array.isArray(directoryData.data)) {
+        setUserDirectory(
+          Object.fromEntries(
+            directoryData.data.map((entry: InternalUserDirectoryEntry) => [
+              entry.uid,
+              entry.displayName || entry.email || entry.uid,
+            ])
+          )
+        );
       }
 
     } catch (error) {
@@ -263,6 +283,22 @@ export default function CertificateStatesPage() {
       'cancelled': 'bg-red-100 text-red-800 border-red-200'
     };
     return colors[state] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getChangedByLabel = (changedBy: string) => {
+    if (!changedBy) {
+      return 'Sistema';
+    }
+
+    if (userDirectory[changedBy]) {
+      return userDirectory[changedBy];
+    }
+
+    if (user && changedBy === user.uid) {
+      return user.displayName || user.email || changedBy;
+    }
+
+    return changedBy;
   };
 
   if (loading) {
@@ -460,7 +496,7 @@ export default function CertificateStatesPage() {
               
               <div>
                 <span className="text-sm text-gray-500">Cambiado por:</span>
-                <p className="text-sm text-gray-600">{state.changedBy}</p>
+                <p className="text-sm text-gray-600">{getChangedByLabel(state.changedBy)}</p>
               </div>
 
               {state.comments && (
@@ -516,6 +552,7 @@ export default function CertificateStatesPage() {
       {selectedState && showHistory && (
         <HistoryModal
           certificateId={selectedState.certificateId}
+          getChangedByLabel={getChangedByLabel}
           onClose={() => {
             setShowHistory(false);
             setSelectedState(null);
@@ -1057,9 +1094,11 @@ function BulkTransitionModal({
 // Componente de modal de historial
 function HistoryModal({ 
   certificateId, 
+  getChangedByLabel,
   onClose 
 }: { 
   certificateId: string;
+  getChangedByLabel: (changedBy: string) => string;
   onClose: () => void;
 }) {
   const [history, setHistory] = useState<StateHistory | null>(null);
@@ -1133,7 +1172,7 @@ function HistoryModal({
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 mt-1">
-                  Por: {transition.changedBy}
+                  Por: {getChangedByLabel(transition.changedBy)}
                 </p>
                 {transition.comments && (
                   <p className="text-sm text-gray-500 mt-1 italic">
