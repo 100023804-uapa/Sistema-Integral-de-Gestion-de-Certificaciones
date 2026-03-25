@@ -10,37 +10,23 @@ import {
   QrCode, 
   BarChart3, 
   Users, 
-  Bell,
-  AlertCircle,
-  Printer
+  AlertCircle
 } from 'lucide-react';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { QuickAction } from '@/components/dashboard/QuickAction';
-import { ActivityList, ActivityItem } from '@/components/dashboard/ActivityList';
-import { Avatar } from '@/components/ui/Avatar';
+import { ActivityList } from '@/components/dashboard/ActivityList';
 import { GetDashboardStats, DashboardStats } from '@/lib/application/use-cases/GetDashboardStats';
 
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useDataScope } from '@/hooks/use-data-scope';
-import { AnimatePresence } from 'framer-motion';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { scope, getQueryFilters } = useDataScope();
+  const { scope } = useDataScope();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showNotifications, setShowNotifications] = useState(false);
-
-  // Mock notifications for now
-  const notifications = [
-    { id: 1, text: "Bienvenido al nuevo sistema SIGCE", time: "Hace 1 hora", unread: true },
-    { id: 2, text: "Recuerda validar los certificados pendientes", time: "Hace 2 horas", unread: true },
-    { id: 3, text: "Se ha registrado un nuevo programa académico", time: "Ayer", unread: false },
-  ];
-
-  const unreadCount = notifications.filter(n => n.unread).length;
 
   useEffect(() => {
     let isMounted = true;
@@ -49,8 +35,6 @@ export default function DashboardPage() {
         console.log("DashboardPage: Fetching stats with scope:", scope);
         const useCase = new GetDashboardStats();
         
-        // Obtenemos los filtros formateados para el use case
-        const filters = getQueryFilters();
         const data = await useCase.execute({
             type: scope.type,
             campusIds: scope.campusIds,
@@ -82,7 +66,13 @@ export default function DashboardPage() {
     }, 5000);
 
     return () => { isMounted = false; clearTimeout(timeout); };
-  }, []);
+  }, [
+    scope.type,
+    scope.campusIds.join(','),
+    scope.academicAreaIds.join(','),
+    scope.signerIds.join(','),
+    user?.uid,
+  ]);
 
   if (loading) {
     return (
@@ -95,67 +85,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="px-4 py-8 md:px-8 md:py-12 space-y-10" onClick={() => setShowNotifications(false)}>
+    <div className="space-y-10 px-4 py-8 md:px-8 md:py-12">
       
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6 md:gap-0">
+      <div>
         <div>
           <p className="text-gray-500 font-medium mb-1">Bienvenido de nuevo,</p>
           <h1 className="text-3xl md:text-5xl font-black text-primary tracking-tighter">
             {user?.displayName || 'Usuario'}
           </h1>
-        </div>
-        <div className="flex items-center gap-4 relative" onClick={(e) => e.stopPropagation()}>
-          <div className="relative">
-            <button 
-                onClick={() => setShowNotifications(!showNotifications)}
-                className={`relative p-3 rounded-full shadow-sm border transition-colors ${showNotifications ? 'bg-accent text-white border-accent' : 'bg-white border-gray-100 text-gray-400 hover:text-accent'}`}
-            >
-                <Bell size={28} />
-                {unreadCount > 0 && (
-                    <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
-                )}
-            </button>
-
-            <AnimatePresence>
-                {showNotifications && (
-                    <motion.div 
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-[-2.5rem] sm:right-0 top-full mt-2 w-[calc(100vw-3rem)] sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 origin-top-right"
-                    >
-                        <div className="p-4 border-b border-gray-50 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-800 text-lg">Notificaciones</h3>
-                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">{unreadCount} nuevas</span>
-                        </div>
-                        <div className="max-h-80 overflow-y-auto">
-                            {notifications.length > 0 ? (
-                                notifications.map(notif => (
-                                    <div key={notif.id} className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors ${notif.unread ? 'bg-blue-50/30' : ''}`}>
-                                        <p className="text-base text-gray-600 font-medium leading-snug">{notif.text}</p>
-                                        <p className="text-xs text-gray-400 mt-1">{notif.time}</p>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="p-8 text-center text-gray-400 text-sm">No tienes notificaciones</div>
-                            )}
-                        </div>
-                        <div className="p-3 text-center border-t border-gray-50 bg-gray-50/50">
-                            <button className="text-sm font-bold text-primary hover:underline">Marcar todas como leídas</button>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-          </div>
-
-          <Avatar 
-            src={user?.photoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100"} 
-            fallback={user?.displayName?.charAt(0) || "U"} 
-            status="online"
-            className="h-16 w-16 border-2 border-accent/20 cursor-pointer"
-            onClick={() => router.push('/dashboard/settings')}
-          />
         </div>
       </div>
 

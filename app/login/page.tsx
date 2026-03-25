@@ -36,6 +36,18 @@ function isSessionLoginErrorPayload(
   return payload?.success === false;
 }
 
+function isExpectedLoginError(error: { code?: string; message?: string }) {
+  return (
+    error.code === 'auth/invalid-credential' ||
+    error.code === 'auth/user-not-found' ||
+    error.code === 'auth/wrong-password' ||
+    error.code === 'auth/too-many-requests' ||
+    error.code === 'auth/not-authorized' ||
+    error.message === 'student-access-disabled' ||
+    error.message === 'student-not-linked'
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -206,10 +218,16 @@ export default function LoginPage() {
       setLoadingMessage('Abriendo el panel de trabajo...');
       router.push(getRedirectPath());
     } catch (err: any) {
-      console.error(err);
+      if (!isExpectedLoginError(err)) {
+        console.error(err);
+      }
       const sessionCreateErrorMessage = getSessionCreateErrorMessage(err);
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setError('Credenciales incorrectas. Verifique sus datos.');
+        setError(
+          role === 'admin'
+            ? 'Credenciales incorrectas. Si tu cuenta fue creada por administración y aún no definiste contraseña, primero debes usar el enlace de activación o solicitar un restablecimiento.'
+            : 'Credenciales incorrectas. Verifique sus datos.'
+        );
       } else if (err.code === 'auth/not-authorized') {
         setError('Esta cuenta no tiene permisos administrativos.');
       } else if (err.code === 'auth/too-many-requests') {
@@ -249,7 +267,9 @@ export default function LoginPage() {
       setLoadingMessage('Abriendo el panel de trabajo...');
       router.push(getRedirectPath());
     } catch (err: any) {
-      console.error(err);
+      if (!isExpectedLoginError(err)) {
+        console.error(err);
+      }
       const sessionCreateErrorMessage = getSessionCreateErrorMessage(err);
       if (err.code === 'auth/not-authorized') {
         setError('Esta cuenta no tiene permisos administrativos.');

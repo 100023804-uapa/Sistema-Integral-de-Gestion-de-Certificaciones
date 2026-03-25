@@ -38,7 +38,8 @@ export async function POST(request: NextRequest) {
       await notifyReturnedToDraft(
         newState.certificateId,
         newState.metadata.previousChangedBy,
-        newState.comments
+        newState.comments,
+        currentUser.uid
       );
     }
 

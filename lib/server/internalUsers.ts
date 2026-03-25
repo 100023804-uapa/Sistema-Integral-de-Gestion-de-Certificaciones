@@ -1,5 +1,6 @@
 import { buildInternalUserClaims } from '@/lib/auth/claims';
 import { getAdminApp, getAdminAuth } from '@/lib/firebaseAdmin';
+import { createNotificationFanoutWithEmailResult } from '@/lib/server/notifications';
 import { sendOperationalEmail } from '@/lib/server/operationalEmail';
 import type { UserRecord } from 'firebase-admin/auth';
 import type {
@@ -268,6 +269,32 @@ export async function createInternalUser(
       inviteSentAt: emailResult.success ? timestamp : null,
     });
 
+  await createNotificationFanoutWithEmailResult(
+    {
+      targets: [
+        {
+          recipientType: 'internal',
+          recipientId: targetAuthUser.uid,
+          recipientRoleSnapshot: roleCode,
+        },
+      ],
+        type: 'internal_user.invited',
+        category: 'access',
+        priority: 'high',
+        title: 'Tu acceso interno a SIGCE fue creado',
+        body: `Ya puedes activar tu cuenta con el rol ${roleCode}.`,
+        ctaLabel: 'Ir al acceso',
+        ctaHref: '/login',
+        entityType: 'internal_user',
+        entityId: targetAuthUser.uid,
+        actorUid: actorId,
+        sourceEvent: {
+          key: `internal_user.invited.${targetAuthUser.uid}`,
+      },
+    },
+    emailResult
+  );
+
   return mapInternalUser(targetAuthUser.uid, {
     email,
     displayName,
@@ -328,6 +355,32 @@ export async function updateInternalUser(
     if (emailResult.success) {
       updateData.inviteSentAt = now();
     }
+
+    await createNotificationFanoutWithEmailResult(
+      {
+        targets: [
+          {
+            recipientType: 'internal',
+            recipientId: uid,
+            recipientRoleSnapshot: input.roleCode || existing.roleCode,
+          },
+        ],
+        type: 'internal_user.invite_resent',
+        category: 'access',
+        priority: 'medium',
+        title: 'Tu acceso interno fue reenviado',
+        body: 'Se generó una nueva activación para tu cuenta interna.',
+        ctaLabel: 'Ir al acceso',
+        ctaHref: '/login',
+        entityType: 'internal_user',
+        entityId: uid,
+        actorUid: actorId,
+        sourceEvent: {
+          key: `internal_user.invite_resent.${uid}`,
+        },
+      },
+      emailResult
+    );
   }
 
   await getAdminDb().collection(COLLECTION_NAME).doc(uid).set(updateData, { merge: true });

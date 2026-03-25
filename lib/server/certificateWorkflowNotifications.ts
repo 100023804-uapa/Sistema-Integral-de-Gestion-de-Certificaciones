@@ -1,5 +1,9 @@
 import { getCertificateRepository } from '@/lib/container';
 import { getAdminDb } from '@/lib/firebaseAdmin';
+import {
+  createNotificationFanoutWithEmailResult,
+  resolveStudentNotificationTarget,
+} from '@/lib/server/notifications';
 import { sendOperationalEmail } from '@/lib/server/operationalEmail';
 import type { SignatureRequest } from '@/lib/types/digitalSignature';
 import { getInternalUser, listInternalUsers } from '@/lib/server/internalUsers';
@@ -53,7 +57,7 @@ export async function notifyPendingReview(
     return;
   }
 
-  await sendOperationalEmail({
+  const emailResult = await sendOperationalEmail({
     to: recipients.map((recipient) => recipient.email),
     subject: `SIGCE: certificado ${certificate.folio} enviado a verificación`,
     html: `
@@ -71,12 +75,36 @@ export async function notifyPendingReview(
       </div>
     `,
   });
+
+  await createNotificationFanoutWithEmailResult(
+    {
+      targets: recipients.map((recipient) => ({
+        recipientType: 'internal',
+        recipientId: recipient.uid,
+        recipientRoleSnapshot: recipient.roleCode,
+      })),
+      type: 'certificate.pending_review',
+      category: 'workflow',
+      priority: 'high',
+      title: `Certificado ${certificate.folio} en espera de verificación`,
+      body: `${certificate.studentName} requiere revisión para el programa ${certificate.academicProgram}.`,
+      ctaLabel: 'Revisar certificado',
+      ctaHref: '/dashboard/certificate-states',
+      entityType: 'certificate',
+      entityId: certificate.id,
+      sourceEvent: {
+        key: `certificate.pending_review.${certificate.id}`,
+      },
+    },
+    emailResult
+  );
 }
 
 export async function notifyReturnedToDraft(
   certificateId: string,
   recipientUid: string,
-  comments?: string
+  comments?: string,
+  actorUid?: string
 ): Promise<void> {
   const [certificate, recipient] = await Promise.all([
     getCertificateSummary(certificateId),
@@ -87,7 +115,7 @@ export async function notifyReturnedToDraft(
     return;
   }
 
-  await sendOperationalEmail({
+  const emailResult = await sendOperationalEmail({
     to: recipient.email,
     subject: `SIGCE: certificado ${certificate.folio} devuelto para corrección`,
     html: `
@@ -105,6 +133,35 @@ export async function notifyReturnedToDraft(
       </div>
     `,
   });
+
+  await createNotificationFanoutWithEmailResult(
+    {
+      targets: [
+        {
+          recipientType: 'internal',
+          recipientId: recipient.uid,
+          recipientRoleSnapshot: recipient.roleCode,
+        },
+      ],
+      type: 'certificate.returned_to_draft',
+      category: 'workflow',
+      priority: 'high',
+      title: `Certificado ${certificate.folio} devuelto a borrador`,
+      body:
+        comments && comments.trim()
+          ? comments.trim()
+          : `El certificado de ${certificate.studentName} fue devuelto para corrección.`,
+      ctaLabel: 'Corregir certificado',
+      ctaHref: '/dashboard/certificate-states',
+      entityType: 'certificate',
+      entityId: certificate.id,
+      actorUid,
+      sourceEvent: {
+        key: `certificate.returned_to_draft.${certificate.id}`,
+      },
+    },
+    emailResult
+  );
 }
 
 export async function notifySignatureRequest(
@@ -112,7 +169,7 @@ export async function notifySignatureRequest(
 ): Promise<void> {
   if (!request.requestedToEmail) return;
 
-  await sendOperationalEmail({
+  const emailResult = await sendOperationalEmail({
     to: request.requestedToEmail,
     subject: `SIGCE: firma pendiente para ${request.certificateData.folio}`,
     html: `
@@ -132,6 +189,33 @@ export async function notifySignatureRequest(
       </div>
     `,
   });
+
+  await createNotificationFanoutWithEmailResult(
+    {
+      targets: [
+        {
+          recipientType: 'internal',
+          recipientId: request.requestedTo,
+          recipientRoleSnapshot: 'signer',
+        },
+      ],
+      type: 'signature.requested',
+      category: 'signature',
+      priority: 'high',
+      title: `Firma pendiente para ${request.certificateData.folio}`,
+      body: `${request.certificateData.studentName} espera tu firma para ${request.certificateData.academicProgram}.`,
+      ctaLabel: 'Abrir módulo de firma',
+      ctaHref: '/dashboard/digital-signatures',
+      entityType: 'signature_request',
+      entityId: request.id,
+      actorUid: request.requestedBy,
+      actorName: request.requestedByName,
+      sourceEvent: {
+        key: `signature.requested.${request.id}`,
+      },
+    },
+    emailResult
+  );
 }
 
 export async function notifySignatureOutcome(params: {
@@ -150,7 +234,7 @@ export async function notifySignatureOutcome(params: {
     return;
   }
 
-  await sendOperationalEmail({
+  const emailResult = await sendOperationalEmail({
     to: targetEmail,
     subject: params.approved
       ? `SIGCE: firma completada para ${params.request.certificateData.folio}`
@@ -172,6 +256,36 @@ export async function notifySignatureOutcome(params: {
       </div>
     `,
   });
+
+  await createNotificationFanoutWithEmailResult(
+    {
+      targets: [
+        {
+          recipientType: 'internal',
+          recipientId: params.request.requestedBy,
+        },
+      ],
+      type: params.approved ? 'signature.approved' : 'signature.rejected',
+      category: 'signature',
+      priority: params.approved ? 'medium' : 'high',
+      title: params.approved
+        ? `Firma completada para ${params.request.certificateData.folio}`
+        : `Firma rechazada para ${params.request.certificateData.folio}`,
+      body: params.approved
+        ? `${params.request.requestedToName} completó la firma del certificado.`
+        : `${params.request.requestedToName} rechazó la firma del certificado.`,
+      ctaLabel: 'Ver flujo del certificado',
+      ctaHref: '/dashboard/certificate-states',
+      entityType: 'signature_request',
+      entityId: params.request.id,
+      actorUid: params.request.requestedTo,
+      actorName: params.request.requestedToName,
+      sourceEvent: {
+        key: `signature.outcome.${params.request.id}.${params.approved ? 'approved' : 'rejected'}`,
+      },
+    },
+    emailResult
+  );
 }
 
 export async function notifyCertificateBlocked(params: {
@@ -185,23 +299,21 @@ export async function notifyCertificateBlocked(params: {
 
   const restrictionLabel = getRestrictionTypeLabel(params.restrictionType);
   const studentEmail = await getStudentEmail(certificate.studentId);
-  const internalRecipients = (await listInternalUsers())
-    .filter(
-      (user) =>
-        user.status !== 'disabled' &&
-        user.email &&
-        (user.roleCode === 'administrator' || user.roleCode === 'coordinator')
-    )
-    .map((user) => user.email);
+  const internalRecipients = (await listInternalUsers()).filter(
+    (user) =>
+      user.status !== 'disabled' &&
+      user.email &&
+      (user.roleCode === 'administrator' || user.roleCode === 'coordinator')
+  );
 
   const tasks: Promise<unknown>[] = [];
+  const studentTarget = await resolveStudentNotificationTarget(certificate.studentId);
 
   if (studentEmail) {
-    tasks.push(
-      sendOperationalEmail({
-        to: studentEmail,
-        subject: `SIGCE: tu certificado ${certificate.folio} tiene una restriccion activa`,
-        html: `
+    const studentEmailResult = await sendOperationalEmail({
+      to: studentEmail,
+      subject: `SIGCE: tu certificado ${certificate.folio} tiene una restriccion activa`,
+      html: `
           <div style="font-family: sans-serif; max-width: 640px; margin: 0 auto; color: #1f2937;">
             <h2 style="color: #991b1b;">Certificado con restriccion temporal</h2>
             <p><strong>Folio:</strong> ${certificate.folio}</p>
@@ -216,16 +328,37 @@ export async function notifyCertificateBlocked(params: {
             </p>
           </div>
         `,
-      })
+    });
+
+    tasks.push(
+      studentTarget
+        ? createNotificationFanoutWithEmailResult(
+            {
+              targets: [studentTarget],
+              type: 'certificate.restriction.applied',
+              category: 'restriction',
+              priority: 'high',
+              title: `Tu certificado ${certificate.folio} tiene una restricción activa`,
+              body: `${restrictionLabel}: ${params.reason}`,
+              ctaLabel: 'Abrir portal',
+              ctaHref: `/student/certificates/${certificate.id}`,
+              entityType: 'certificate',
+              entityId: certificate.id,
+              sourceEvent: {
+                key: `certificate.restriction.applied.${certificate.id}`,
+              },
+            },
+            studentEmailResult
+          )
+        : Promise.resolve()
     );
   }
 
   if (internalRecipients.length > 0) {
-    tasks.push(
-      sendOperationalEmail({
-        to: internalRecipients,
-        subject: `SIGCE: certificado ${certificate.folio} bloqueado por ${restrictionLabel}`,
-        html: `
+    const internalEmailResult = await sendOperationalEmail({
+      to: internalRecipients.map((user) => user.email),
+      subject: `SIGCE: certificado ${certificate.folio} bloqueado por ${restrictionLabel}`,
+      html: `
           <div style="font-family: sans-serif; max-width: 640px; margin: 0 auto; color: #1f2937;">
             <h2 style="color: #991b1b;">Bloqueo administrativo aplicado</h2>
             <p><strong>Folio:</strong> ${certificate.folio}</p>
@@ -240,7 +373,31 @@ export async function notifyCertificateBlocked(params: {
             </p>
           </div>
         `,
-      })
+    });
+
+    tasks.push(
+      createNotificationFanoutWithEmailResult(
+        {
+          targets: internalRecipients.map((recipient) => ({
+            recipientType: 'internal',
+            recipientId: recipient.uid,
+            recipientRoleSnapshot: recipient.roleCode,
+          })),
+          type: 'certificate.restriction.applied.internal',
+          category: 'restriction',
+          priority: 'high',
+          title: `Bloqueo administrativo en ${certificate.folio}`,
+          body: `${certificate.studentName} quedó bloqueado por ${restrictionLabel.toLowerCase()}.`,
+          ctaLabel: 'Revisar certificado',
+          ctaHref: `/dashboard/certificates/${certificate.id}`,
+          entityType: 'certificate',
+          entityId: certificate.id,
+          sourceEvent: {
+            key: `certificate.restriction.applied.internal.${certificate.id}`,
+          },
+        },
+        internalEmailResult
+      )
     );
   }
 
@@ -258,23 +415,21 @@ export async function notifyCertificateRestrictionReleased(params: {
 
   const restrictionLabel = getRestrictionTypeLabel(params.restrictionType);
   const studentEmail = await getStudentEmail(certificate.studentId);
-  const internalRecipients = (await listInternalUsers())
-    .filter(
-      (user) =>
-        user.status !== 'disabled' &&
-        user.email &&
-        (user.roleCode === 'administrator' || user.roleCode === 'coordinator')
-    )
-    .map((user) => user.email);
+  const internalRecipients = (await listInternalUsers()).filter(
+    (user) =>
+      user.status !== 'disabled' &&
+      user.email &&
+      (user.roleCode === 'administrator' || user.roleCode === 'coordinator')
+  );
 
   const tasks: Promise<unknown>[] = [];
+  const studentTarget = await resolveStudentNotificationTarget(certificate.studentId);
 
   if (studentEmail) {
-    tasks.push(
-      sendOperationalEmail({
-        to: studentEmail,
-        subject: `SIGCE: tu certificado ${certificate.folio} vuelve a estar disponible`,
-        html: `
+    const studentEmailResult = await sendOperationalEmail({
+      to: studentEmail,
+      subject: `SIGCE: tu certificado ${certificate.folio} vuelve a estar disponible`,
+      html: `
           <div style="font-family: sans-serif; max-width: 640px; margin: 0 auto; color: #1f2937;">
             <h2 style="color: #166534;">Restriccion liberada</h2>
             <p><strong>Folio:</strong> ${certificate.folio}</p>
@@ -289,16 +444,40 @@ export async function notifyCertificateRestrictionReleased(params: {
             </p>
           </div>
         `,
-      })
+    });
+
+    tasks.push(
+      studentTarget
+        ? createNotificationFanoutWithEmailResult(
+            {
+              targets: [studentTarget],
+              type: 'certificate.restriction.released',
+              category: 'restriction',
+              priority: 'medium',
+              title: `Tu certificado ${certificate.folio} vuelve a estar disponible`,
+              body:
+                params.releaseReason && params.releaseReason.trim()
+                  ? params.releaseReason.trim()
+                  : 'La restricción administrativa fue liberada.',
+              ctaLabel: 'Abrir certificado',
+              ctaHref: `/student/certificates/${certificate.id}`,
+              entityType: 'certificate',
+              entityId: certificate.id,
+              sourceEvent: {
+                key: `certificate.restriction.released.${certificate.id}`,
+              },
+            },
+            studentEmailResult
+          )
+        : Promise.resolve()
     );
   }
 
   if (internalRecipients.length > 0) {
-    tasks.push(
-      sendOperationalEmail({
-        to: internalRecipients,
-        subject: `SIGCE: certificado ${certificate.folio} desbloqueado`,
-        html: `
+    const internalEmailResult = await sendOperationalEmail({
+      to: internalRecipients.map((user) => user.email),
+      subject: `SIGCE: certificado ${certificate.folio} desbloqueado`,
+      html: `
           <div style="font-family: sans-serif; max-width: 640px; margin: 0 auto; color: #1f2937;">
             <h2 style="color: #166534;">Restriccion liberada</h2>
             <p><strong>Folio:</strong> ${certificate.folio}</p>
@@ -313,7 +492,31 @@ export async function notifyCertificateRestrictionReleased(params: {
             </p>
           </div>
         `,
-      })
+    });
+
+    tasks.push(
+      createNotificationFanoutWithEmailResult(
+        {
+          targets: internalRecipients.map((recipient) => ({
+            recipientType: 'internal',
+            recipientId: recipient.uid,
+            recipientRoleSnapshot: recipient.roleCode,
+          })),
+          type: 'certificate.restriction.released.internal',
+          category: 'restriction',
+          priority: 'medium',
+          title: `Restricción liberada en ${certificate.folio}`,
+          body: `${certificate.studentName} vuelve al estado ${getCertificateStatusLabel(params.restoredStatus).toLowerCase()}.`,
+          ctaLabel: 'Abrir certificado',
+          ctaHref: `/dashboard/certificates/${certificate.id}`,
+          entityType: 'certificate',
+          entityId: certificate.id,
+          sourceEvent: {
+            key: `certificate.restriction.released.internal.${certificate.id}`,
+          },
+        },
+        internalEmailResult
+      )
     );
   }
 
@@ -329,7 +532,7 @@ export async function notifyCertificateIssued(
   const studentEmail = await getStudentEmail(certificate.studentId);
   if (!studentEmail) return;
 
-  await sendOperationalEmail({
+  const emailResult = await sendOperationalEmail({
     to: studentEmail,
     subject: `SIGCE: tu certificado ${certificate.folio} ya esta disponible`,
     html: `
@@ -346,4 +549,28 @@ export async function notifyCertificateIssued(
       </div>
     `,
   });
+
+  const studentTarget = await resolveStudentNotificationTarget(certificate.studentId);
+  if (!studentTarget) {
+    return;
+  }
+
+  await createNotificationFanoutWithEmailResult(
+    {
+      targets: [studentTarget],
+      type: 'certificate.issued',
+      category: 'workflow',
+      priority: 'high',
+      title: `Tu certificado ${certificate.folio} ya está disponible`,
+      body: `${certificate.academicProgram} quedó emitido y listo dentro de tu portal autenticado.`,
+      ctaLabel: 'Abrir certificado',
+      ctaHref: `/student/certificates/${certificate.id}`,
+      entityType: 'certificate',
+      entityId: certificate.id,
+      sourceEvent: {
+        key: `certificate.issued.${certificate.id}`,
+      },
+    },
+    emailResult
+  );
 }

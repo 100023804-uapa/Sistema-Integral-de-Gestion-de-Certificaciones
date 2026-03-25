@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { BottomNav } from '@/components/dashboard/BottomNav';
+import { DashboardTopActions } from '@/components/dashboard/DashboardTopActions';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { getAllowedRolesForDashboardPath, hasAnyAllowedRole } from '@/lib/auth/permissions';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
@@ -79,6 +80,9 @@ export default function DashboardLayout({
       <Sidebar />
       <main className="flex-1 pb-28 md:pb-0">
         <div className="container max-w-7xl mx-auto">
+          <div className="flex justify-end px-4 pt-6 md:px-8 md:pt-8">
+            <DashboardTopActions />
+          </div>
           {children}
         </div>
       </main>

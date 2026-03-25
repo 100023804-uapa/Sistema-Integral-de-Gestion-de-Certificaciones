@@ -6,6 +6,7 @@ import {
 } from '@/lib/domain/entities/Student';
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { SIGCE_INTERNAL_CLAIM } from '@/lib/auth/claims';
+import { createNotificationFanout } from '@/lib/server/notifications';
 
 const STUDENTS_COLLECTION = 'students';
 const ACCESS_USERS_COLLECTION = 'access_users';
@@ -206,7 +207,7 @@ function buildPortalAccessPayload(
 export async function issueStudentTemporaryPassword(
   studentId: string,
   actorId: string,
-  _mode: TemporaryPasswordMode
+  mode: TemporaryPasswordMode
 ): Promise<StudentTemporaryPasswordResult> {
   const student = await getStudentById(studentId);
   const normalizedEmail = normalizeEmail(student.email);
@@ -260,6 +261,34 @@ export async function issueStudentTemporaryPassword(
     );
 
   const updatedStudent = await getStudentById(studentId);
+
+  await createNotificationFanout({
+    targets: [
+      {
+        recipientType: 'student',
+        recipientId: studentId,
+      },
+    ],
+    type: mode === 'activate' ? 'student.portal_access.activated' : 'student.portal_access.reset',
+    category: 'access',
+    priority: 'high',
+    title:
+      mode === 'activate'
+        ? 'Tu acceso al portal fue habilitado'
+        : 'Tu acceso al portal fue restablecido',
+    body:
+      mode === 'activate'
+        ? 'Al ingresar deberás cambiar tu contraseña temporal.'
+        : 'Se generó una nueva contraseña temporal y al ingresar deberás cambiarla.',
+    ctaLabel: 'Abrir portal',
+    ctaHref: '/login',
+    entityType: 'student',
+    entityId: studentId,
+    actorUid: actorId,
+    sourceEvent: {
+      key: `student.portal_access.${mode}.${studentId}`,
+    },
+  });
 
   return {
     student: updatedStudent,
