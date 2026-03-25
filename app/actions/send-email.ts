@@ -1,6 +1,6 @@
 'use server';
 
-import { getEmailProvider } from '@/lib/email/provider';
+import { sendOperationalEmail } from '@/lib/server/operationalEmail';
 
 interface SendCertificateEmailParams {
   to: string;
@@ -11,12 +11,7 @@ interface SendCertificateEmailParams {
 
 export async function sendCertificateEmail({ to, studentName, certificateUrl, folio }: SendCertificateEmailParams) {
   try {
-    const provider = getEmailProvider();
-    if (!provider) {
-      throw new Error('No hay proveedor de correo configurado');
-    }
-
-    const result = await provider.sendEmail({
+    const result = await sendOperationalEmail({
       to,
       subject: `Tu Certificado UAPA está listo - Folio: ${folio}`,
       html: `
@@ -64,14 +59,13 @@ interface SendAdminRequestParams {
 export async function sendAdminRequestEmail({ email, name, reason }: SendAdminRequestParams) {
   try {
     const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-    const provider = getEmailProvider();
 
-    if (!provider || !adminEmail) {
+    if (!adminEmail) {
       console.warn('Missing email configuration. Request saved but email not sent.');
       return { success: false, error: 'Email configuration missing' };
     }
 
-    const result = await provider.sendEmail({
+    const result = await sendOperationalEmail({
       to: adminEmail,
       subject: `Solicitud de Acceso Admin - SIGCE`,
       html: `

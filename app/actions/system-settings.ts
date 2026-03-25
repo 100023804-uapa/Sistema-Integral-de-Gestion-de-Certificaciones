@@ -1,6 +1,6 @@
 'use server';
 
-import { getEmailProvider } from '@/lib/email/provider';
+import { getOperationalEmailStatusSnapshot } from '@/lib/server/operationalEmail';
 import { getServerSystemSettingsRepository } from '@/lib/server-container';
 import { EmailConfig } from '@/lib/types/systemSettings';
 
@@ -21,8 +21,8 @@ export async function saveEmailSettings(config: EmailConfig) {
         const settings = await repo.getSettings();
         
         await repo.saveSettings({
-            ...settings,
             emailConfig: config,
+            emailDeliveryEnabled: settings?.emailDeliveryEnabled !== false,
             updatedBy: 'admin' // Debería obtenerse del auth server-side en un entorno real
         });
 
@@ -35,21 +35,37 @@ export async function saveEmailSettings(config: EmailConfig) {
 
 export async function getOperationalEmailStatus() {
     try {
-        const provider = getEmailProvider();
-        const configuredProvider = process.env.EMAIL_PROVIDER?.trim().toLowerCase() || null;
+        const status = await getOperationalEmailStatusSnapshot();
 
         return {
             success: true,
-            data: {
-                configured: Boolean(provider),
-                source: 'deployment-env' as const,
-                provider: provider?.name || configuredProvider,
-                from: process.env.EMAIL_FROM || null,
-                replyTo: process.env.EMAIL_REPLY_TO || null,
-            },
+            data: status,
         };
     } catch (error) {
         console.error('Error fetching operational email status:', error);
         return { success: false, error: 'Failed to fetch operational email status' };
+    }
+}
+
+export async function saveOperationalEmailDeliveryEnabled(emailDeliveryEnabled: boolean) {
+    try {
+        const repo = getServerSystemSettingsRepository();
+        const settings = await repo.getSettings();
+
+        await repo.saveSettings({
+            emailConfig: settings?.emailConfig,
+            emailDeliveryEnabled,
+            updatedBy: 'admin',
+        });
+
+        const status = await getOperationalEmailStatusSnapshot();
+
+        return {
+            success: true,
+            data: status,
+        };
+    } catch (error) {
+        console.error('Error saving operational email policy:', error);
+        return { success: false, error: 'Failed to save operational email policy' };
     }
 }

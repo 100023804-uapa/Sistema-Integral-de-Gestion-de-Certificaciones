@@ -2,12 +2,14 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Bell,
   Camera,
   KeyRound,
   Loader2,
   Lock,
   Mail,
   Save,
+  Send,
   ShieldCheck,
   User,
 } from 'lucide-react';
@@ -15,7 +17,10 @@ import { sendPasswordResetEmail, updateProfile } from 'firebase/auth';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { toast } from 'sonner';
 
-import { getOperationalEmailStatus } from '@/app/actions/system-settings';
+import {
+  getOperationalEmailStatus,
+  saveOperationalEmailDeliveryEnabled,
+} from '@/app/actions/system-settings';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { auth, storage } from '@/lib/firebase';
 
@@ -25,6 +30,9 @@ type OperationalEmailStatus = {
   provider: string | null;
   from: string | null;
   replyTo: string | null;
+  deliveryEnabled: boolean;
+  canSend: boolean;
+  reason: 'provider-missing' | 'delivery-paused' | 'settings-unavailable' | null;
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -43,9 +51,12 @@ export default function SettingsPage() {
   const { user, userRoles } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [sendingResetEmail, setSendingResetEmail] = useState(false);
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+  const [savingEmailControl, setSavingEmailControl] = useState(false);
   const [loadingEmailStatus, setLoadingEmailStatus] = useState(true);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState('');
+  const [testEmail, setTestEmail] = useState('');
   const [operationalEmailStatus, setOperationalEmailStatus] =
     useState<OperationalEmailStatus | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,28 +64,29 @@ export default function SettingsPage() {
   useEffect(() => {
     if (user) {
       setDisplayName(user.displayName || '');
+      setTestEmail(user.email || '');
     }
   }, [user]);
 
-  useEffect(() => {
-    const loadOperationalEmailStatus = async () => {
-      try {
-        setLoadingEmailStatus(true);
-        const result = await getOperationalEmailStatus();
+  const loadOperationalEmailStatus = async () => {
+    try {
+      setLoadingEmailStatus(true);
+      const result = await getOperationalEmailStatus();
 
-        if (result.success && result.data) {
-          setOperationalEmailStatus(result.data);
-        } else {
-          setOperationalEmailStatus(null);
-        }
-      } catch (error) {
-        console.error('Error loading operational email status:', error);
+      if (result.success && result.data) {
+        setOperationalEmailStatus(result.data);
+      } else {
         setOperationalEmailStatus(null);
-      } finally {
-        setLoadingEmailStatus(false);
       }
-    };
+    } catch (error) {
+      console.error('Error loading operational email status:', error);
+      setOperationalEmailStatus(null);
+    } finally {
+      setLoadingEmailStatus(false);
+    }
+  };
 
+  useEffect(() => {
     void loadOperationalEmailStatus();
   }, []);
 
@@ -147,6 +159,94 @@ export default function SettingsPage() {
       setSendingResetEmail(false);
     }
   };
+
+  const handleSendOperationalTestEmail = async () => {
+    try {
+      if (!testEmail.trim()) {
+        toast.error('Indica un correo destino para la prueba.');
+        return;
+      }
+
+      setSendingTestEmail(true);
+      const response = await fetch('/api/admin/notifications/test-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: testEmail.trim(),
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || 'No fue posible enviar el correo de prueba.');
+      }
+
+      const provider = payload.data?.provider ? ` via ${payload.data.provider}` : '';
+      const messageId = payload.data?.messageId ? ` ID: ${payload.data.messageId}` : '';
+      toast.success(`Correo de prueba enviado${provider}.${messageId}`);
+    } catch (error) {
+      console.error('Error sending operational test email:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'No fue posible enviar el correo de prueba.'
+      );
+    } finally {
+      setSendingTestEmail(false);
+    }
+  };
+
+  const handleToggleOperationalEmail = async () => {
+    if (!operationalEmailStatus) {
+      toast.error('No fue posible cargar el estado operativo del correo.');
+      return;
+    }
+
+    try {
+      setSavingEmailControl(true);
+      const nextValue = !operationalEmailStatus.deliveryEnabled;
+      const result = await saveOperationalEmailDeliveryEnabled(nextValue);
+
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'No fue posible actualizar la política de correo.');
+      }
+
+      setOperationalEmailStatus(result.data);
+      toast.success(
+        nextValue
+          ? 'Los envíos de correo volvieron a quedar habilitados.'
+          : 'Los envíos de correo quedaron pausados globalmente.'
+      );
+    } catch (error) {
+      console.error('Error saving operational email policy:', error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'No fue posible actualizar la política de correo.'
+      );
+    } finally {
+      setSavingEmailControl(false);
+    }
+  };
+
+  const notificationFlows = [
+    'Invitacion de usuario interno y activacion de acceso.',
+    'Aviso a verificadores cuando un certificado entra en espera de verificacion.',
+    'Aviso al responsable cuando el certificado vuelve a borrador para correccion.',
+    'Solicitud de firma al firmante asignado.',
+    'Resultado de firma aprobada o rechazada para el solicitante.',
+    'Aviso al participante cuando el certificado fue emitido.',
+    'Avisos de bloqueo y liberacion de restricciones a participante y equipo interno.',
+  ];
+
+  const operationalEmailStateLabel =
+    operationalEmailStatus?.reason === 'delivery-paused'
+      ? 'Los correos salientes están pausados desde Configuración.'
+      : operationalEmailStatus?.reason === 'settings-unavailable'
+        ? 'No fue posible leer la política operativa del correo.'
+        : operationalEmailStatus?.configured
+          ? 'Listo para enviar notificaciones transaccionales.'
+          : 'Falta configuracion operativa en variables de entorno.';
 
   return (
     <div className="max-w-4xl space-y-8 px-4 py-8 md:px-8 md:py-12">
@@ -366,13 +466,109 @@ export default function SettingsPage() {
                   Estado
                 </p>
                 <p className="mt-2 font-medium text-gray-900">
-                  {operationalEmailStatus?.configured
-                    ? 'Listo para enviar notificaciones transaccionales.'
-                    : 'Falta configuracion operativa en variables de entorno.'}
+                  {operationalEmailStateLabel}
                 </p>
+              </div>
+
+              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 md:col-span-2">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="max-w-2xl">
+                    <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                      Politica global de salida
+                    </p>
+                    <p className="mt-2 font-medium text-gray-900">
+                      {operationalEmailStatus?.deliveryEnabled
+                        ? 'Envio de correos habilitado'
+                        : 'Envio de correos pausado'}
+                    </p>
+                    <p className="mt-2 text-sm text-gray-500">
+                      Esta llave solo afecta el canal de correo. Las notificaciones internas deben
+                      seguir registrandose aunque el correo este pausado.
+                    </p>
+                    <p className="mt-2 text-sm text-gray-500">
+                      Los correos nativos de Firebase Auth, como el restablecimiento manual de tu
+                      propia contrasena, siguen su flujo independiente.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleToggleOperationalEmail}
+                    disabled={savingEmailControl || !operationalEmailStatus}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {savingEmailControl ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Guardando politica...
+                      </>
+                    ) : operationalEmailStatus?.deliveryEnabled ? (
+                      'Pausar envios'
+                    ) : (
+                      'Reactivar envios'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 md:col-span-2">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+                  <div className="flex-1">
+                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-400">
+                      Correo de prueba
+                    </label>
+                    <input
+                      type="email"
+                      value={testEmail}
+                      onChange={(event) => setTestEmail(event.target.value)}
+                      placeholder="destino@correo.com"
+                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:ring-2 focus:ring-primary/20"
+                    />
+                    <p className="mt-2 text-sm text-gray-500">
+                      Envía un correo real usando el proveedor configurado para confirmar que el circuito operativo funciona.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleSendOperationalTestEmail}
+                    disabled={sendingTestEmail || !operationalEmailStatus?.canSend}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {sendingTestEmail ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Enviando prueba...
+                      </>
+                    ) : (
+                      <>
+                        <Send size={18} />
+                        Enviar prueba
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}
+        </div>
+
+        <div className="border-b border-gray-100 p-8">
+          <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-gray-800">
+            <Bell size={20} className="text-primary" /> Notificaciones Activas
+          </h2>
+
+          <p className="mb-6 max-w-2xl text-sm text-gray-600">
+            Estas son las notificaciones transaccionales que el sistema ya puede disparar cuando el
+            canal de correo operativo esta habilitado.
+          </p>
+
+          <div className="grid grid-cols-1 gap-3">
+            {notificationFlows.map((item) => (
+              <div
+                key={item}
+                className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-4 text-sm text-gray-700"
+              >
+                {item}
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="flex justify-end gap-3 bg-gray-50 p-8">

@@ -1,6 +1,6 @@
-import { getEmailProvider } from '@/lib/email/provider';
 import { buildInternalUserClaims } from '@/lib/auth/claims';
 import { getAdminApp, getAdminAuth } from '@/lib/firebaseAdmin';
+import { sendOperationalEmail } from '@/lib/server/operationalEmail';
 import type { UserRecord } from 'firebase-admin/auth';
 import type {
   CreateInternalUserInput,
@@ -126,12 +126,7 @@ async function sendInternalInvitationEmail(params: {
   roleCode: RoleValue;
   activationLink: string;
 }) {
-  const provider = getEmailProvider();
-  if (!provider) {
-    return { success: false, error: 'No hay proveedor de correo configurado' };
-  }
-
-  return provider.sendEmail({
+  return sendOperationalEmail({
     to: params.email,
     subject: 'Acceso interno SIGCE activado',
     html: `

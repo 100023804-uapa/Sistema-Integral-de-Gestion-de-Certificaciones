@@ -1,6 +1,6 @@
 import { getCertificateRepository } from '@/lib/container';
-import { getEmailProvider } from '@/lib/email/provider';
 import { getAdminDb } from '@/lib/firebaseAdmin';
+import { sendOperationalEmail } from '@/lib/server/operationalEmail';
 import type { SignatureRequest } from '@/lib/types/digitalSignature';
 import { getInternalUser, listInternalUsers } from '@/lib/server/internalUsers';
 import type { CertificateRestrictionType } from '@/lib/types/certificateRestriction';
@@ -39,9 +39,6 @@ export async function notifyPendingReview(
   certificateId: string,
   comments?: string
 ): Promise<void> {
-  const provider = getEmailProvider();
-  if (!provider) return;
-
   const certificate = await getCertificateSummary(certificateId);
   if (!certificate) return;
 
@@ -56,7 +53,7 @@ export async function notifyPendingReview(
     return;
   }
 
-  await provider.sendEmail({
+  await sendOperationalEmail({
     to: recipients.map((recipient) => recipient.email),
     subject: `SIGCE: certificado ${certificate.folio} enviado a verificación`,
     html: `
@@ -81,9 +78,6 @@ export async function notifyReturnedToDraft(
   recipientUid: string,
   comments?: string
 ): Promise<void> {
-  const provider = getEmailProvider();
-  if (!provider) return;
-
   const [certificate, recipient] = await Promise.all([
     getCertificateSummary(certificateId),
     getInternalUser(recipientUid),
@@ -93,7 +87,7 @@ export async function notifyReturnedToDraft(
     return;
   }
 
-  await provider.sendEmail({
+  await sendOperationalEmail({
     to: recipient.email,
     subject: `SIGCE: certificado ${certificate.folio} devuelto para corrección`,
     html: `
@@ -116,10 +110,9 @@ export async function notifyReturnedToDraft(
 export async function notifySignatureRequest(
   request: SignatureRequest
 ): Promise<void> {
-  const provider = getEmailProvider();
-  if (!provider || !request.requestedToEmail) return;
+  if (!request.requestedToEmail) return;
 
-  await provider.sendEmail({
+  await sendOperationalEmail({
     to: request.requestedToEmail,
     subject: `SIGCE: firma pendiente para ${request.certificateData.folio}`,
     html: `
@@ -146,9 +139,6 @@ export async function notifySignatureOutcome(params: {
   approved: boolean;
   details?: string;
 }): Promise<void> {
-  const provider = getEmailProvider();
-  if (!provider) return;
-
   let targetEmail = params.request.requestedByEmail;
 
   if (!targetEmail) {
@@ -160,7 +150,7 @@ export async function notifySignatureOutcome(params: {
     return;
   }
 
-  await provider.sendEmail({
+  await sendOperationalEmail({
     to: targetEmail,
     subject: params.approved
       ? `SIGCE: firma completada para ${params.request.certificateData.folio}`
@@ -190,9 +180,6 @@ export async function notifyCertificateBlocked(params: {
   reason: string;
   statusBefore: string;
 }): Promise<void> {
-  const provider = getEmailProvider();
-  if (!provider) return;
-
   const certificate = await getCertificateRepository().findById(params.certificateId);
   if (!certificate) return;
 
@@ -211,7 +198,7 @@ export async function notifyCertificateBlocked(params: {
 
   if (studentEmail) {
     tasks.push(
-      provider.sendEmail({
+      sendOperationalEmail({
         to: studentEmail,
         subject: `SIGCE: tu certificado ${certificate.folio} tiene una restriccion activa`,
         html: `
@@ -235,7 +222,7 @@ export async function notifyCertificateBlocked(params: {
 
   if (internalRecipients.length > 0) {
     tasks.push(
-      provider.sendEmail({
+      sendOperationalEmail({
         to: internalRecipients,
         subject: `SIGCE: certificado ${certificate.folio} bloqueado por ${restrictionLabel}`,
         html: `
@@ -266,9 +253,6 @@ export async function notifyCertificateRestrictionReleased(params: {
   restoredStatus: string;
   releaseReason?: string;
 }): Promise<void> {
-  const provider = getEmailProvider();
-  if (!provider) return;
-
   const certificate = await getCertificateRepository().findById(params.certificateId);
   if (!certificate) return;
 
@@ -287,7 +271,7 @@ export async function notifyCertificateRestrictionReleased(params: {
 
   if (studentEmail) {
     tasks.push(
-      provider.sendEmail({
+      sendOperationalEmail({
         to: studentEmail,
         subject: `SIGCE: tu certificado ${certificate.folio} vuelve a estar disponible`,
         html: `
@@ -311,7 +295,7 @@ export async function notifyCertificateRestrictionReleased(params: {
 
   if (internalRecipients.length > 0) {
     tasks.push(
-      provider.sendEmail({
+      sendOperationalEmail({
         to: internalRecipients,
         subject: `SIGCE: certificado ${certificate.folio} desbloqueado`,
         html: `
@@ -339,16 +323,13 @@ export async function notifyCertificateRestrictionReleased(params: {
 export async function notifyCertificateIssued(
   certificateId: string
 ): Promise<void> {
-  const provider = getEmailProvider();
-  if (!provider) return;
-
   const certificate = await getCertificateRepository().findById(certificateId);
   if (!certificate) return;
 
   const studentEmail = await getStudentEmail(certificate.studentId);
   if (!studentEmail) return;
 
-  await provider.sendEmail({
+  await sendOperationalEmail({
     to: studentEmail,
     subject: `SIGCE: tu certificado ${certificate.folio} ya esta disponible`,
     html: `

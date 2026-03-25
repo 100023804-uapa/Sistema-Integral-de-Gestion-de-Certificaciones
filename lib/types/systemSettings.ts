@@ -8,6 +8,7 @@ export interface EmailConfig {
 export interface SystemSettings {
     id?: string;
     emailConfig?: EmailConfig;
+    emailDeliveryEnabled?: boolean;
     updatedAt: Date;
     updatedBy: string;
 }
