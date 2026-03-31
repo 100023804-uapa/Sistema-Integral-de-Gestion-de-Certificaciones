@@ -215,6 +215,32 @@ export default function UsersPage() {
             <UserPlus className="w-4 h-4 mr-2" />
             Nuevo Usuario
           </Button>
+          <Button 
+            variant="outline" 
+            className="border-amber-200 text-amber-700 hover:bg-amber-50"
+            disabled={saving || loading}
+            onClick={async () => {
+              if (!confirm('¿Deseas sincronizar masivamente todos los usuarios internos? Esto alineará roles y permisos en todo el sistema.')) return;
+              setSaving(true);
+              try {
+                const res = await fetch('/api/admin/internal-users/sync-all', { method: 'POST' });
+                const payload = await res.json();
+                if (res.ok && payload.success) {
+                  toast.success(payload.data.message);
+                  await loadUsers();
+                } else {
+                  throw new Error(payload.error || 'Error en sincronización');
+                }
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'Fallo la sincronización');
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            <Shield className="w-4 h-4 mr-2" />
+            Sincronizar Todo
+          </Button>
         </div>
       </div>
 
@@ -273,6 +299,26 @@ export default function UsersPage() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                      title="Sincronizar Roles y Permisos"
+                      onClick={() =>
+                        void updateUser(
+                          internalUser,
+                          { forceSync: true },
+                          `Sincronización completada para ${internalUser.email}`
+                        )
+                      }
+                      disabled={processingId === internalUser.uid}
+                    >
+                      {processingId === internalUser.uid ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"

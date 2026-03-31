@@ -23,6 +23,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         roleCode: body.roleCode,
         status: body.status,
         resendInvite: body.resendInvite === true,
+        forceSync: body.forceSync === true,
       },
       currentUser.uid
     );

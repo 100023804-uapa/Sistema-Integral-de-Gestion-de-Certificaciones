@@ -184,6 +184,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (assignment.academicAreaId) areaIdsSet.add(assignment.academicAreaId);
             if (assignment.signerId) signerIdsSet.add(assignment.signerId);
           }
+          // fallback: If no active assignments in DB but we have a role in Claims,
+          // load permissions directly from the catalog for that role code.
+          if (menusSet.size === 0 && roleFromClaims) {
+            const roleDetails = await roleRepo.findByCode(roleFromClaims);
+            if (roleDetails && roleDetails.isActive) {
+              rolesSet.add(roleDetails.code);
+              roleDetails.menuPermissions?.forEach((menu) => menusSet.add(menu));
+              roleDetails.capabilities?.forEach((capability) => capsSet.add(capability));
+              
+              if (scopeOrder[roleDetails.scopeType] > scopeOrder[topScopeType]) {
+                topScopeType = roleDetails.scopeType;
+              }
+            }
+          }
 
           // If no dynamic roles were found but they are legacy admin, grant full access
           if (hasAdmin && menusSet.size === 0) {

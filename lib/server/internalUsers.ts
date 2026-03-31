@@ -158,8 +158,7 @@ async function syncUserRolesCollection(uid: string, roleCode: string, actorId: s
     .get();
 
   if (rolesSnap.empty) {
-    console.warn(`[syncUserRolesCollection] No se encontro el rol activo con codigo: ${roleCode}. Saltando sincronizacion de userRoles.`);
-    return;
+    throw new Error(`No se encontró un rol activo con el código "${roleCode}" en el catálogo. La operación de sincronización no puede continuar.`);
   }
 
   const roleId = rolesSnap.docs[0].id;
@@ -256,6 +255,18 @@ export async function createInternalUser(
   const email = normalizeEmail(input.email);
   const displayName = input.displayName.trim();
   const roleCode = ensureRoleCode(input.roleCode);
+
+  // Verificación preventiva del rol en el catálogo antes de tocar Auth
+  const db = getAdminDb();
+  const roleSnap = await db.collection('roles')
+    .where('code', '==', roleCode)
+    .where('isActive', '==', true)
+    .limit(1)
+    .get();
+
+  if (roleSnap.empty) {
+    throw new Error(`El rol "${roleCode}" no existe o no está activo en el catálogo.`);
+  }
 
   if (!email) throw new Error('El correo es obligatorio');
   if (!displayName) throw new Error('El nombre es obligatorio');
@@ -382,8 +393,8 @@ export async function updateInternalUser(
     await adminAuth.updateUser(uid, { displayName: input.displayName.trim() });
   }
 
-  if (input.roleCode) {
-    const roleCode = ensureRoleCode(input.roleCode);
+  if (input.roleCode || input.forceSync) {
+    const roleCode = ensureRoleCode(input.roleCode || existing.roleCode);
     updateData.roleCode = roleCode;
     await adminAuth.setCustomUserClaims(uid, buildInternalUserClaims(roleCode));
     await syncUserRolesCollection(uid, roleCode, actorId);

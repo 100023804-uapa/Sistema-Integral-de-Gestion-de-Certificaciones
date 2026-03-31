@@ -28,4 +28,5 @@ export interface UpdateInternalUserInput {
   roleCode?: RoleValue;
   status?: InternalUserStatus;
   resendInvite?: boolean;
+  forceSync?: boolean;
 }
