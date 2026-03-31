@@ -57,13 +57,10 @@ function buildDisplayName(email: string, preferredName?: string | null) {
 }
 
 function ensureRoleCode(roleCode: string): RoleValue {
-  if (
-    roleCode !== 'administrator' &&
-    roleCode !== 'coordinator' &&
-    roleCode !== 'verifier' &&
-    roleCode !== 'signer'
-  ) {
-    throw new Error('Rol inválido');
+  // Relaxed validation to allow custom roles created in the catalog
+  const roleSlugRegex = /^[a-z0-9_-]+$/;
+  if (!roleSlugRegex.test(roleCode)) {
+    throw new Error('Código de rol inválido (Solo minúsculas, números, guiones y guiones bajos)');
   }
 
   return roleCode;

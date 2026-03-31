@@ -9,14 +9,7 @@ import { Loader2, Mail, Shield, UserPlus, RefreshCw, Power, PencilLine } from 'l
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { InternalUser, InternalUserStatus } from '@/lib/types/internalUser';
-import type { RoleValue } from '@/lib/types/role';
-
-const ROLE_OPTIONS: { value: RoleValue; label: string; description: string }[] = [
-  { value: 'administrator', label: 'Administrador', description: 'Acceso total al sistema' },
-  { value: 'coordinator', label: 'Coordinador', description: 'Opera certificados y programas' },
-  { value: 'verifier', label: 'Verificador', description: 'Valida información y revisa expedientes' },
-  { value: 'signer', label: 'Firmante', description: 'Firma certificados pendientes' },
-];
+import type { Role, RoleValue } from '@/lib/types/role';
 
 const DEFAULT_FORM = {
   displayName: '',
@@ -55,7 +48,9 @@ function formatDate(value?: Date | string | null) {
 export default function UsersPage() {
   const { user } = useAuth();
   const [users, setUsers] = useState<InternalUser[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingRoles, setLoadingRoles] = useState(false);
   const [saving, setSaving] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,8 +76,24 @@ export default function UsersPage() {
     }
   };
 
+  const loadRoles = async () => {
+    try {
+      setLoadingRoles(true);
+      const response = await fetch('/api/admin/roles?activeOnly=true');
+      const payload = await response.json();
+      if (response.ok && payload.success) {
+        setRoles(payload.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading roles:', error);
+    } finally {
+      setLoadingRoles(false);
+    }
+  };
+
   useEffect(() => {
     void loadUsers();
+    void loadRoles();
   }, []);
 
   const openCreateModal = () => {
@@ -240,7 +251,7 @@ export default function UsersPage() {
                 <td className="px-6 py-4">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     <Shield className="w-3 h-3" />
-                    {ROLE_OPTIONS.find((role) => role.value === internalUser.roleCode)?.label || internalUser.roleCode}
+                    {roles.find((role) => role.code === internalUser.roleCode)?.name || internalUser.roleCode}
                   </span>
                 </td>
                 <td className="px-6 py-4">
@@ -369,13 +380,18 @@ export default function UsersPage() {
                     setForm((prev) => ({ ...prev, roleCode: e.target.value as RoleValue }))
                   }
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 bg-white mt-2"
+                  disabled={loadingRoles}
                 >
-                  {ROLE_OPTIONS.map((role) => (
-                    <option key={role.value} value={role.value}>
-                      {role.label} - {role.description}
+                  {roles.length === 0 && !loadingRoles && (
+                    <option value="">No hay roles disponibles</option>
+                  )}
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.code}>
+                      {role.name} - {role.description || 'Sin descripción'}
                     </option>
                   ))}
                 </select>
+                {loadingRoles && <p className="text-xs text-gray-400 mt-1">Cargando roles...</p>}
               </div>
             </div>
 

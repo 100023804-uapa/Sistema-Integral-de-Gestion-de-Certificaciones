@@ -5,13 +5,13 @@ export interface StudentPortalAccess {
   authUid?: string;
   status: StudentPortalAccountStatus;
   mustChangePassword: boolean;
-  temporaryPasswordIssuedAt?: Date;
-  temporaryPasswordIssuedBy?: string;
-  lastTemporaryResetAt?: Date;
-  lastTemporaryResetBy?: string;
-  activatedAt?: Date;
-  lastLoginAt?: Date;
-  lastPasswordChangeAt?: Date;
+  temporaryPasswordIssuedAt?: Date | null;
+  temporaryPasswordIssuedBy?: string | null;
+  lastTemporaryResetAt?: Date | null;
+  lastTemporaryResetBy?: string | null;
+  activatedAt?: Date | null;
+  lastLoginAt?: Date | null;
+  lastPasswordChangeAt?: Date | null;
 }
 
 export interface Student {

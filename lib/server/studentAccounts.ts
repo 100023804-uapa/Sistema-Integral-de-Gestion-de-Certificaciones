@@ -23,15 +23,15 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-function toDate(value: unknown): Date | undefined {
-  if (!value) return undefined;
+function toDate(value: unknown): Date | null {
+  if (!value) return null;
   if (value instanceof Date) return value;
   if (typeof value === 'object' && value !== null && 'toDate' in value) {
     return (value as { toDate: () => Date }).toDate();
   }
 
   const parsed = new Date(value as string | number);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function buildDisplayName(student: Student) {
@@ -47,7 +47,7 @@ function mapPortalAccess(value: unknown): StudentPortalAccess | undefined {
 
   return {
     enabled: source.enabled === true,
-    authUid: typeof source.authUid === 'string' ? source.authUid : undefined,
+    authUid: typeof source.authUid === 'string' ? source.authUid : null,
     status:
       source.status === 'invited' ||
       source.status === 'active' ||
@@ -59,16 +59,16 @@ function mapPortalAccess(value: unknown): StudentPortalAccess | undefined {
     temporaryPasswordIssuedBy:
       typeof source.temporaryPasswordIssuedBy === 'string'
         ? source.temporaryPasswordIssuedBy
-        : undefined,
+        : null,
     lastTemporaryResetAt: toDate(source.lastTemporaryResetAt),
     lastTemporaryResetBy:
       typeof source.lastTemporaryResetBy === 'string'
         ? source.lastTemporaryResetBy
-        : undefined,
+        : null,
     activatedAt: toDate(source.activatedAt),
     lastLoginAt: toDate(source.lastLoginAt),
     lastPasswordChangeAt: toDate(source.lastPasswordChangeAt),
-  };
+  } as StudentPortalAccess;
 }
 
 function mapStudentSnapshot(
@@ -198,9 +198,9 @@ function buildPortalAccessPayload(
     temporaryPasswordIssuedBy: actorId,
     lastTemporaryResetAt: timestamp,
     lastTemporaryResetBy: actorId,
-    activatedAt: existing?.activatedAt,
-    lastLoginAt: existing?.lastLoginAt,
-    lastPasswordChangeAt: existing?.lastPasswordChangeAt,
+    activatedAt: existing?.activatedAt ?? null,
+    lastLoginAt: existing?.lastLoginAt ?? null,
+    lastPasswordChangeAt: existing?.lastPasswordChangeAt ?? null,
   };
 }
 

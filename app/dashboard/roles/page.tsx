@@ -114,9 +114,9 @@ export default function RolesPage() {
     <div className="space-y-6 px-4 py-6 md:px-8 md:py-10">
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Catalogo de Roles y Alcances</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Catálogo de Roles y Alcances</h1>
           <p className="text-gray-600">
-            Complementa menus visibles, capacidades declaradas y alcance de datos para la operacion.
+            Complementa menús visibles, capacidades declaradas y alcance de datos para la operación.
           </p>
         </div>
         <button
@@ -131,7 +131,7 @@ export default function RolesPage() {
       <div className="rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4 text-sm text-amber-900">
         <p className="font-bold">Importante</p>
         <p className="mt-1">
-          Este catalogo complementa la visibilidad de menus y el alcance operativo. La proteccion critica
+          Este catálogo complementa la visibilidad de menús y el alcance operativo. La protección crítica
           de rutas y APIs administrativas sigue validada por los roles internos base del sistema:
           administrador, coordinador, verificador y firmante.
         </p>
@@ -172,7 +172,7 @@ export default function RolesPage() {
             <div className="space-y-2">
               <div>
                 <span className="text-sm text-gray-500">Código:</span>
-                <p className="font-medium">{getRoleDisplayName(role.code)}</p>
+                <p className="font-medium font-mono text-xs">{role.code}</p>
               </div>
               
               <div>
@@ -289,6 +289,12 @@ function RoleForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) return showAlert("Error", "El nombre es requerido", "error");
+    
+    // Generar código si no existe o validar el existente
+    const finalCode = formData.code?.trim() || formData.name.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '');
+    
+    if (!finalCode) return showAlert("Error", "Se requiere un código válido para el rol", "error");
+
     setLoading(true);
 
     try {
@@ -298,10 +304,9 @@ function RoleForm({
       
       const method = role ? 'PUT' : 'POST';
       
-      // El código se genera del nombre si está vacío
       const submitData = {
         ...formData,
-        code: formData.code || formData.name.toLowerCase().replace(/\s+/g, '_')
+        code: finalCode
       };
 
       const response = await fetch(url, {
@@ -328,15 +333,15 @@ function RoleForm({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto p-4 md:p-8">
-      <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="bg-primary p-6 text-white flex justify-between items-center">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-6 overflow-hidden">
+      <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[95vh] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="bg-primary p-6 text-white flex justify-between items-center shrink-0">
           <div>
-            <h2 className="text-2xl font-black">
-              {role ? 'Editar Rol de Catalogo' : 'Crear Rol de Catalogo'}
+            <h2 className="text-xl md:text-2xl font-black">
+              {role ? 'Editar Rol de Catálogo' : 'Crear Rol de Catálogo'}
             </h2>
-            <p className="text-primary-foreground/80 text-sm">
-              Configura visibilidad, capacidades declaradas y alcance de datos para apoyo operativo.
+            <p className="text-primary-foreground/80 text-xs md:text-sm">
+              Configura visibilidad, capacidades y alcance para el apoyo operativo.
             </p>
           </div>
           <button
@@ -347,85 +352,104 @@ function RoleForm({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-8">
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-black text-gray-700 uppercase mb-1">
-                  Nombre del Rol *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej: Auditor de Recinto"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-primary/20 outline-none transition-all"
-                />
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-black text-gray-700 uppercase mb-1">
+                    Nombre del Rol *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej: Auditor de Recinto"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-primary/20 outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-700 uppercase mb-1">
+                    Código Técnico (Slug)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ej_auditor (opcional)"
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-primary/20 outline-none transition-all text-sm font-mono"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">Si se deja vacío, se generará del nombre.</p>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-black text-gray-700 uppercase mb-1">
-                  Descripción
-                </label>
-                <textarea
-                  placeholder="Explica qué funciones cumple este rol..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={2}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-primary/20 outline-none transition-all"
-                />
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-black text-gray-700 uppercase mb-1">
+                    Descripción
+                  </label>
+                  <textarea
+                    placeholder="Explica qué funciones cumple este rol..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={2}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-primary/20 outline-none transition-all resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  <div className={`w-3 h-3 rounded-full shrink-0 ${formData.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <div className="flex-1">
+                    <p className="text-xs font-bold leading-none">{formData.isActive ? 'Rol Activo' : 'Rol Inactivo'}</p>
+                    <p className="text-[10px] text-gray-500 mt-1">Los roles inactivos no se pueden asignar.</p>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setFormData({...formData, isActive: !formData.isActive})}
+                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    <Zap size={14} className={formData.isActive ? 'text-gray-400' : 'text-green-600'} />
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 flex flex-col justify-center">
-               <div className="flex items-center gap-2 mb-4">
-                  <div className={`w-3 h-3 rounded-full ${formData.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
-                  <span className="text-sm font-bold">{formData.isActive ? 'Rol Activo' : 'Rol Inactivo'}</span>
-               </div>
-               <p className="text-xs text-gray-500 mb-4">
-                 Un rol inactivo sale del catalogo operativo y no deberia seguir asignandose a nuevos usuarios.
-               </p>
-               <button 
-                 type="button"
-                 onClick={() => setFormData({...formData, isActive: !formData.isActive})}
-                 className={`px-4 py-2 rounded-lg font-bold text-xs uppercase transition-all
-                  ${formData.isActive ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}
-                 `}
-               >
-                  {formData.isActive ? 'Marcar como inactivo' : 'Reactivar en catalogo'}
-                </button>
+            <div className="border-t pt-6">
+              <PermissionsForm 
+                selectedMenus={formData.menuPermissions}
+                selectedCapabilities={formData.capabilities}
+                scopeType={formData.scopeType}
+                onMenuToggle={handleMenuToggle}
+                onCapabilityToggle={handleCapabilityToggle}
+                onScopeChange={(scope) => setFormData({...formData, scopeType: scope})}
+              />
             </div>
           </div>
 
-          <PermissionsForm 
-            selectedMenus={formData.menuPermissions}
-            selectedCapabilities={formData.capabilities}
-            scopeType={formData.scopeType}
-            onMenuToggle={handleMenuToggle}
-            onCapabilityToggle={handleCapabilityToggle}
-            onScopeChange={(scope) => setFormData({...formData, scopeType: scope})}
-          />
-
-          <div className="flex gap-4 pt-4 border-t border-gray-100">
+          <div className="p-6 bg-gray-50 border-t flex justify-end gap-3 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-4 rounded-2xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-all"
+              className="px-6 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-100 transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-[2] px-6 py-4 bg-primary text-white rounded-2xl font-black text-lg hover:bg-primary/90 shadow-lg shadow-primary/20 disabled:opacity-50 transition-all"
+              className="px-8 py-2.5 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-primary/10"
             >
               {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Zap className="animate-spin w-5 h-5" /> Guardando...
-                </span>
-                ) : (role ? 'Actualizar Rol' : 'Crear Rol de Catalogo')}
-              </button>
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                role ? 'Actualizar Rol' : 'Crear Rol'
+              )}
+            </button>
           </div>
         </form>
       </div>

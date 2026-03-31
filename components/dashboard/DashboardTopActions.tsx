@@ -163,7 +163,7 @@ export function DashboardTopActions() {
         throw new Error(payload?.error || 'No fue posible cargar las notificaciones.');
       }
 
-      const normalized = payload.data.items.map((item: Record<string, unknown>) =>
+      const normalized: NotificationRecord[] = payload.data.items.map((item: Record<string, unknown>) =>
         normalizeNotification(item)
       );
 
@@ -171,7 +171,7 @@ export function DashboardTopActions() {
       setUnreadCount(
         typeof payload.data.unreadCount === 'number'
           ? payload.data.unreadCount
-          : normalized.filter((item) => !item.readAt).length
+          : normalized.filter((item: NotificationRecord) => !item.readAt).length
       );
     } catch (error) {
       console.error('DashboardTopActions: Error fetching notifications', error);
