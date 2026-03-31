@@ -144,6 +144,57 @@ async function sendInternalInvitationEmail(params: {
   });
 }
 
+async function syncUserRolesCollection(uid: string, roleCode: string, actorId: string) {
+  const db = getAdminDb();
+  
+  // 1. Encontrar el RoleId correspondiente al roleCode
+  const rolesSnap = await db.collection('roles')
+    .where('code', '==', roleCode)
+    .where('isActive', '==', true)
+    .limit(1)
+    .get();
+
+  if (rolesSnap.empty) {
+    console.warn(`[syncUserRolesCollection] No se encontro el rol activo con codigo: ${roleCode}. Saltando sincronizacion de userRoles.`);
+    return;
+  }
+
+  const roleId = rolesSnap.docs[0].id;
+  const nowTimestamp = now();
+
+  // 2. Desactivar roles previos del usuario
+  const prevRolesSnap = await db.collection('userRoles')
+    .where('userId', '==', uid)
+    .where('isActive', '==', true)
+    .get();
+
+  const batch = db.batch();
+  prevRolesSnap.docs.forEach(doc => {
+    batch.update(doc.ref, { 
+      isActive: false, 
+      updatedAt: nowTimestamp,
+      deactivatedAt: nowTimestamp,
+      deactivatedBy: actorId
+    });
+  });
+
+  // 3. Crear el nuevo rol
+  const newUserRoleRef = db.collection('userRoles').doc();
+  batch.set(newUserRoleRef, {
+    userId: uid,
+    roleId: roleId,
+    campusId: null,
+    academicAreaId: null,
+    signerId: null,
+    assignedAt: nowTimestamp,
+    updatedAt: nowTimestamp,
+    assignedBy: actorId,
+    isActive: true,
+  });
+
+  await batch.commit();
+}
+
 export async function listInternalUsers(): Promise<InternalUser[]> {
   const [internalSnapshot, legacySnapshot] = await Promise.all([
     getAdminDb()
@@ -241,6 +292,7 @@ export async function createInternalUser(
     buildInternalUserClaims(roleCode)
   );
   await adminAuth.revokeRefreshTokens(targetAuthUser.uid);
+  await syncUserRolesCollection(targetAuthUser.uid, roleCode, actorId);
 
   const activationLink = await buildPasswordSetupLink(email);
   const emailResult = await sendInternalInvitationEmail({
@@ -331,6 +383,7 @@ export async function updateInternalUser(
     const roleCode = ensureRoleCode(input.roleCode);
     updateData.roleCode = roleCode;
     await adminAuth.setCustomUserClaims(uid, buildInternalUserClaims(roleCode));
+    await syncUserRolesCollection(uid, roleCode, actorId);
     shouldRevokeSessions = true;
   }
 

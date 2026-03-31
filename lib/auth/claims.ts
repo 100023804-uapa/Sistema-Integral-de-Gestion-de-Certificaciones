@@ -4,12 +4,7 @@ export const SIGCE_INTERNAL_CLAIM = 'sigce_internal';
 export const SIGCE_ROLE_CLAIM = 'sigce_role';
 
 export function isRoleValue(value: unknown): value is RoleValue {
-  return (
-    value === 'administrator' ||
-    value === 'coordinator' ||
-    value === 'verifier' ||
-    value === 'signer'
-  );
+  return typeof value === 'string' && value.length > 0;
 }
 
 export function buildInternalUserClaims(roleCode: RoleValue) {
