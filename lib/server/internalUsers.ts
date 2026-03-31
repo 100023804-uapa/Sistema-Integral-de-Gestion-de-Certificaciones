@@ -108,13 +108,20 @@ function mapInternalUser(
 
 function buildPasswordSetupLink(email: string) {
   const auth = getAdminAuth();
+  
+  // Obtener URL base de múltiples fuentes posibles, priorizando la pública de Next.js
   const rawBaseUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.APP_URL ||
     'http://localhost:3000';
 
-  // Sanitize URL: remove quotes and whitespace
-  const baseUrl = rawBaseUrl.trim().replace(/^["']|["']$/g, '');
+  // Limpieza agresiva: eliminar comitas, espacios y asegurar que no termine en barra
+  let baseUrl = rawBaseUrl.trim().replace(/["']/g, '');
+  if (baseUrl.endsWith('/')) {
+    baseUrl = baseUrl.slice(0, -1);
+  }
+
+  console.log(`[buildPasswordSetupLink] Generando enlace para ${email} con URL base: ${baseUrl}`);
 
   return auth.generatePasswordResetLink(email, {
     url: `${baseUrl}/login`,
