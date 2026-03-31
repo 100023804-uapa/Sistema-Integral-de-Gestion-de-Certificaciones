@@ -16,11 +16,10 @@ export class UpdateRoleUseCase {
       throw new Error('El rol no existe');
     }
 
-    // Si se actualiza el código, validar que sea uno de los valores permitidos
     if (data.code) {
-      const validCodes: RoleValue[] = ['coordinator', 'verifier', 'signer', 'administrator'];
-      if (!validCodes.includes(data.code)) {
-        throw new Error('El código debe ser: coordinator, verifier, signer, o administrator');
+      // Relaxed validation: Allow any alphanumeric code (slug-style)
+      if (!/^[a-z0-9_-]+$/.test(data.code)) {
+        throw new Error('El código solo puede contener letras minúsculas, números, guiones y guiones bajos');
       }
 
       // Verificar que el código no exista (excepto el actual)

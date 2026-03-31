@@ -13,7 +13,7 @@ import { useAuth } from "@/lib/contexts/AuthContext";
 export function Sidebar() {
   const pathname = usePathname();
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
-  const { logout, userRoles, permissions } = useAuth();
+  const { logout, userRoles, permissions, isLegacyAdmin } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -25,7 +25,8 @@ export function Sidebar() {
     }
   };
 
-  const isLegacyAdmin = userRoles.includes('admin') || userRoles.includes('administrator');
+  // Priorizar permisos dinámicos si existen, incluso para administradores legacy
+  const hasDynamicPermissions = permissions.menus.length > 0;
 
   return (
     <>
@@ -44,8 +45,10 @@ export function Sidebar() {
 
         <nav className="custom-scrollbar flex-1 space-y-1 overflow-y-auto px-4 py-6">
           {dashboardMenuItems.map((item, index) => {
-            // Regla de Visibilidad Dinámica
-            if (!isLegacyAdmin) {
+            // Regla de Visibilidad: 
+            // 1. Si hay permisos dinámicos definidos, usarlos exclusivamente
+            // 2. Si no hay permisos dinámicos, permitir acceso total solo si es admin legacy
+            if (hasDynamicPermissions) {
               if (item.kind === "link") {
                 const hasPermission = permissions.menus.some(p => 
                   item.href === p || item.href.startsWith(p + '/')
@@ -54,7 +57,6 @@ export function Sidebar() {
               }
               
               if (item.kind === "separator") {
-                // Verificar si hay algún link visible en este grupo (hasta el siguiente separador)
                 const nextItems = dashboardMenuItems.slice(index + 1);
                 const nextSeparatorIndex = nextItems.findIndex(i => i.kind === "separator");
                 const currentGroupItems = nextSeparatorIndex === -1 
@@ -67,6 +69,9 @@ export function Sidebar() {
                 
                 if (!hasVisibleLink) return null;
               }
+            } else if (!isLegacyAdmin) {
+              // Si no es admin y no tiene permisos dinámicos, no ve nada o ve lo mínimo (seguridad predeterminada)
+              return null;
             }
 
             if (item.kind === "separator") {

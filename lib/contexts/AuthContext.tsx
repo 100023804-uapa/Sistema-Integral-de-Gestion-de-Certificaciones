@@ -23,6 +23,7 @@ interface AuthContextType {
     signerIds: string[];
   };
   loading: boolean;
+  isLegacyAdmin: boolean;
   logout: () => Promise<void>;
   hasRole: (role: string | string[]) => boolean;
   hasCapability: (capability: string) => boolean;
@@ -42,6 +43,7 @@ const AuthContext = createContext<AuthContextType>({
   permissions: emptyPermissions,
   scope: emptyScope,
   loading: true,
+  isLegacyAdmin: false,
   logout: async () => {},
   hasRole: () => false,
   hasCapability: () => false,
@@ -55,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState(emptyPermissions);
   const [scope, setScope] = useState(emptyScope);
   const [loading, setLoading] = useState(true);
+  const [isLegacyAdmin, setIsLegacyAdmin] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(
     'Validando la sesión y cargando tus permisos.'
   );
@@ -152,9 +155,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const accessRepo = getAccessRepository();
           const hasAdmin = await accessRepo.hasAdminAccess(authUser.email);
           if (hasAdmin) {
-            rolesSet.add('admin');
-            rolesSet.add('administrator');
+            setIsLegacyAdmin(true);
+            // Don't add 'admin' yet if we want to test dynamic roles later
+            // rolesSet.add('admin'); 
             topScopeType = 'global';
+          } else {
+            setIsLegacyAdmin(false);
           }
 
           const roleRepo = getRoleRepository();
@@ -177,6 +183,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (assignment.campusId) campusIdsSet.add(assignment.campusId);
             if (assignment.academicAreaId) areaIdsSet.add(assignment.academicAreaId);
             if (assignment.signerId) signerIdsSet.add(assignment.signerId);
+          }
+
+          // If no dynamic roles were found but they are legacy admin, grant full access
+          if (hasAdmin && menusSet.size === 0) {
+            rolesSet.add('admin');
+            rolesSet.add('administrator');
           }
 
           const bootstrapAdminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.trim().toLowerCase();
@@ -210,12 +222,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUserRoles([]);
           setPermissions(emptyPermissions);
           setScope(emptyScope);
+          setIsLegacyAdmin(false);
         }
       } else {
         setLoadingMessage('Cerrando sesión previa...');
         setUserRoles([]);
         setPermissions(emptyPermissions);
         setScope(emptyScope);
+        setIsLegacyAdmin(false);
         try {
           await fetch('/api/auth/session/logout', { method: 'POST' });
         } catch (error) {
@@ -267,6 +281,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         permissions,
         scope,
         loading,
+        isLegacyAdmin,
         logout,
         hasRole,
         hasCapability,

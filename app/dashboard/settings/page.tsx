@@ -21,8 +21,19 @@ import {
   getOperationalEmailStatus,
   saveOperationalEmailDeliveryEnabled,
 } from '@/app/actions/system-settings';
+import { 
+  getMasterAdmins, 
+  addMasterAdmin, 
+  toggleMasterAdminStatus 
+} from '@/app/actions/access-users';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { auth, storage } from '@/lib/firebase';
+
+interface MasterAdmin {
+  id: string;
+  email: string;
+  disabled: boolean;
+}
 
 type OperationalEmailStatus = {
   configured: boolean;
@@ -44,19 +55,29 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 function formatRoleLabel(role: string) {
-  return ROLE_LABELS[role] || role;
+  const label = ROLE_LABELS[role];
+  if (label) return label;
+  
+  // Si no está en el mapa, formatear el slug (ej: verificador_2 -> Verificador 2)
+  return role
+    .split(/[-_]/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 export default function SettingsPage() {
-  const { user, userRoles } = useAuth();
+  const { user, userRoles, isLegacyAdmin } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [sendingResetEmail, setSendingResetEmail] = useState(false);
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
   const [savingEmailControl, setSavingEmailControl] = useState(false);
   const [loadingEmailStatus, setLoadingEmailStatus] = useState(true);
+  const [loadingMasterAdmins, setLoadingMasterAdmins] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [testEmail, setTestEmail] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [masterAdmins, setMasterAdmins] = useState<MasterAdmin[]>([]);
   const [operationalEmailStatus, setOperationalEmailStatus] =
     useState<OperationalEmailStatus | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -86,12 +107,57 @@ export default function SettingsPage() {
     }
   };
 
+  const loadMasterAdmins = async () => {
+    if (!isLegacyAdmin) return;
+    try {
+      setLoadingMasterAdmins(true);
+      const result = await getMasterAdmins();
+      if (result.success && result.data) {
+        setMasterAdmins(result.data as MasterAdmin[]);
+      }
+    } catch (error) {
+      console.error('Error loading master admins:', error);
+    } finally {
+      setLoadingMasterAdmins(false);
+    }
+  };
+
   useEffect(() => {
     void loadOperationalEmailStatus();
-  }, []);
+    void loadMasterAdmins();
+  }, [isLegacyAdmin]);
+
+  const handleAddMasterAdmin = async () => {
+    if (!newAdminEmail.trim()) return;
+    try {
+      setLoadingMasterAdmins(true);
+      const result = await addMasterAdmin(newAdminEmail, user?.uid || 'system');
+      if (result.success) {
+        toast.success(`Administrador ${newAdminEmail} agregado correctamente`);
+        setNewAdminEmail('');
+        await loadMasterAdmins();
+      } else {
+        toast.error(result.error || 'Error al agregar administrador');
+      }
+    } finally {
+      setLoadingMasterAdmins(false);
+    }
+  };
+
+  const handleToggleAdminStatus = async (email: string, currentDisabled: boolean) => {
+    try {
+      const result = await toggleMasterAdminStatus(email, currentDisabled);
+      if (result.success) {
+        toast.success(`Estado de ${email} actualizado`);
+        await loadMasterAdmins();
+      }
+    } catch (error) {
+      toast.error('Error al actualizar estado');
+    }
+  };
 
   const visibleRoles = Array.from(
-    new Set(userRoles.filter((role) => role !== 'admin'))
+    new Set(userRoles.filter((role) => role !== 'admin' && role !== 'administrator'))
   );
 
   const handleImageClick = () => {
@@ -339,14 +405,25 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
-                Correo autenticado
+                Estado de Acceso
               </p>
-              <p className="mt-2 font-medium text-gray-900">{user?.email || 'No disponible'}</p>
+              <div className="mt-2 flex items-center gap-2">
+                {isLegacyAdmin ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+                    <ShieldCheck size={12} />
+                    Administrador Maestro
+                  </span>
+                ) : (
+                  <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800">
+                    Acceso Estándar
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
-                Roles internos
+                Roles dinámicos activos
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {visibleRoles.length > 0 ? (
@@ -359,14 +436,14 @@ export default function SettingsPage() {
                     </span>
                   ))
                 ) : (
-                  <span className="text-sm text-gray-500">Sin roles declarados</span>
+                  <span className="text-sm text-gray-500">Sin roles asignados</span>
                 )}
               </div>
             </div>
 
             <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
-                Identidad Firebase
+                ID de Usuario
               </p>
               <p className="mt-2 break-all font-mono text-xs text-gray-700">
                 {user?.uid || 'No disponible'}
@@ -374,6 +451,72 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        {isLegacyAdmin && (
+          <div className="border-b border-gray-100 p-8 bg-amber-50/30">
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-amber-900">
+              <ShieldCheck size={20} className="text-amber-600" /> Administradores Maestros (Whitelist)
+            </h2>
+
+            <div className="space-y-6">
+              <div className="flex gap-3">
+                <input
+                  type="email"
+                  value={newAdminEmail}
+                  onChange={(e) => setNewAdminEmail(e.target.value)}
+                  placeholder="nuevo-admin@correo.com"
+                  className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm focus:ring-2 focus:ring-amber-500/20"
+                />
+                <button
+                  onClick={handleAddMasterAdmin}
+                  disabled={loadingMasterAdmins || !newAdminEmail}
+                  className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white transition-all hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {loadingMasterAdmins ? <Loader2 className="animate-spin" size={18} /> : 'Agregar'}
+                </button>
+              </div>
+
+              <div className="divide-y divide-gray-100 rounded-2xl border border-gray-100 bg-white">
+                {loadingMasterAdmins && masterAdmins.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-gray-400 flex items-center justify-center gap-2">
+                    <Loader2 className="animate-spin" size={16} /> Cargando lista...
+                  </div>
+                ) : masterAdmins.length > 0 ? (
+                  masterAdmins.map((admin) => (
+                    <div key={admin.id} className="flex items-center justify-between p-4">
+                      <div className="flex flex-col">
+                        <span className={`text-sm font-medium ${admin.disabled ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                          {admin.email}
+                        </span>
+                        {admin.email === user?.email && (
+                          <span className="text-[10px] text-amber-600 font-bold uppercase">Eres tú</span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleToggleAdminStatus(admin.email, !!admin.disabled)}
+                        className={`text-xs font-bold px-3 py-1 rounded-full transition-colors ${
+                          admin.disabled 
+                            ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                            : 'bg-red-100 text-red-700 hover:bg-red-200'
+                        }`}
+                        disabled={admin.email === user?.email}
+                      >
+                        {admin.disabled ? 'Habilitar' : 'Deshabilitar'}
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-sm text-gray-400">
+                    No hay administradores adicionales en la lista.
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-amber-700/70 italic">
+                Nota: Los usuarios en esta lista tienen acceso total al sistema (bypass de roles dinámicos si no tienen uno asignado).
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="border-b border-gray-100 p-8">
           <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-gray-800">

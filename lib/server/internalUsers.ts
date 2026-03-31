@@ -108,10 +108,13 @@ function mapInternalUser(
 
 function buildPasswordSetupLink(email: string) {
   const auth = getAdminAuth();
-  const baseUrl =
+  const rawBaseUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.APP_URL ||
     'http://localhost:3000';
+
+  // Sanitize URL: remove quotes and whitespace
+  const baseUrl = rawBaseUrl.trim().replace(/^["']|["']$/g, '');
 
   return auth.generatePasswordResetLink(email, {
     url: `${baseUrl}/login`,
