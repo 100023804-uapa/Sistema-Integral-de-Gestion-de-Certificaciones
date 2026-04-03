@@ -27,9 +27,14 @@ export async function POST(request: NextRequest) {
     for (const doc of usersSnap.docs) {
       const userData = doc.data();
       const uid = doc.id;
-      const roleCode = userData.roleCode || 'coordinator';
+      const roleCode =
+        typeof userData.roleCode === 'string' ? userData.roleCode.trim() : '';
 
       try {
+        if (!roleCode) {
+          throw new Error('Usuario sin roleCode asignado en internal_users');
+        }
+
         // A. Sincronizar Claims
         await firebaseAuth.setCustomUserClaims(uid, buildInternalUserClaims(roleCode));
         

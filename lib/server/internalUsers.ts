@@ -44,7 +44,11 @@ function mapLegacyRoleCode(role: unknown): RoleValue {
     return 'administrator';
   }
 
-  return ensureRoleCode(typeof role === 'string' ? role : 'coordinator');
+  if (typeof role !== 'string' || !role.trim()) {
+    return '';
+  }
+
+  return ensureRoleCode(role);
 }
 
 function buildDisplayName(email: string, preferredName?: string | null) {
@@ -57,13 +61,19 @@ function buildDisplayName(email: string, preferredName?: string | null) {
 }
 
 function ensureRoleCode(roleCode: string): RoleValue {
+  const normalizedRoleCode = roleCode.trim();
+
+  if (!normalizedRoleCode) {
+    throw new Error('Debes seleccionar un rol activo.');
+  }
+
   // Relaxed validation to allow custom roles created in the catalog
   const roleSlugRegex = /^[a-z0-9_-]+$/;
-  if (!roleSlugRegex.test(roleCode)) {
+  if (!roleSlugRegex.test(normalizedRoleCode)) {
     throw new Error('Código de rol inválido (Solo minúsculas, números, guiones y guiones bajos)');
   }
 
-  return roleCode;
+  return normalizedRoleCode;
 }
 
 function mapInternalUser(
@@ -86,9 +96,10 @@ function mapInternalUser(
     uid: id,
     email: toStringOrEmpty(source.email),
     displayName: toStringOrEmpty(source.displayName),
-    roleCode: ensureRoleCode(
-      typeof source.roleCode === 'string' ? source.roleCode : 'coordinator'
-    ),
+    roleCode:
+      typeof source.roleCode === 'string' && source.roleCode.trim()
+        ? ensureRoleCode(source.roleCode)
+        : '',
     status: (
       source.status === 'active' ||
       source.status === 'disabled' ||
@@ -261,6 +272,9 @@ export async function createInternalUser(
 ): Promise<InternalUser> {
   const email = normalizeEmail(input.email);
   const displayName = input.displayName.trim();
+  if (!input.roleCode?.trim()) {
+    throw new Error('Debes seleccionar un rol activo.');
+  }
   const roleCode = ensureRoleCode(input.roleCode);
 
   // Verificación preventiva del rol en el catálogo antes de tocar Auth

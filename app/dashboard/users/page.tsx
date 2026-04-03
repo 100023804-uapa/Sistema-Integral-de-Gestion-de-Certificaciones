@@ -14,7 +14,7 @@ import type { Role, RoleValue } from '@/lib/types/role';
 const DEFAULT_FORM = {
   displayName: '',
   email: '',
-  roleCode: 'coordinator' as RoleValue,
+  roleCode: '' as RoleValue,
 };
 
 function getStatusLabel(status: InternalUserStatus) {
@@ -121,6 +121,26 @@ export default function UsersPage() {
 
   const saveUser = async () => {
     if (!user) return;
+
+    const displayName = form.displayName.trim();
+    const email = form.email.trim();
+    const roleCode = form.roleCode.trim();
+
+    if (!displayName) {
+      toast.error('Debes indicar el nombre del usuario.');
+      return;
+    }
+
+    if (!editingUser && !email) {
+      toast.error('Debes indicar el correo institucional.');
+      return;
+    }
+
+    if (!roleCode) {
+      toast.error('Debes seleccionar un rol activo antes de crear el usuario.');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -132,13 +152,13 @@ export default function UsersPage() {
           body: JSON.stringify(
             editingUser
               ? {
-                  displayName: form.displayName,
-                  roleCode: form.roleCode,
+                  displayName,
+                  roleCode,
                 }
               : {
-                  displayName: form.displayName,
-                  email: form.email,
-                  roleCode: form.roleCode,
+                  displayName,
+                  email,
+                  roleCode,
                 }
           ),
         }
@@ -428,9 +448,11 @@ export default function UsersPage() {
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 bg-white mt-2"
                   disabled={loadingRoles}
                 >
-                  {roles.length === 0 && !loadingRoles && (
-                    <option value="">No hay roles disponibles</option>
-                  )}
+                  <option value="" disabled>
+                    {roles.length === 0 && !loadingRoles
+                      ? 'No hay roles activos disponibles'
+                      : 'Selecciona un rol activo'}
+                  </option>
                   {roles.map((role) => (
                     <option key={role.id} value={role.code}>
                       {role.name} - {role.description || 'Sin descripción'}
@@ -445,7 +467,11 @@ export default function UsersPage() {
               <Button variant="outline" className="flex-1" onClick={closeModal} disabled={saving}>
                 Cancelar
               </Button>
-              <Button className="flex-1" onClick={() => void saveUser()} disabled={saving}>
+              <Button
+                className="flex-1"
+                onClick={() => void saveUser()}
+                disabled={saving || !form.roleCode.trim()}
+              >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 {editingUser ? 'Guardar Cambios' : 'Crear y Enviar Activación'}
               </Button>
