@@ -113,6 +113,35 @@ function toOptionalString(value: unknown): string | undefined {
     : undefined;
 }
 
+function sanitizeForClient<T>(value: T): T {
+  if (value === null || typeof value === 'undefined') {
+    return value;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString() as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeForClient(item)) as T;
+  }
+
+  if (typeof value === 'object') {
+    const maybeTimestamp = value as { toDate?: () => Date };
+    if (typeof maybeTimestamp.toDate === 'function') {
+      return maybeTimestamp.toDate().toISOString() as T;
+    }
+
+    const plainEntries = Object.entries(value as Record<string, unknown>).map(
+      ([key, entryValue]) => [key, sanitizeForClient(entryValue)] as const
+    );
+
+    return Object.fromEntries(plainEntries) as T;
+  }
+
+  return value;
+}
+
 function buildFullName(firstName: string, lastName: string) {
   return `${firstName} ${lastName}`.trim();
 }
@@ -260,7 +289,7 @@ function mapCertificateDetail(
     pdfUrl: toOptionalString(data.pdfUrl),
     metadata:
       data.metadata && typeof data.metadata === 'object'
-        ? (data.metadata as Record<string, unknown>)
+        ? sanitizeForClient(data.metadata as Record<string, unknown>)
         : {},
   };
 }
