@@ -1,42 +1,185 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { SignatureRequest } from '@/lib/container';
-import { useAuth } from '@/lib/contexts/AuthContext';
-import { 
-  PenTool, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import React, { useEffect, useState } from 'react';
+import {
   AlertCircle,
   Calendar,
-  Filter
+  CheckCircle,
+  Clock,
+  Filter,
+  PenTool,
+  XCircle,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { SIGNATURE_STATUS_LABELS } from '@/lib/types/digitalSignature';
+
 import { SignatureCanvas } from '@/components/signatures/SignatureCanvas';
+import { useAuth } from '@/lib/contexts/AuthContext';
+import {
+  SIGNATURE_STATUS_LABELS,
+  SignatureRequest,
+} from '@/lib/types/digitalSignature';
+import { cn } from '@/lib/utils';
+
+function isExpired(expiresAt: Date) {
+  return new Date(expiresAt) < new Date();
+}
+
+function getStatusIcon(status: string) {
+  const icons: Record<string, React.ReactNode> = {
+    pending: <Clock size={20} />,
+    signed: <CheckCircle size={20} />,
+    rejected: <XCircle size={20} />,
+    expired: <AlertCircle size={20} />,
+  };
+
+  return icons[status] || <Clock size={20} />;
+}
+
+function getStatusColor(status: string) {
+  const colors: Record<string, string> = {
+    pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    signed: 'bg-green-100 text-green-800 border-green-200',
+    rejected: 'bg-red-100 text-red-800 border-red-200',
+    expired: 'bg-gray-100 text-gray-800 border-gray-200',
+  };
+
+  return colors[status] || 'bg-gray-100 text-gray-800';
+}
+
+function filterRequests(requests: SignatureRequest[], filter: string) {
+  return requests.filter((request) => {
+    if (filter === 'all') return true;
+    if (filter === 'pending') return request.status === 'pending' && !isExpired(request.expiresAt);
+    if (filter === 'expired') return isExpired(request.expiresAt);
+    return request.status === filter;
+  });
+}
+
+function RequestCard({
+  request,
+  onClick,
+  trackingMode = false,
+}: {
+  request: SignatureRequest;
+  onClick: () => void;
+  trackingMode?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        'bg-white rounded-lg shadow-md border p-6 hover:shadow-lg transition-shadow cursor-pointer',
+        getStatusColor(request.status)
+      )}
+      onClick={onClick}
+    >
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center gap-2">
+          {getStatusIcon(request.status)}
+          <h3 className="font-semibold text-lg">
+            {SIGNATURE_STATUS_LABELS[request.status as keyof typeof SIGNATURE_STATUS_LABELS]}
+          </h3>
+        </div>
+        {isExpired(request.expiresAt) && (
+          <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
+            Expirado
+          </span>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <div>
+          <span className="text-sm text-gray-500">Certificado:</span>
+          <p className="font-medium">{request.certificateData.folio}</p>
+        </div>
+
+        <div>
+          <span className="text-sm text-gray-500">Estudiante:</span>
+          <p className="text-sm text-gray-600">{request.certificateData.studentName}</p>
+        </div>
+
+        <div>
+          <span className="text-sm text-gray-500">Programa:</span>
+          <p className="text-sm text-gray-600">{request.certificateData.academicProgram}</p>
+        </div>
+
+        {trackingMode ? (
+          <div>
+            <span className="text-sm text-gray-500">Asignado a:</span>
+            <p className="text-sm text-gray-600">
+              {request.requestedToName}
+              {request.requestedToEmail ? ` · ${request.requestedToEmail}` : ''}
+            </p>
+          </div>
+        ) : (
+          <div>
+            <span className="text-sm text-gray-500">Solicitado por:</span>
+            <p className="text-sm text-gray-600">{request.requestedByName || request.requestedBy}</p>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <Calendar size={12} />
+          <span>Solicitado: {new Date(request.requestedAt).toLocaleDateString()}</span>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <Clock size={12} />
+          <span>Expira: {new Date(request.expiresAt).toLocaleDateString()}</span>
+        </div>
+
+        {request.respondedAt && (
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <CheckCircle size={12} />
+            <span>Respondido: {new Date(request.respondedAt).toLocaleDateString()}</span>
+          </div>
+        )}
+
+        {request.rejectionReason && (
+          <div>
+            <span className="text-sm text-gray-500">Razón de rechazo:</span>
+            <p className="text-sm text-red-600 italic">{request.rejectionReason}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function DigitalSignaturesPage() {
-  const { user } = useAuth();
-  const [requests, setRequests] = useState<SignatureRequest[]>([]);
+  const { user, hasRole } = useAuth();
+  const [assignedRequests, setAssignedRequests] = useState<SignatureRequest[]>([]);
+  const [requestedRequests, setRequestedRequests] = useState<SignatureRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<SignatureRequest | null>(null);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [filter, setFilter] = useState<string>('all');
 
+  const canTrackRequested = hasRole(['administrator', 'coordinator']);
+
   const fetchRequests = async () => {
     try {
       setLoading(true);
 
-      const response = await fetch('/api/admin/digital-signatures?signerId=self');
-      const data = await response.json();
-      
-      if (data.success) {
-        setRequests(data.data);
+      const assignedResponse = await fetch('/api/admin/digital-signatures?signerId=self');
+      const assignedData = await assignedResponse.json();
+
+      if (assignedData.success) {
+        setAssignedRequests(assignedData.data);
       } else {
-        console.error('Error fetching signature requests:', data.error);
+        console.error('Error fetching assigned signature requests:', assignedData.error);
       }
 
+      if (canTrackRequested) {
+        const requestedResponse = await fetch('/api/admin/digital-signatures?requestedBy=self');
+        const requestedData = await requestedResponse.json();
+
+        if (requestedData.success) {
+          setRequestedRequests(requestedData.data);
+        } else {
+          console.error('Error fetching requested signature requests:', requestedData.error);
+        }
+      } else {
+        setRequestedRequests([]);
+      }
     } catch (error) {
       console.error('Error fetching signature requests:', error);
     } finally {
@@ -47,7 +190,7 @@ export default function DigitalSignaturesPage() {
   useEffect(() => {
     if (!user) return;
     void fetchRequests();
-  }, [user]);
+  }, [user, canTrackRequested]);
 
   const handleSign = async (request: SignatureRequest) => {
     setSelectedRequest(request);
@@ -67,14 +210,14 @@ export default function DigitalSignaturesPage() {
         body: JSON.stringify({
           action: 'reject',
           certificateId: request.certificateId,
-          rejectionReason: reason
+          rejectionReason: reason,
         }),
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
-        fetchRequests(); // Refresh
+        void fetchRequests();
       } else {
         alert('Error: ' + data.error);
       }
@@ -84,36 +227,14 @@ export default function DigitalSignaturesPage() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    const icons: Record<string, React.ReactNode> = {
-      'pending': <Clock size={20} />,
-      'signed': <CheckCircle size={20} />,
-      'rejected': <XCircle size={20} />,
-      'expired': <AlertCircle size={20} />
-    };
-    return icons[status] || <Clock size={20} />;
-  };
-
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      'pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      'signed': 'bg-green-100 text-green-800 border-green-200',
-      'rejected': 'bg-red-100 text-red-800 border-red-200',
-      'expired': 'bg-gray-100 text-gray-800 border-gray-200'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  const isExpired = (expiresAt: Date) => {
-    return new Date(expiresAt) < new Date();
-  };
-
-  const filteredRequests = requests.filter(request => {
-    if (filter === 'all') return true;
-    if (filter === 'pending') return request.status === 'pending' && !isExpired(request.expiresAt);
-    if (filter === 'expired') return isExpired(request.expiresAt);
-    return request.status === filter;
-  });
+  const filteredAssignedRequests = filterRequests(assignedRequests, filter);
+  const filteredRequestedRequests = filterRequests(
+    requestedRequests.filter((request) => request.requestedTo !== user?.uid),
+    filter
+  );
+  const pendingAssignedRequests = filteredAssignedRequests.filter(
+    (request) => request.status === 'pending' && !isExpired(request.expiresAt)
+  );
 
   if (loading) {
     return (
@@ -146,19 +267,16 @@ export default function DigitalSignaturesPage() {
         </div>
       </div>
 
-      {/* Solicitudes Pendientes */}
-      {filteredRequests.filter(r => r.status === 'pending' && !isExpired(r.expiresAt)).length > 0 && (
+      {pendingAssignedRequests.length > 0 && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <AlertCircle size={20} className="text-orange-500" />
-            Solicitudes Pendientes ({filteredRequests.filter(r => r.status === 'pending' && !isExpired(r.expiresAt)).length})
+            Solicitudes pendientes asignadas a ti ({pendingAssignedRequests.length})
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredRequests
-              .filter(r => r.status === 'pending' && !isExpired(r.expiresAt))
-              .map((request) => (
+            {pendingAssignedRequests.map((request) => (
               <div
-                key={request.id}
+                key={`pending-${request.id}`}
                 className="bg-white rounded-lg shadow-md border p-4 hover:shadow-lg transition-shadow"
               >
                 <div className="flex items-center justify-between mb-3">
@@ -172,14 +290,14 @@ export default function DigitalSignaturesPage() {
                     Expira: {new Date(request.expiresAt).toLocaleDateString()}
                   </span>
                 </div>
-                
+
                 <div className="space-y-2 mb-4">
                   <div className="text-sm">
                     <p className="font-medium">Certificado: {request.certificateData.folio}</p>
                     <p className="text-gray-600">Estudiante: {request.certificateData.studentName}</p>
                     <p className="text-gray-600">Programa: {request.certificateData.academicProgram}</p>
                   </div>
-                  
+
                   {request.message && (
                     <div className="text-sm">
                       <p className="text-gray-500 italic">"{request.message}"</p>
@@ -209,121 +327,80 @@ export default function DigitalSignaturesPage() {
         </div>
       )}
 
-      {/* Lista Completa de Solicitudes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredRequests.map((request) => (
-          <div
-            key={request.id}
-            className={cn(
-              "bg-white rounded-lg shadow-md border p-6 hover:shadow-lg transition-shadow cursor-pointer",
-              getStatusColor(request.status)
-            )}
-            onClick={() => setSelectedRequest(request)}
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-2">
-                {getStatusIcon(request.status)}
-                <h3 className="font-semibold text-lg">
-                  {SIGNATURE_STATUS_LABELS[request.status as keyof typeof SIGNATURE_STATUS_LABELS]}
-                </h3>
-              </div>
-              {isExpired(request.expiresAt) && (
-                <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
-                  Expirado
-                </span>
-              )}
-            </div>
+      <div className="mb-8">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Bandeja de firma</h2>
+          <p className="text-sm text-gray-600">
+            Aquí ves las solicitudes asignadas directamente a tu usuario interno.
+          </p>
+        </div>
 
-            <div className="space-y-2">
-              <div>
-                <span className="text-sm text-gray-500">Certificado:</span>
-                <p className="font-medium">{request.certificateData.folio}</p>
-              </div>
-              
-              <div>
-                <span className="text-sm text-gray-500">Estudiante:</span>
-                <p className="text-sm text-gray-600">{request.certificateData.studentName}</p>
-              </div>
-              
-              <div>
-                <span className="text-sm text-gray-500">Programa:</span>
-                <p className="text-sm text-gray-600">{request.certificateData.academicProgram}</p>
-              </div>
-
-              <div>
-                <span className="text-sm text-gray-500">Solicitado por:</span>
-                <p className="text-sm text-gray-600">
-                  {request.requestedByName || request.requestedBy}
-                </p>
-              </div>
-              
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <Calendar size={12} />
-                <span>Solicitado: {new Date(request.requestedAt).toLocaleDateString()}</span>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <Clock size={12} />
-                <span>Expira: {new Date(request.expiresAt).toLocaleDateString()}</span>
-              </div>
-
-              {request.respondedAt && (
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <CheckCircle size={12} />
-                  <span>Respondido: {new Date(request.respondedAt).toLocaleDateString()}</span>
-                </div>
-              )}
-
-              {request.rejectionReason && (
-                <div>
-                  <span className="text-sm text-gray-500">Razón de rechazo:</span>
-                  <p className="text-sm text-red-600 italic">{request.rejectionReason}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredAssignedRequests.map((request) => (
+            <RequestCard
+              key={request.id}
+              request={request}
+              onClick={() => setSelectedRequest(request)}
+            />
+          ))}
+        </div>
       </div>
 
-      {filteredRequests.length === 0 && (
+      {canTrackRequested && (
+        <div className="mb-8">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Seguimiento de solicitudes enviadas</h2>
+            <p className="text-sm text-gray-600">
+              Aquí ves las solicitudes que tú enviaste a otros usuarios internos firmantes.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredRequestedRequests.map((request) => (
+              <RequestCard
+                key={`requested-${request.id}`}
+                request={request}
+                trackingMode
+                onClick={() => setSelectedRequest(request)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {filteredAssignedRequests.length === 0 && filteredRequestedRequests.length === 0 && (
         <div className="text-center py-12">
           <PenTool className="mx-auto text-gray-400 mb-4" size={48} />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No hay solicitudes de firma</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No hay solicitudes de firma visibles</h3>
           <p className="text-gray-600">
-            Las solicitudes de firma aparecerán aquí cuando los coordinadores las envíen
+            Si acabas de enviar una solicitud, revisa si quedó asignada a otro usuario interno firmante.
           </p>
         </div>
       )}
 
-      {/* Modal de Firma */}
       {showSignatureModal && selectedRequest && (
         <SignatureModal
           request={selectedRequest}
           onClose={() => setShowSignatureModal(false)}
           onSuccess={() => {
             setShowSignatureModal(false);
-            fetchRequests();
+            void fetchRequests();
           }}
         />
       )}
 
-      {/* Modal de Detalles */}
       {selectedRequest && !showSignatureModal && (
-        <RequestDetailsModal
-          request={selectedRequest}
-          onClose={() => setSelectedRequest(null)}
-        />
+        <RequestDetailsModal request={selectedRequest} onClose={() => setSelectedRequest(null)} />
       )}
     </div>
   );
 }
 
-// Componente de modal de firma
-function SignatureModal({ 
-  request, 
-  onClose, 
-  onSuccess 
-}: { 
+function SignatureModal({
+  request,
+  onClose,
+  onSuccess,
+}: {
   request: SignatureRequest;
   onClose: () => void;
   onSuccess: () => void;
@@ -337,7 +414,7 @@ function SignatureModal({
     if (!signatureData) return;
 
     setLoading(true);
-    
+
     try {
       const response = await fetch('/api/admin/digital-signatures/sign', {
         method: 'POST',
@@ -348,12 +425,12 @@ function SignatureModal({
           action: 'sign',
           certificateId: request.certificateId,
           signatureBase64: signatureData,
-          comments
+          comments,
         }),
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         onSuccess();
       } else {
@@ -372,10 +449,7 @@ function SignatureModal({
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Firmar Certificado</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             ×
           </button>
         </div>
@@ -391,9 +465,7 @@ function SignatureModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Firma Digital *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Firma Digital *</label>
             <SignatureCanvas value={signatureData} onChange={setSignatureData} disabled={loading} />
             <p className="text-xs text-gray-500 mt-1">
               * La firma digital es obligatoria y debe ser clara y legible
@@ -415,7 +487,8 @@ function SignatureModal({
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
             <p className="text-sm text-yellow-800">
-              <strong>Importante:</strong> Al firmar este certificado, confirmas que toda la información es correcta y auténtica.
+              <strong>Importante:</strong> Al firmar este certificado, confirmas que toda la
+              información es correcta y auténtica.
             </p>
           </div>
 
@@ -441,11 +514,10 @@ function SignatureModal({
   );
 }
 
-// Componente de modal de detalles
-function RequestDetailsModal({ 
-  request, 
-  onClose 
-}: { 
+function RequestDetailsModal({
+  request,
+  onClose,
+}: {
   request: SignatureRequest;
   onClose: () => void;
 }) {
@@ -454,10 +526,7 @@ function RequestDetailsModal({
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Detalles de Solicitud</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             ×
           </button>
         </div>
@@ -467,12 +536,12 @@ function RequestDetailsModal({
             <span className="text-sm text-gray-500">Certificado:</span>
             <p className="font-medium">{request.certificateData.folio}</p>
           </div>
-          
+
           <div>
             <span className="text-sm text-gray-500">Estudiante:</span>
             <p className="font-medium">{request.certificateData.studentName}</p>
           </div>
-          
+
           <div>
             <span className="text-sm text-gray-500">Programa:</span>
             <p className="font-medium">{request.certificateData.academicProgram}</p>
@@ -481,6 +550,14 @@ function RequestDetailsModal({
           <div>
             <span className="text-sm text-gray-500">Solicitado por:</span>
             <p className="font-medium">{request.requestedByName || request.requestedBy}</p>
+          </div>
+
+          <div>
+            <span className="text-sm text-gray-500">Asignado a:</span>
+            <p className="font-medium">
+              {request.requestedToName}
+              {request.requestedToEmail ? ` · ${request.requestedToEmail}` : ''}
+            </p>
           </div>
 
           <div>
@@ -495,7 +572,9 @@ function RequestDetailsModal({
 
           <div>
             <span className="text-sm text-gray-500">Estado:</span>
-            <p className="font-medium">{SIGNATURE_STATUS_LABELS[request.status as keyof typeof SIGNATURE_STATUS_LABELS]}</p>
+            <p className="font-medium">
+              {SIGNATURE_STATUS_LABELS[request.status as keyof typeof SIGNATURE_STATUS_LABELS]}
+            </p>
           </div>
 
           {request.message && (

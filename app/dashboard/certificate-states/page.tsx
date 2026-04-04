@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { STATE_CONFIG, StateTransition } from '@/lib/types/certificateState';
+import type { SignatureRequest } from '@/lib/types/digitalSignature';
 import {
   filterApprovedTemplatesForIssuance,
   findPreferredTemplateForIssuance,
@@ -47,6 +48,11 @@ type InternalUserDirectoryEntry = {
   displayName: string;
   email: string;
 };
+
+type PendingSignatureSummary = Pick<
+  SignatureRequest,
+  'id' | 'requestedTo' | 'requestedToName' | 'requestedToEmail' | 'status' | 'requestedAt' | 'expiresAt'
+>;
 
 type TransitionExecutionRequest = {
   certificateId: string;
@@ -614,6 +620,7 @@ function TransitionModal({
   const [selectedSigner, setSelectedSigner] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [signerScopeMessage, setSignerScopeMessage] = useState('');
+  const [signatureRequestInfo, setSignatureRequestInfo] = useState<PendingSignatureSummary | null>(null);
 
   const certificateLabel = getCertificateLabel(state);
   const currentStateLabel =
@@ -632,15 +639,17 @@ function TransitionModal({
     const fetchModalData = async () => {
       try {
         setLoadingTransitions(true);
-        const [transitionResponse, signerResponse, templateResponse] = await Promise.all([
+        const [transitionResponse, signerResponse, templateResponse, signatureRequestResponse] = await Promise.all([
           fetch(`/api/admin/certificate-states/transition?certificateId=${state.certificateId}`),
           fetch(`/api/admin/internal-users/signers?certificateId=${state.certificateId}`),
           fetch('/api/admin/certificate-templates?activeOnly=true'),
+          fetch(`/api/admin/digital-signatures?certificateId=${state.certificateId}`),
         ]);
 
         const transitionData = await transitionResponse.json();
         const signerData = await signerResponse.json();
         const templateData = await templateResponse.json();
+        const signatureRequestData = await signatureRequestResponse.json();
 
         if (transitionData.success) {
           setAvailableTransitions(transitionData.data);
@@ -648,6 +657,9 @@ function TransitionModal({
 
         if (signerData.success) {
           setSigners(signerData.data);
+          setSignerScopeMessage(
+            typeof signerData.meta?.explanation === 'string' ? signerData.meta.explanation : ''
+          );
         }
 
         if (templateData.success) {
@@ -662,6 +674,12 @@ function TransitionModal({
           if (preferredTemplate) {
             setSelectedTemplate(preferredTemplate.id);
           }
+        }
+
+        if (signatureRequestData.success && signatureRequestData.data?.request) {
+          setSignatureRequestInfo(signatureRequestData.data.request);
+        } else {
+          setSignatureRequestInfo(null);
         }
       } catch (error) {
         console.error('Error fetching transition modal data:', error);
@@ -764,6 +782,21 @@ function TransitionModal({
               </div>
             </div>
           )}
+
+          {state.currentState === 'pending_signature' && signatureRequestInfo ? (
+            <div className="rounded-md border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900">
+              <p className="font-medium">Firma operativa en curso</p>
+              <p className="mt-1">
+                Asignada a <span className="font-medium">{signatureRequestInfo.requestedToName}</span>
+                {signatureRequestInfo.requestedToEmail
+                  ? ` · ${signatureRequestInfo.requestedToEmail}`
+                  : ''}
+              </p>
+              <p className="mt-1 text-xs text-purple-800">
+                Mientras siga pendiente, la firma se completa desde <span className="font-medium">Firmas Digitales</span> con ese usuario interno. Desde este modal solo verás acciones administrativas como cancelar.
+              </p>
+            </div>
+          ) : null}
 
           {hasAvailableTransitions && selectedTransition === 'pending_signature' && (
             <div>
