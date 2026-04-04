@@ -7,6 +7,7 @@ import {
     Download, 
     Share2, 
     Printer, 
+    Pencil,
     AlertTriangle,
     CheckCircle, 
     XCircle, 
@@ -19,6 +20,7 @@ import {
 import { getCertificateRepository, getTemplateRepository } from '@/lib/container';
 import { Certificate } from '@/lib/domain/entities/Certificate';
 import { generateCertificatePDF } from '@/lib/application/utils/pdf-generator';
+import { renderCertificateTemplate } from '@/lib/application/utils/certificate-template-renderer';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 import {
@@ -26,6 +28,7 @@ import {
     getCertificateStatusLabel,
     isCertificateBlocked,
 } from '@/lib/types/certificateStatus';
+import type { CertificateTemplate } from '@/lib/types/certificateTemplate';
 
 export default function CertificateDetailsPage({ params }: { params: any }) {
   const router = useRouter();
@@ -43,6 +46,8 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
   const [restrictionType, setRestrictionType] = useState<'payment' | 'documents' | 'administrative'>('payment');
   const [restrictionReason, setRestrictionReason] = useState('');
   const [releaseReason, setReleaseReason] = useState('');
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewTemplateName, setPreviewTemplateName] = useState<string | null>(null);
   const qrRef = useRef<HTMLDivElement>(null);
 
   const loadCertificate = async (certificateId: string) => {
@@ -70,6 +75,82 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
       void loadCertificate(id);
     }
   }, [id]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadPreview = async () => {
+      if (!certificate || certificate.pdfUrl) {
+        if (active) {
+          setPreviewHtml(null);
+          setPreviewTemplateName(null);
+        }
+        return;
+      }
+
+      try {
+        let template: CertificateTemplate | null = null;
+
+        if (certificate.templateSnapshot?.htmlContent) {
+          template = {
+            id: certificate.templateSnapshot.templateId || certificate.templateId || 'template-snapshot',
+            name: certificate.templateSnapshot.name,
+            description: certificate.templateSnapshot.description,
+            type: certificate.templateSnapshot.type,
+            certificateTypeId: certificate.templateSnapshot.certificateTypeId,
+            htmlContent: certificate.templateSnapshot.htmlContent,
+            cssStyles: certificate.templateSnapshot.cssStyles,
+            fontRefs: certificate.templateSnapshot.fontRefs,
+            fontProfile: certificate.templateSnapshot.fontProfile || {
+              status: 'unstyled',
+              managedFamilies: [],
+              safeFamilies: [],
+              unmanagedFamilies: [],
+              declaredFamilies: [],
+              externalSources: [],
+              riskIds: [],
+            },
+            layout: certificate.templateSnapshot.layout,
+            placeholders: certificate.templateSnapshot.placeholders,
+            isActive: true,
+            createdAt: certificate.templateSnapshot.capturedAt,
+            updatedAt: certificate.templateSnapshot.capturedAt,
+          };
+        } else if (certificate.templateId) {
+          template = await templateRepository.findById(certificate.templateId);
+        }
+
+        if (!template) {
+          if (active) {
+            setPreviewHtml(null);
+            setPreviewTemplateName(null);
+          }
+          return;
+        }
+
+        const rendered = await renderCertificateTemplate(template, certificate, {
+          verificationUrl: `${window.location.origin}/verify/${certificate.folio}`,
+        });
+
+        if (!active) return;
+
+        setPreviewHtml(rendered.documentHtml);
+        setPreviewTemplateName(template.name);
+      } catch (previewError) {
+        console.error('Error loading operational template preview:', previewError);
+        if (active) {
+          setPreviewHtml(null);
+          setPreviewTemplateName(null);
+        }
+      }
+    };
+
+    void loadPreview();
+
+    return () => {
+      active = false;
+    };
+  }, [certificate, templateRepository]);
 
   const handleDownload = async () => {
     if (!certificate) return;
@@ -214,6 +295,21 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
                     <span className="font-medium">Volver</span>
                 </button>
                 <div className="flex gap-2">
+                    {certificate.status === 'draft' && (
+                        <button
+                            onClick={() =>
+                                router.push(
+                                    `/dashboard/certificates/create?draftId=${encodeURIComponent(
+                                        certificate.id
+                                    )}`
+                                )
+                            }
+                            className="flex items-center gap-2 px-4 py-2 border border-primary/20 text-primary rounded-lg hover:bg-primary/5 transition-colors"
+                        >
+                            <Pencil size={18} />
+                            <span className="font-medium hidden sm:inline">Editar borrador</span>
+                        </button>
+                    )}
                     <button className="p-2 text-gray-500 hover:text-primary transition-colors rounded-lg hover:bg-gray-50">
                         <Printer size={20} />
                     </button>
@@ -274,44 +370,53 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
                             <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-900">
                                 {restrictionActive
                                     ? 'El documento oficial no se muestra porque el certificado tiene una restriccion activa.'
-                                    : 'El PDF oficial aun no existe o no esta accesible. Se muestra una vista operativa de referencia con los datos del certificado.'}
+                                    : previewTemplateName
+                                        ? `El PDF oficial aun no existe. Se muestra la previsualización operativa usando la plantilla asignada: ${previewTemplateName}.`
+                                        : 'El PDF oficial aun no existe o no esta accesible. Se muestra una vista operativa de referencia con los datos del certificado.'}
                             </div>
-
-                            {/* Certificate Header Mockup */}
-                            <div className="text-center space-y-2 border-b-2 border-primary/10 pb-8">
-                                <h3 className="text-2xl font-serif font-bold text-gray-900">CERTIFICADO DE FINALIZACIÓN</h3>
-                                <p className="text-gray-500 text-sm uppercase tracking-widest">Se otorga el presente a</p>
-                            </div>
-
-                            {/* Student Name */}
-                            <div className="text-center py-4">
-                                <h1 className="text-4xl font-serif italic text-primary">{certificate.studentName}</h1>
-                                {certificate.studentId && <p className="text-gray-400 mt-2 text-sm">ID: {certificate.studentId}</p>}
-                            </div>
-
-                            {/* Program Details */}
-                            <div className="text-center space-y-4">
-                                <p className="text-gray-600 leading-relaxed max-w-lg mx-auto">
-                                    Por haber completado satisfactoriamente los requisitos académicos del programa:
-                                </p>
-                                <h3 className="text-xl font-bold text-gray-800 uppercase">{certificate.academicProgram}</h3>
-                            </div>
-
-                            {/* Dates & Folio */}
-                            <div className="flex flex-col sm:flex-row justify-between items-center pt-8 border-t border-gray-100 text-sm gap-4">
-                                <div className="text-center sm:text-left">
-                                    <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Fecha de Emisión</p>
-                                    <p className="font-medium text-gray-900">
-                                        {certificate.issueDate.toLocaleDateString('es-DO', { year: 'numeric', month: 'long', day: 'numeric' })}
-                                    </p>
+                            {previewHtml ? (
+                                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+                                    <iframe
+                                        srcDoc={previewHtml}
+                                        title={`Vista previa operativa ${certificate.folio}`}
+                                        className="h-[900px] w-full bg-white"
+                                    />
                                 </div>
-                                <div className="text-center sm:text-right">
-                                    <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Folio Único</p>
-                                    <div className="font-mono font-bold text-primary bg-primary/5 px-3 py-1 rounded-lg">
-                                        {certificate.folio}
+                            ) : (
+                                <>
+                                    <div className="text-center space-y-2 border-b-2 border-primary/10 pb-8">
+                                        <h3 className="text-2xl font-serif font-bold text-gray-900">CERTIFICADO DE FINALIZACIÓN</h3>
+                                        <p className="text-gray-500 text-sm uppercase tracking-widest">Se otorga el presente a</p>
                                     </div>
-                                </div>
-                            </div>
+
+                                    <div className="text-center py-4">
+                                        <h1 className="text-4xl font-serif italic text-primary">{certificate.studentName}</h1>
+                                        {certificate.studentId && <p className="text-gray-400 mt-2 text-sm">ID: {certificate.studentId}</p>}
+                                    </div>
+
+                                    <div className="text-center space-y-4">
+                                        <p className="text-gray-600 leading-relaxed max-w-lg mx-auto">
+                                            Por haber completado satisfactoriamente los requisitos académicos del programa:
+                                        </p>
+                                        <h3 className="text-xl font-bold text-gray-800 uppercase">{certificate.academicProgram}</h3>
+                                    </div>
+
+                                    <div className="flex flex-col sm:flex-row justify-between items-center pt-8 border-t border-gray-100 text-sm gap-4">
+                                        <div className="text-center sm:text-left">
+                                            <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Fecha de Emisión</p>
+                                            <p className="font-medium text-gray-900">
+                                                {certificate.issueDate.toLocaleDateString('es-DO', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                            </p>
+                                        </div>
+                                        <div className="text-center sm:text-right">
+                                            <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Folio Único</p>
+                                            <div className="font-mono font-bold text-primary bg-primary/5 px-3 py-1 rounded-lg">
+                                                {certificate.folio}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>

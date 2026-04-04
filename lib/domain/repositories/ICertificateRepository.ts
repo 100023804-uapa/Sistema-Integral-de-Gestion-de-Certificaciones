@@ -1,4 +1,32 @@
-import { Certificate, CertificateType, CreateCertificateDTO } from '../entities/Certificate';
+import {
+    Certificate,
+    CertificateTemplateSnapshot,
+    CertificateType,
+    CreateCertificateDTO,
+} from '../entities/Certificate';
+
+export interface UpdateDraftCertificateDTO {
+    studentId: string;
+    studentName: string;
+    studentEmail?: string | null;
+    cedula?: string | null;
+    academicProgram: string;
+    programId?: string | null;
+    programCodeSnapshot?: string | null;
+    issueDate: Date;
+    expirationDate?: Date | null;
+    templateId?: string | null;
+    templateSnapshot?: CertificateTemplateSnapshot | null;
+    campusId: string;
+    campusNameSnapshot?: string | null;
+    academicAreaId?: string | null;
+    academicAreaNameSnapshot?: string | null;
+    signer1Id?: string | null;
+    signer1NameSnapshot?: string | null;
+    signer2Id?: string | null;
+    signer2NameSnapshot?: string | null;
+    metadata: Record<string, any>;
+}
 
 export interface ICertificateRepository {
     save(certificate: CreateCertificateDTO): Promise<Certificate>;
@@ -11,6 +39,7 @@ export interface ICertificateRepository {
     list(limit?: number): Promise<Certificate[]>;
     findAll(): Promise<Certificate[]>;
     findByStudentId(studentId: string): Promise<Certificate[]>;
+    updateDraft(id: string, data: UpdateDraftCertificateDTO): Promise<void>;
     updateStatus(id: string, status: Certificate['status']): Promise<void>;
     updatePdfAsset(id: string, pdfUrl: string | null, storageKey?: string | null): Promise<void>;
 }

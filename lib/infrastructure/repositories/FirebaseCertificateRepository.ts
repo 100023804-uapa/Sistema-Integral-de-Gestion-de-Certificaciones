@@ -19,7 +19,10 @@ import {
     QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { Certificate, CertificateType, CreateCertificateDTO } from '../../domain/entities/Certificate';
-import { ICertificateRepository } from '../../domain/repositories/ICertificateRepository';
+import {
+    ICertificateRepository,
+    UpdateDraftCertificateDTO,
+} from '../../domain/repositories/ICertificateRepository';
 import type { CertificateRestriction } from '@/lib/types/certificateRestriction';
 
 const COLLECTION_NAME = 'certificates';
@@ -214,6 +217,42 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
         const docRef = doc(db, COLLECTION_NAME, id);
         await updateDoc(docRef, {
             status,
+            updatedAt: Timestamp.now(),
+        });
+    }
+
+    async updateDraft(id: string, data: UpdateDraftCertificateDTO): Promise<void> {
+        const docRef = doc(db, COLLECTION_NAME, id);
+        const templateSnapshot = data.templateSnapshot
+            ? {
+                ...data.templateSnapshot,
+                capturedAt: Timestamp.fromDate(new Date(data.templateSnapshot.capturedAt)),
+            }
+            : null;
+
+        await updateDoc(docRef, {
+            studentId: data.studentId,
+            studentName: data.studentName,
+            studentEmail: data.studentEmail || null,
+            cedula: data.cedula || null,
+            academicProgram: data.academicProgram,
+            programId: data.programId || null,
+            programCodeSnapshot: data.programCodeSnapshot || null,
+            issueDate: Timestamp.fromDate(new Date(data.issueDate)),
+            expirationDate: data.expirationDate
+                ? Timestamp.fromDate(new Date(data.expirationDate))
+                : null,
+            templateId: data.templateId || null,
+            templateSnapshot,
+            campusId: data.campusId,
+            campusNameSnapshot: data.campusNameSnapshot || null,
+            academicAreaId: data.academicAreaId || null,
+            academicAreaNameSnapshot: data.academicAreaNameSnapshot || null,
+            signer1Id: data.signer1Id || null,
+            signer1NameSnapshot: data.signer1NameSnapshot || null,
+            signer2Id: data.signer2Id || null,
+            signer2NameSnapshot: data.signer2NameSnapshot || null,
+            metadata: data.metadata || {},
             updatedAt: Timestamp.now(),
         });
     }

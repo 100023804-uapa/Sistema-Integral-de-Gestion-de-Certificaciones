@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   AlertCircle,
@@ -17,9 +17,11 @@ import {
   User,
 } from 'lucide-react';
 import {
+  getCertificateRepository,
   getCertificateTemplateRepository,
   getCreateCertificateUseCase,
   getListCampusesUseCase,
+  getStudentRepository,
 } from '@/lib/container';
 import { CertificateType } from '@/lib/domain/entities/Certificate';
 import { Student } from '@/lib/domain/entities/Student';
@@ -49,9 +51,15 @@ type FormState = {
 
 export default function CreateCertificatePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
+  const certificateRepository = React.useMemo(() => getCertificateRepository(), []);
+  const studentRepository = React.useMemo(() => getStudentRepository(), []);
+  const draftId = searchParams.get('draftId');
+  const isEditMode = Boolean(draftId);
 
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -74,8 +82,14 @@ export default function CreateCertificatePage() {
   });
 
   useEffect(() => {
+    const formatDateInput = (value?: Date | null) => {
+      if (!value) return '';
+      return new Date(value).toISOString().split('T')[0];
+    };
+
     const fetchData = async () => {
       try {
+        setInitializing(true);
         const templateRepo = getCertificateTemplateRepository();
         const listCampusesUseCase = getListCampusesUseCase();
 
@@ -112,13 +126,58 @@ export default function CreateCertificatePage() {
             templateId: current.templateId || preferredTemplate.id,
           }));
         }
+
+        if (draftId) {
+          const draftCertificate = await certificateRepository.findById(draftId);
+
+          if (!draftCertificate) {
+            throw new Error('El borrador seleccionado no existe o ya no está disponible.');
+          }
+
+          if (draftCertificate.status !== 'draft') {
+            throw new Error(
+              'Solo los certificados en borrador pueden editarse desde este formulario.'
+            );
+          }
+
+          const draftStudent = await studentRepository.findById(
+            draftCertificate.studentId
+          );
+
+          if (!draftStudent) {
+            throw new Error(
+              'La ficha del participante vinculada a este borrador ya no está disponible.'
+            );
+          }
+
+          setSelectedStudent(draftStudent);
+          setFormData({
+            programId: draftCertificate.programId || '',
+            type: draftCertificate.type,
+            issueDate: formatDateInput(draftCertificate.issueDate),
+            expirationDate: formatDateInput(draftCertificate.expirationDate),
+            folioPrefix: draftCertificate.folio.split('-')[0] || 'sigce',
+            templateId:
+              draftCertificate.templateId || preferredTemplate?.id || '',
+            campusId: draftCertificate.campusId || draftStudent.campusId || '',
+            signer1Id: draftCertificate.signer1Id || '',
+            signer2Id: draftCertificate.signer2Id || '',
+          });
+        }
       } catch (fetchError) {
         console.error('Error loading certificate creation catalogs:', fetchError);
+        setError(
+          fetchError instanceof Error
+            ? fetchError.message
+            : 'No fue posible cargar el formulario del certificado.'
+        );
+      } finally {
+        setInitializing(false);
       }
     };
 
     void fetchData();
-  }, []);
+  }, [certificateRepository, draftId, studentRepository]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -185,30 +244,64 @@ export default function CreateCertificatePage() {
         );
       }
 
-      const createCertificate = getCreateCertificateUseCase();
-      await createCertificate.execute({
-        studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`.trim(),
-        studentId: selectedStudent.id,
-        cedula: selectedStudent.cedula || undefined,
-        studentEmail: selectedStudent.email || undefined,
-        academicProgram: selectedProgram.name,
-        programId: selectedProgram.id,
-        type: formData.type,
-        issueDate: new Date(formData.issueDate),
-        expirationDate: formData.expirationDate
-          ? new Date(formData.expirationDate)
-          : undefined,
-        prefix: formData.folioPrefix || undefined,
-        templateId: formData.templateId,
-        campusId: formData.campusId,
-        createdBy: user.uid,
-        signer1Id: formData.signer1Id,
-        signer2Id: formData.signer2Id || undefined,
-      });
+      if (isEditMode && draftId) {
+        const response = await fetch(
+          `/api/admin/certificates/${encodeURIComponent(draftId)}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              studentId: selectedStudent.id,
+              programId: selectedProgram.id,
+              templateId: formData.templateId,
+              campusId: formData.campusId,
+              issueDate: formData.issueDate,
+              expirationDate: formData.expirationDate || null,
+              signer1Id: formData.signer1Id,
+              signer2Id: formData.signer2Id || null,
+            }),
+          }
+        );
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload.success === false) {
+          throw new Error(
+            payload.error ||
+              'No fue posible actualizar el borrador del certificado.'
+          );
+        }
+      } else {
+        const createCertificate = getCreateCertificateUseCase();
+        await createCertificate.execute({
+          studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`.trim(),
+          studentId: selectedStudent.id,
+          cedula: selectedStudent.cedula || undefined,
+          studentEmail: selectedStudent.email || undefined,
+          academicProgram: selectedProgram.name,
+          programId: selectedProgram.id,
+          type: formData.type,
+          issueDate: new Date(formData.issueDate),
+          expirationDate: formData.expirationDate
+            ? new Date(formData.expirationDate)
+            : undefined,
+          prefix: formData.folioPrefix || undefined,
+          templateId: formData.templateId,
+          campusId: formData.campusId,
+          createdBy: user.uid,
+          signer1Id: formData.signer1Id,
+          signer2Id: formData.signer2Id || undefined,
+        });
+      }
 
       setSuccess(true);
       setTimeout(() => {
-        router.push('/dashboard/certificates');
+        router.push(
+          isEditMode && draftId
+            ? `/dashboard/certificates/${encodeURIComponent(draftId)}`
+            : '/dashboard/certificates'
+        );
       }, 1800);
     } catch (submitError: any) {
       console.error('Error creating certificate:', submitError);
@@ -232,14 +325,26 @@ export default function CreateCertificatePage() {
         </button>
         <div>
           <h1 className="text-3xl font-black tracking-tighter text-primary">
-            Nuevo Certificado
+            {isEditMode ? 'Editar Borrador' : 'Nuevo Certificado'}
           </h1>
           <p className="text-gray-500">
-            Selecciona participante, programa, plantilla y autoridades firmantes
-            para crear un borrador consistente con el flujo institucional.
+            {isEditMode
+              ? 'Ajusta participante, programa, plantilla y autoridades firmantes mientras el certificado siga en borrador.'
+              : 'Selecciona participante, programa, plantilla y autoridades firmantes para crear un borrador consistente con el flujo institucional.'}
           </p>
         </div>
       </div>
+
+      {initializing && (
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+          <span className="text-sm text-gray-600">
+            {isEditMode
+              ? 'Cargando borrador para edición...'
+              : 'Cargando catálogos institucionales...'}
+          </span>
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 p-4 text-red-600">
@@ -258,13 +363,16 @@ export default function CreateCertificatePage() {
             <CheckCircle className="h-10 w-10 text-green-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-800">
-            Certificado creado
+            {isEditMode ? 'Borrador actualizado' : 'Certificado creado'}
           </h2>
           <p className="text-gray-500">
-            El borrador quedó registrado con plantilla, programa y autoridades
-            firmantes.
+            {isEditMode
+              ? 'Los cambios del borrador quedaron guardados y ya puedes revisar el certificado actualizado.'
+              : 'El borrador quedó registrado con plantilla, programa y autoridades firmantes.'}
           </p>
-          <p className="text-sm text-gray-400">Redirigiendo al listado...</p>
+          <p className="text-sm text-gray-400">
+            {isEditMode ? 'Volviendo al detalle del certificado...' : 'Redirigiendo al listado...'}
+          </p>
         </motion.div>
       ) : (
         <motion.div
@@ -272,6 +380,12 @@ export default function CreateCertificatePage() {
           animate={{ opacity: 1, y: 0 }}
           className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm md:p-8"
         >
+          {isEditMode && (
+            <div className="mb-6 rounded-2xl border border-primary/10 bg-primary/5 p-4 text-sm text-primary">
+              Este formulario solo permite editar borradores. Si el certificado cambia
+              de estado, deberás continuar su flujo desde <strong>Estados</strong>.
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
@@ -388,6 +502,7 @@ export default function CreateCertificatePage() {
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
+                  disabled={isEditMode}
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="CAP">CAP (Certificado de Aprobación)</option>
@@ -395,6 +510,12 @@ export default function CreateCertificatePage() {
                     PROFUNDO (Diplomado Avanzado)
                   </option>
                 </select>
+                {isEditMode && (
+                  <p className="text-xs text-gray-500">
+                    El tipo y el folio ya fueron reservados para este borrador. Si
+                    necesitas otro tipo, crea un certificado nuevo.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -475,6 +596,7 @@ export default function CreateCertificatePage() {
                   value={formData.folioPrefix}
                   onChange={handleChange}
                   placeholder="Ej. SIGCE"
+                  disabled={isEditMode}
                   className="w-full flex-1 rounded-xl border border-gray-200 px-4 py-3 uppercase transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
                 <span className="whitespace-nowrap font-mono text-sm text-gray-400">
@@ -493,14 +615,15 @@ export default function CreateCertificatePage() {
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || initializing}
                 className="flex items-center gap-2 rounded-xl bg-primary px-8 py-3 font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {loading ? (
-                  'Guardando...'
+                  isEditMode ? 'Guardando cambios...' : 'Guardando...'
                 ) : (
                   <>
-                    <Save size={20} /> Generar Certificado
+                    <Save size={20} />{' '}
+                    {isEditMode ? 'Guardar cambios' : 'Generar Certificado'}
                   </>
                 )}
               </button>

@@ -1,5 +1,8 @@
 import { Certificate, CreateCertificateDTO, CertificateStatus } from '../../domain/entities/Certificate';
-import { ICertificateRepository } from '../../domain/repositories/ICertificateRepository';
+import {
+  ICertificateRepository,
+  UpdateDraftCertificateDTO,
+} from '../../domain/repositories/ICertificateRepository';
 
 export class MockCertificateRepository implements ICertificateRepository {
   private certificates: Certificate[] = [
@@ -115,6 +118,36 @@ export class MockCertificateRepository implements ICertificateRepository {
         details: `Estado cambiado a ${status}`
       });
     }
+  }
+
+  async updateDraft(id: string, data: UpdateDraftCertificateDTO): Promise<void> {
+    const index = this.certificates.findIndex((certificate) => certificate.id === id);
+    if (index === -1) return;
+
+    this.certificates[index] = {
+      ...this.certificates[index],
+      studentId: data.studentId,
+      studentName: data.studentName,
+      studentEmail: data.studentEmail || null,
+      cedula: data.cedula || null,
+      academicProgram: data.academicProgram,
+      programId: data.programId || null,
+      programCodeSnapshot: data.programCodeSnapshot || null,
+      issueDate: new Date(data.issueDate),
+      expirationDate: data.expirationDate ? new Date(data.expirationDate) : null,
+      templateId: data.templateId || null,
+      templateSnapshot: data.templateSnapshot || null,
+      campusId: data.campusId,
+      campusNameSnapshot: data.campusNameSnapshot || null,
+      academicAreaId: data.academicAreaId || null,
+      academicAreaNameSnapshot: data.academicAreaNameSnapshot || null,
+      signer1Id: data.signer1Id || null,
+      signer1NameSnapshot: data.signer1NameSnapshot || null,
+      signer2Id: data.signer2Id || null,
+      signer2NameSnapshot: data.signer2NameSnapshot || null,
+      metadata: data.metadata || {},
+      updatedAt: new Date(),
+    };
   }
 
   async updatePdfAsset(id: string, pdfUrl: string | null, storageKey?: string | null): Promise<void> {

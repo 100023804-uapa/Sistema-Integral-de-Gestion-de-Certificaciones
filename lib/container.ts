@@ -15,6 +15,7 @@ import { QueryDocumentSnapshot } from 'firebase/firestore';
 
 // Use Cases existentes
 import { CreateCertificate } from './application/use-cases/CreateCertificate';
+import { UpdateDraftCertificate } from './application/use-cases/UpdateDraftCertificate';
 import { CreateCampusUseCase } from './usecases/campus/CreateCampusUseCase';
 import { ListCampusesUseCase } from './usecases/campus/ListCampusesUseCase';
 import { UpdateCampusUseCase } from './usecases/campus/UpdateCampusUseCase';
@@ -303,6 +304,18 @@ export function getCreateCertificateUseCase() {
         academicProgramRepository,
         signerRepository,
         templateRepository
+    );
+}
+
+export function getUpdateDraftCertificateUseCase() {
+    return new UpdateDraftCertificate(
+        getCertificateRepository(),
+        getStudentRepository(),
+        getCampusRepository(),
+        getAcademicAreaRepository(),
+        getAcademicProgramRepository(),
+        getSignerRepository(),
+        getCertificateTemplateRepository()
     );
 }
 
