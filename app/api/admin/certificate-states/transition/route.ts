@@ -4,6 +4,7 @@ import { requireAuthenticatedInternalUser } from '@/lib/auth/server';
 import {
   notifyPendingReview,
   notifyReturnedToDraft,
+  notifyCertificateIssued,
 } from '@/lib/server/certificateWorkflowNotifications';
 
 export async function POST(request: NextRequest) {
@@ -22,7 +23,8 @@ export async function POST(request: NextRequest) {
       body.newState,
       currentUser.uid,
       currentUser.primaryRole,
-      body.comments
+      body.comments,
+      body.metadata
     );
 
     if (newState.currentState === 'pending_review') {
@@ -41,6 +43,12 @@ export async function POST(request: NextRequest) {
         newState.comments,
         currentUser.uid
       );
+    }
+
+    if (newState.currentState === 'available') {
+      await notifyCertificateIssued(newState.certificateId).catch((error) => {
+        console.error('Error sending available certificate notification:', error);
+      });
     }
 
     return NextResponse.json({ 

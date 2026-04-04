@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UTApi } from 'uploadthing/server';
 
-import { requireAdminSession } from '@/lib/auth/admin-session';
+import { requireInternalUserRole } from '@/lib/auth/server';
 import { getCertificateRepository } from '@/lib/container';
 
 const utapi = new UTApi();
@@ -11,12 +11,19 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = await requireAdminSession(request);
-    if (!authResult.ok) return authResult.response;
+    const auth = await requireInternalUserRole(request, ['administrator', 'coordinator']);
+    if (auth.response) {
+      return auth.response;
+    }
 
     const { id } = await context.params;
     const formData = await request.formData();
     const file = formData.get('file');
+    const templateIdInput = formData.get('templateId');
+    const templateId =
+      typeof templateIdInput === 'string' && templateIdInput.trim().length > 0
+        ? templateIdInput.trim()
+        : null;
 
     if (!(file instanceof File)) {
       return NextResponse.json(
@@ -67,6 +74,12 @@ export async function POST(
       }
     }
 
+    if (templateId) {
+      await certificateRepository.updateGeneratedAssets(id, {
+        templateId,
+      });
+    }
+
     await certificateRepository.updatePdfAsset(id, pdfUrl, pdfStorageKey);
 
     return NextResponse.json({
@@ -74,6 +87,7 @@ export async function POST(
       data: {
         pdfUrl,
         pdfStorageKey,
+        templateId,
       },
     });
   } catch (error) {

@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { CertificateState, StateHistory } from '@/lib/container';
+import { getCertificateRepository, getTemplateRepository } from '@/lib/container';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { 
   Clock, 
@@ -16,11 +18,13 @@ import {
   Filter,
   Info,
   CheckSquare,
-  Square
+  Square,
+  ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { STATE_CONFIG, StateTransition } from '@/lib/types/certificateState';
 import type { SignatureRequest } from '@/lib/types/digitalSignature';
+import { generateCertificatePDF } from '@/lib/application/utils/pdf-generator';
 import {
   filterApprovedTemplatesForIssuance,
   findPreferredTemplateForIssuance,
@@ -61,6 +65,77 @@ type TransitionExecutionRequest = {
   signerId?: string;
   templateId?: string;
 };
+
+function getCertificateReviewPath(certificateId: string) {
+  return `/dashboard/certificates/${encodeURIComponent(certificateId)}`;
+}
+
+async function assertPdfBlobIsValid(pdfBlob: Blob) {
+  if (!(pdfBlob instanceof Blob) || pdfBlob.size === 0) {
+    throw new Error('La emisión generó un archivo vacío en lugar del PDF oficial.');
+  }
+
+  const headerBuffer = await pdfBlob.slice(0, 5).arrayBuffer();
+  const header = new TextDecoder().decode(headerBuffer);
+
+  if (!header.startsWith('%PDF-')) {
+    throw new Error(
+      'La emisión no generó un PDF válido. Revisa la plantilla y la vista previa antes de continuar.'
+    );
+  }
+}
+
+async function generateAndPersistOfficialPdf(
+  certificateId: string,
+  templateId: string
+) {
+  const certificateRepository = getCertificateRepository();
+  const templateRepository = getTemplateRepository();
+
+  const [certificate, template] = await Promise.all([
+    certificateRepository.findById(certificateId),
+    templateRepository.findById(templateId),
+  ]);
+
+  if (!certificate) {
+    throw new Error('No fue posible cargar el certificado para emitirlo.');
+  }
+
+  if (!template) {
+    throw new Error('No fue posible cargar la plantilla seleccionada.');
+  }
+
+  if (certificate.templateId && certificate.templateId !== templateId) {
+    throw new Error('La emisión debe usar la plantilla configurada en el certificado.');
+  }
+
+  const pdfBlob = await generateCertificatePDF(certificate, template);
+  await assertPdfBlobIsValid(pdfBlob);
+
+  const file = new File([pdfBlob], `Certificado_${certificate.folio}.pdf`, {
+    type: 'application/pdf',
+  });
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('templateId', templateId);
+
+  const response = await fetch(`/api/admin/certificates/${encodeURIComponent(certificateId)}/pdf`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok || payload.success === false) {
+    throw new Error(payload.error || 'No fue posible persistir el PDF oficial del certificado.');
+  }
+
+  return payload.data as {
+    pdfUrl?: string;
+    pdfStorageKey?: string | null;
+  };
+}
 
 function getCertificateLabel(state: CertificateState) {
   return (state.metadata?.folio as string) || state.certificateId;
@@ -184,18 +259,24 @@ export default function CertificateStatesPage() {
         throw new Error('Selecciona una plantilla activa para emitir el certificado.');
       }
 
-      const response = await fetch('/api/admin/certificate-templates/generate', {
+      const pdfAsset = await generateAndPersistOfficialPdf(certificateId, templateId);
+
+      const response = await fetch('/api/admin/certificate-states/transition', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           certificateId,
-          templateId,
-          includeQR: true,
-          includeSignature: true,
-          watermark: false,
-          quality: 'medium',
+          newState,
+          comments,
+          metadata: {
+            templateId,
+            pdfUrl: pdfAsset.pdfUrl || null,
+            pdfStorageKey: pdfAsset.pdfStorageKey || null,
+            pdfStorageProvider: 'uploadthing',
+            generatedFrom: 'certificate_states',
+          },
         }),
       });
 
@@ -441,16 +522,26 @@ export default function CertificateStatesPage() {
                   </h3>
                 </div>
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedState(state);
-                  setShowHistory(true);
-                }}
-                className="text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                <History size={18} />
-              </button>
+              <div className="flex items-center gap-3">
+                <Link
+                  href={getCertificateReviewPath(state.certificateId)}
+                  onClick={(event) => event.stopPropagation()}
+                  className="text-sm font-medium text-primary hover:text-primary/80"
+                >
+                  Ver certificado
+                </Link>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedState(state);
+                    setShowHistory(true);
+                  }}
+                  className="text-blue-600 hover:text-blue-800 transition-colors"
+                  title="Ver historial"
+                >
+                  <History size={18} />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -543,7 +634,7 @@ export default function CertificateStatesPage() {
 }
 
 // Componente de modal de transición
-function TransitionModal({ 
+function TransitionModal({
   state, 
   onClose, 
   onTransition,
@@ -694,6 +785,17 @@ function TransitionModal({
           <p className="text-sm text-gray-600">
             Estado actual: <span className="font-medium">{currentStateLabel}</span>
           </p>
+          <div className="mt-3">
+            <Link
+              href={getCertificateReviewPath(state.certificateId)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10"
+            >
+              <ExternalLink size={15} />
+              Ver certificado antes de continuar
+            </Link>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -794,7 +896,7 @@ function TransitionModal({
               </select>
               <p className="text-xs text-gray-500 mt-1">
                 {getStateTemplateId(state)
-                  ? 'La emisión usará la plantilla ya configurada en el certificado.'
+                  ? 'La emisión usará la plantilla ya configurada en el certificado y persistirá un PDF real antes de cerrar el estado.'
                   : getTemplateIssuancePolicyMessage()}
               </p>
             </div>
