@@ -141,6 +141,8 @@ export class TransitionStateUseCase {
       if (!certificate?.pdfUrl) {
         throw new Error('Debe generarse el PDF final antes de emitir el certificado');
       }
+
+      await this.assertOfficialPdfIsValid(certificate.pdfUrl);
     }
 
     if (newState === 'available') {
@@ -151,6 +153,37 @@ export class TransitionStateUseCase {
           'El certificado debe tener PDF final antes de publicarse como disponible'
         );
       }
+
+      await this.assertOfficialPdfIsValid(certificate.pdfUrl);
+    }
+  }
+
+  private async assertOfficialPdfIsValid(pdfUrl: string): Promise<void> {
+    try {
+      const response = await fetch(pdfUrl, {
+        cache: 'no-store',
+        headers: {
+          Range: 'bytes=0-31',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('El documento oficial no es accesible');
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      const buffer = await response.arrayBuffer();
+      const header = new TextDecoder().decode(buffer.slice(0, 5));
+
+      if (!contentType.includes('application/pdf') && !header.startsWith('%PDF-')) {
+        throw new Error('El documento oficial almacenado no es un PDF válido');
+      }
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : 'No fue posible validar el PDF oficial del certificado'
+      );
     }
   }
 

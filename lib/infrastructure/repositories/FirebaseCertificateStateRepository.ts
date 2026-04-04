@@ -50,21 +50,6 @@ export class FirebaseCertificateStateRepository {
   }
 
   async getCurrentState(certificateId: string): Promise<CertificateState | null> {
-    const certificateDoc = await getDoc(
-      doc(db, this.certificatesCollectionName, certificateId)
-    );
-
-    if (certificateDoc.exists()) {
-      const currentState = this.mapCertificateToCurrentState(
-        certificateDoc.id,
-        certificateDoc.data()
-      );
-
-      if (currentState) {
-        return currentState;
-      }
-    }
-
     const q = query(
       collection(db, this.collectionName),
       where('certificateId', '==', certificateId),
@@ -73,7 +58,22 @@ export class FirebaseCertificateStateRepository {
     );
 
     const querySnapshot = await getDocs(q);
-    return querySnapshot.empty ? null : this.mapToCertificateState(querySnapshot.docs[0]);
+    if (!querySnapshot.empty) {
+      return this.mapToCertificateState(querySnapshot.docs[0]);
+    }
+
+    const certificateDoc = await getDoc(
+      doc(db, this.certificatesCollectionName, certificateId)
+    );
+
+    if (certificateDoc.exists()) {
+      return this.mapCertificateToCurrentState(
+        certificateDoc.id,
+        certificateDoc.data()
+      );
+    }
+
+    return null;
   }
 
   async getStateHistory(certificateId: string): Promise<StateHistory | null> {
@@ -144,17 +144,50 @@ export class FirebaseCertificateStateRepository {
   }
 
   private async listCurrentStates(): Promise<CertificateState[]> {
-    const q = query(
-      collection(db, this.certificatesCollectionName),
-      orderBy('updatedAt', 'desc'),
-      limit(500)
-    );
-    const snapshot = await getDocs(q);
+    const [stateSnapshot, certificateSnapshot] = await Promise.all([
+      getDocs(
+        query(
+          collection(db, this.collectionName),
+          orderBy('changedAt', 'desc'),
+          limit(1000)
+        )
+      ),
+      getDocs(
+        query(
+          collection(db, this.certificatesCollectionName),
+          orderBy('updatedAt', 'desc'),
+          limit(500)
+        )
+      ),
+    ]);
 
-    return snapshot.docs
-      .map((item) => this.mapCertificateToCurrentState(item.id, item.data()))
-      .filter((item): item is CertificateState => item !== null)
-      .sort((left, right) => right.changedAt.getTime() - left.changedAt.getTime());
+    const currentStatesByCertificate = new Map<string, CertificateState>();
+
+    for (const item of stateSnapshot.docs) {
+      const mappedState = this.mapToCertificateState(item);
+      if (!mappedState.certificateId) {
+        continue;
+      }
+
+      if (!currentStatesByCertificate.has(mappedState.certificateId)) {
+        currentStatesByCertificate.set(mappedState.certificateId, mappedState);
+      }
+    }
+
+    for (const item of certificateSnapshot.docs) {
+      if (currentStatesByCertificate.has(item.id)) {
+        continue;
+      }
+
+      const mappedState = this.mapCertificateToCurrentState(item.id, item.data());
+      if (mappedState) {
+        currentStatesByCertificate.set(item.id, mappedState);
+      }
+    }
+
+    return Array.from(currentStatesByCertificate.values()).sort(
+      (left, right) => right.changedAt.getTime() - left.changedAt.getTime()
+    );
   }
 
   private async syncCertificateSnapshot(newState: CertificateState): Promise<void> {

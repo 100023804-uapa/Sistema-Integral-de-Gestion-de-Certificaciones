@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { requireInternalUserRole } from '@/lib/auth/server';
-import { getGenerateCertificateUseCase } from '@/lib/container';
-import { notifyCertificateIssued } from '@/lib/server/certificateWorkflowNotifications';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,32 +8,15 @@ export async function POST(request: NextRequest) {
     if (auth.response) {
       return auth.response;
     }
-    const currentUser = auth.user!;
 
-    const body = await request.json();
-
-    const generateCertificateUseCase = getGenerateCertificateUseCase();
-    const generatedCertificate = await generateCertificateUseCase.execute(
-      body.certificateId,
-      body.templateId,
+    return NextResponse.json(
       {
-        includeQR: body.includeQR !== false,
-        includeSignature: body.includeSignature !== false,
-        watermark: body.watermark || false,
-        quality: body.quality || 'medium',
+        success: false,
+        error:
+          'La emisión oficial ahora debe realizarse desde /dashboard/certificate-states para generar y persistir un PDF real antes de cerrar el estado.',
       },
-      currentUser.uid,
-      currentUser.primaryRole
+      { status: 409 }
     );
-
-    await notifyCertificateIssued(body.certificateId).catch((error) => {
-      console.error('Error sending issued certificate notification:', error);
-    });
-
-    return NextResponse.json({
-      success: true,
-      data: generatedCertificate,
-    });
   } catch (error) {
     console.error('Error generating certificate:', error);
     return NextResponse.json(
