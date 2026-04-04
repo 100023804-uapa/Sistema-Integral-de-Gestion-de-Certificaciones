@@ -96,7 +96,6 @@ function intersectTransitions(transitionGroups: StateTransition[][]): StateTrans
 export default function CertificateStatesPage() {
   const { user } = useAuth();
   const [states, setStates] = useState<CertificateState[]>([]);
-  const [pendingActions, setPendingActions] = useState<CertificateState[]>([]);
   const [userDirectory, setUserDirectory] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [selectedState, setSelectedState] = useState<CertificateState | null>(null);
@@ -108,19 +107,13 @@ export default function CertificateStatesPage() {
   const fetchStates = async () => {
     try {
       setLoading(true);
-      const [pendingResponse, statesResponse, directoryResponse] = await Promise.all([
-        fetch('/api/admin/certificate-states/transition?pendingActions=true'),
+      const [statesResponse, directoryResponse] = await Promise.all([
         fetch('/api/admin/certificate-states?userId=self'),
         fetch('/api/admin/internal-users/directory'),
       ]);
 
-      const pendingData = await pendingResponse.json();
       const statesData = await statesResponse.json();
       const directoryData = await directoryResponse.json();
-
-      if (pendingData.success) {
-        setPendingActions(pendingData.data);
-      }
 
       if (statesData.success) {
         setStates(statesData.data);
@@ -414,53 +407,6 @@ export default function CertificateStatesPage() {
         </p>
       </div>
 
-      {/* Acciones Pendientes */}
-      {pendingActions.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <AlertCircle size={20} className="text-orange-500" />
-            Acciones Pendientes ({pendingActions.length})
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {pendingActions.map((state) => (
-              <div
-                key={state.id}
-                className={cn(
-                  "bg-white rounded-lg shadow-md border p-4 hover:shadow-lg transition-shadow cursor-pointer",
-                  getStateColor(state.currentState)
-                )}
-                onClick={() => setSelectedState(state)}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    {getStateIcon(state.currentState)}
-                    <span className="font-medium">
-                      {STATE_CONFIG[state.currentState as keyof typeof STATE_CONFIG]?.label}
-                    </span>
-                  </div>
-                  <span className="text-xs text-gray-500">
-                    {new Date(state.changedAt).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="text-sm">
-                  <p className="font-medium">
-                    Certificado: {getCertificateLabel(state)}
-                  </p>
-                  {state.metadata?.studentName && (
-                    <p className="text-xs text-gray-600">
-                      Participante: {String(state.metadata.studentName)}
-                    </p>
-                  )}
-                  <p className="text-gray-600 text-xs mt-1">
-                    {state.comments || 'Sin comentarios'}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Lista de Estados */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredStates.map((state) => {
@@ -551,7 +497,7 @@ export default function CertificateStatesPage() {
         )})}
       </div>
 
-      {states.length === 0 && pendingActions.length === 0 && (
+      {states.length === 0 && (
         <div className="text-center py-12">
           <Clock className="mx-auto text-gray-400 mb-4" size={48} />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No hay estados registrados</h3>

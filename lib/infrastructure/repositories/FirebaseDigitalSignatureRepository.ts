@@ -5,10 +5,8 @@ import {
   DocumentData,
   getDoc,
   getDocs,
-  limit,
   orderBy,
   query,
-  QueryDocumentSnapshot,
   Timestamp,
   updateDoc,
   where,
@@ -100,23 +98,20 @@ export class FirebaseDigitalSignatureRepository {
     signerId: string,
     status?: SignatureStatus
   ): Promise<SignatureRequest[]> {
-    let q = query(
-      collection(db, this.requestsCollection),
-      where('requestedTo', '==', signerId),
-      orderBy('requestedAt', 'desc')
-    );
-
-    if (status) {
-      q = query(
-        collection(db, this.requestsCollection),
-        where('requestedTo', '==', signerId),
-        where('status', '==', status),
-        orderBy('requestedAt', 'desc')
-      );
-    }
-
+    const q = status
+      ? query(
+          collection(db, this.requestsCollection),
+          where('requestedTo', '==', signerId),
+          where('status', '==', status)
+        )
+      : query(
+          collection(db, this.requestsCollection),
+          where('requestedTo', '==', signerId)
+        );
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(this.mapToSignatureRequest);
+    return querySnapshot.docs
+      .map(this.mapToSignatureRequest)
+      .sort((left, right) => right.requestedAt.getTime() - left.requestedAt.getTime());
   }
 
   async getSignatureRequestsByRequester(
@@ -124,12 +119,13 @@ export class FirebaseDigitalSignatureRepository {
   ): Promise<SignatureRequest[]> {
     const q = query(
       collection(db, this.requestsCollection),
-      where('requestedBy', '==', requestedBy),
-      orderBy('requestedAt', 'desc')
+      where('requestedBy', '==', requestedBy)
     );
 
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(this.mapToSignatureRequest);
+    return querySnapshot.docs
+      .map(this.mapToSignatureRequest)
+      .sort((left, right) => right.requestedAt.getTime() - left.requestedAt.getTime());
   }
 
   async getAllSignatureRequests(): Promise<SignatureRequest[]> {
@@ -145,9 +141,7 @@ export class FirebaseDigitalSignatureRepository {
   async getSignatureRequest(certificateId: string): Promise<SignatureRequest | null> {
     const q = query(
       collection(db, this.requestsCollection),
-      where('certificateId', '==', certificateId),
-      orderBy('requestedAt', 'desc'),
-      limit(1)
+      where('certificateId', '==', certificateId)
     );
 
     const querySnapshot = await getDocs(q);
@@ -155,7 +149,9 @@ export class FirebaseDigitalSignatureRepository {
       return null;
     }
 
-    return this.mapToSignatureRequest(querySnapshot.docs[0]);
+    return querySnapshot.docs
+      .map(this.mapToSignatureRequest)
+      .sort((left, right) => right.requestedAt.getTime() - left.requestedAt.getTime())[0];
   }
 
   async createSignature(data: SignCertificateRequest): Promise<DigitalSignature> {
@@ -193,8 +189,6 @@ export class FirebaseDigitalSignatureRepository {
     }
 
     const signature = this.mapToDigitalSignature(docSnap);
-    await this.updateSignatureRequestStatus(data.certificateId, 'signed');
-
     return signature;
   }
 
@@ -202,9 +196,7 @@ export class FirebaseDigitalSignatureRepository {
     const q = query(
       collection(db, this.requestsCollection),
       where('certificateId', '==', data.certificateId),
-      where('requestedTo', '==', data.signerId),
-      orderBy('requestedAt', 'desc'),
-      limit(1)
+      where('requestedTo', '==', data.signerId)
     );
 
     const querySnapshot = await getDocs(q);
@@ -212,11 +204,57 @@ export class FirebaseDigitalSignatureRepository {
       return;
     }
 
-    await updateDoc(querySnapshot.docs[0].ref, {
+    const latestRequestRef = querySnapshot.docs
+      .map((item) => ({ ref: item.ref, request: this.mapToSignatureRequest(item) }))
+      .sort((left, right) => right.request.requestedAt.getTime() - left.request.requestedAt.getTime())[0]?.ref;
+
+    if (!latestRequestRef) {
+      return;
+    }
+
+    await updateDoc(latestRequestRef, {
       status: 'rejected',
       respondedAt: Timestamp.fromDate(new Date()),
       rejectionReason: data.rejectionReason,
     });
+  }
+
+  async updateSignatureRequestStatus(
+    certificateId: string,
+    status: SignatureStatus,
+    options?: {
+      rejectionReason?: string;
+      respondedAt?: Date;
+    }
+  ): Promise<void> {
+    const q = query(
+      collection(db, this.requestsCollection),
+      where('certificateId', '==', certificateId)
+    );
+
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+      return;
+    }
+
+    const latestRequestRef = querySnapshot.docs
+      .map((item) => ({ ref: item.ref, request: this.mapToSignatureRequest(item) }))
+      .sort((left, right) => right.request.requestedAt.getTime() - left.request.requestedAt.getTime())[0]?.ref;
+
+    if (!latestRequestRef) {
+      return;
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      status,
+      respondedAt: Timestamp.fromDate(options?.respondedAt || new Date()),
+    };
+
+    if (status === 'rejected' && options?.rejectionReason) {
+      updatePayload.rejectionReason = options.rejectionReason;
+    }
+
+    await updateDoc(latestRequestRef, updatePayload);
   }
 
   async getSignatureByCertificate(
@@ -224,9 +262,7 @@ export class FirebaseDigitalSignatureRepository {
   ): Promise<DigitalSignature | null> {
     const q = query(
       collection(db, this.signaturesCollection),
-      where('certificateId', '==', certificateId),
-      orderBy('signedAt', 'desc'),
-      limit(1)
+      where('certificateId', '==', certificateId)
     );
 
     const querySnapshot = await getDocs(q);
@@ -234,18 +270,29 @@ export class FirebaseDigitalSignatureRepository {
       return null;
     }
 
-    return this.mapToDigitalSignature(querySnapshot.docs[0]);
+    return querySnapshot.docs
+      .map(this.mapToDigitalSignature)
+      .sort((left, right) => {
+        const leftTime = left.signedAt?.getTime() ?? left.requestedAt.getTime();
+        const rightTime = right.signedAt?.getTime() ?? right.requestedAt.getTime();
+        return rightTime - leftTime;
+      })[0];
   }
 
   async getSignaturesBySigner(signerId: string): Promise<DigitalSignature[]> {
     const q = query(
       collection(db, this.signaturesCollection),
-      where('signerId', '==', signerId),
-      orderBy('signedAt', 'desc')
+      where('signerId', '==', signerId)
     );
 
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(this.mapToDigitalSignature);
+    return querySnapshot.docs
+      .map(this.mapToDigitalSignature)
+      .sort((left, right) => {
+        const leftTime = left.signedAt?.getTime() ?? left.requestedAt.getTime();
+        const rightTime = right.signedAt?.getTime() ?? right.requestedAt.getTime();
+        return rightTime - leftTime;
+      });
   }
 
   async createTemplate(
@@ -297,28 +344,6 @@ export class FirebaseDigitalSignatureRepository {
     }
 
     return this.mapToSignatureTemplate(updatedDoc);
-  }
-
-  private async updateSignatureRequestStatus(
-    certificateId: string,
-    status: SignatureStatus
-  ): Promise<void> {
-    const q = query(
-      collection(db, this.requestsCollection),
-      where('certificateId', '==', certificateId),
-      orderBy('requestedAt', 'desc'),
-      limit(1)
-    );
-
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) {
-      return;
-    }
-
-    await updateDoc(querySnapshot.docs[0].ref, {
-      status,
-      respondedAt: Timestamp.fromDate(new Date()),
-    });
   }
 
   private async getInternalUserSummary(
