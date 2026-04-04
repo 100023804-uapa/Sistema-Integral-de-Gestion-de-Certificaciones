@@ -10,6 +10,7 @@ import {
   getTemplateIssuancePolicyMessage,
   isTemplateApprovedForIssuance,
 } from '@/lib/config/certificate-template-policy';
+import { validateStudentIdentityDocument } from '@/lib/validation/studentIdentity';
 
 const studentRepo = getStudentRepository();
 
@@ -128,7 +129,12 @@ function buildStudentUpdates(
   }
 
   if (previewRow.cedula && previewRow.cedula !== (existingStudent.cedula || '')) {
-    updates.cedula = previewRow.cedula;
+    const identityValidation = validateStudentIdentityDocument(previewRow.cedula);
+    if (!identityValidation.valid) {
+      throw new Error(identityValidation.error);
+    }
+
+    updates.cedula = identityValidation.normalized || '';
   }
 
   if (previewRow.academicProgram && previewRow.academicProgram !== (existingStudent.career || '')) {
@@ -214,6 +220,11 @@ export async function importCertificatesFromExcel(
     try {
       let studentWasCreated = false;
       let studentWasUpdated = false;
+      const identityValidation = validateStudentIdentityDocument(row.cedula);
+
+      if (!identityValidation.valid) {
+        throw new Error(identityValidation.error);
+      }
 
       const existingStudent = await studentRepo.findById(row.matricula);
 
@@ -224,7 +235,7 @@ export async function importCertificatesFromExcel(
           firstName: parsedName.firstName || row.studentName,
           lastName: parsedName.lastName,
           email: row.email,
-          cedula: row.cedula || undefined,
+          cedula: identityValidation.normalized || undefined,
           career: row.academicProgram || undefined,
         };
         await studentRepo.create(newStudent);
@@ -242,7 +253,7 @@ export async function importCertificatesFromExcel(
       await createCertificateUseCase.execute({
         studentName: row.studentName,
         studentId: row.matricula,
-        cedula: row.cedula || undefined,
+        cedula: identityValidation.normalized || undefined,
         studentEmail: row.email || undefined,
         type: row.certificateType,
         academicProgram: row.academicProgram,

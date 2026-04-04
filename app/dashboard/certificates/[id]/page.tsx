@@ -27,6 +27,7 @@ import {
     getCertificateStatusBadgeClass,
     getCertificateStatusLabel,
     isCertificateBlocked,
+    isCertificatePublished,
 } from '@/lib/types/certificateStatus';
 import type { CertificateTemplate } from '@/lib/types/certificateTemplate';
 
@@ -129,7 +130,9 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
         }
 
         const rendered = await renderCertificateTemplate(template, certificate, {
-          verificationUrl: `${window.location.origin}/verify/${certificate.folio}`,
+          verificationUrl: `${window.location.origin}/verify/${
+            certificate.publicVerificationCode || certificate.folio
+          }`,
         });
 
         if (!active) return;
@@ -268,6 +271,9 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
   const statusClass = getCertificateStatusBadgeClass(certificate.status);
   const statusLabel = getCertificateStatusLabel(certificate.status);
   const restrictionActive = certificate.restriction?.active === true;
+  const restrictionWasAppliedOnPublishedCertificate =
+    certificate.restriction?.previousStatus === 'available' ||
+    certificate.restriction?.previousStatus === 'active';
   const hasOfficialDocument = Boolean(certificate.pdfUrl && !restrictionActive);
   const previewFrameWidth =
     certificate.templateSnapshot?.layout?.orientation === 'portrait'
@@ -278,11 +284,13 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
     'pending_signature',
     'signed',
     'issued',
-    'available',
-    'active',
   ].includes(certificate.status);
+  const canReleaseRestriction =
+    restrictionActive && !restrictionWasAppliedOnPublishedCertificate;
 
-  const verificationUrl = `${window.location.origin}/verify/${certificate.folio}`;
+  const verificationUrl = `${window.location.origin}/verify/${
+    certificate.publicVerificationCode || certificate.folio
+  }`;
   const officialDocumentUrl = `/api/admin/certificates/${encodeURIComponent(certificate.id)}/document`;
 
   return (
@@ -514,31 +522,41 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
                                 </p>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                                    Motivo de liberacion
-                                </label>
-                                <textarea
-                                    value={releaseReason}
-                                    onChange={(event) => setReleaseReason(event.target.value)}
-                                    rows={3}
-                                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="Detalle opcional del desbloqueo"
-                                />
-                            </div>
+                            {canReleaseRestriction ? (
+                                <>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
+                                            Motivo de liberacion
+                                        </label>
+                                        <textarea
+                                            value={releaseReason}
+                                            onChange={(event) => setReleaseReason(event.target.value)}
+                                            rows={3}
+                                            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                            placeholder="Detalle opcional del desbloqueo"
+                                        />
+                                    </div>
 
-                            <button
-                                onClick={() => void handleRestrictionUpdate('release')}
-                                disabled={isUpdatingRestriction}
-                                className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-70"
-                            >
-                                {isUpdatingRestriction ? 'Liberando...' : 'Levantar restriccion'}
-                            </button>
+                                    <button
+                                        onClick={() => void handleRestrictionUpdate('release')}
+                                        disabled={isUpdatingRestriction}
+                                        className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-70"
+                                    >
+                                        {isUpdatingRestriction ? 'Liberando...' : 'Levantar restriccion'}
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+                                    Esta restriccion se aplico sobre un certificado que ya habia sido publicado. No puede liberarse desde esta vista; debes revisarlo desde Integridad de Datos.
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="space-y-4">
                             <p className="text-sm text-gray-600">
-                                {canApplyRestriction
+                                {isCertificatePublished(certificate.status)
+                                    ? 'Los certificados publicados ya no admiten restricciones desde esta vista.'
+                                    : canApplyRestriction
                                     ? 'Aplica un bloqueo para suspender disponibilidad publica, descarga del participante y continuidad operativa segun la regla de negocio.'
                                     : `El estado actual (${statusLabel.toLowerCase()}) no admite un bloqueo administrativo desde esta vista.`}
                             </p>

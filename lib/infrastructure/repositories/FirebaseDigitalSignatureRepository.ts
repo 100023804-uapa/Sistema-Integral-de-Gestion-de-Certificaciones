@@ -257,6 +257,52 @@ export class FirebaseDigitalSignatureRepository {
     await updateDoc(latestRequestRef, updatePayload);
   }
 
+  async expireActiveArtifacts(
+    certificateId: string,
+    reason: string
+  ): Promise<void> {
+    const [requestSnapshot, signatureSnapshot] = await Promise.all([
+      getDocs(
+        query(
+          collection(db, this.requestsCollection),
+          where('certificateId', '==', certificateId)
+        )
+      ),
+      getDocs(
+        query(
+          collection(db, this.signaturesCollection),
+          where('certificateId', '==', certificateId)
+        )
+      ),
+    ]);
+
+    const now = Timestamp.fromDate(new Date());
+
+    await Promise.all([
+      ...requestSnapshot.docs
+        .map((item) => ({ ref: item.ref, request: this.mapToSignatureRequest(item) }))
+        .filter(({ request }) => request.status === 'pending' || request.status === 'signed')
+        .map(({ ref }) =>
+          updateDoc(ref, {
+            status: 'expired',
+            respondedAt: now,
+            expirationReason: reason,
+            updatedAt: now,
+          })
+        ),
+      ...signatureSnapshot.docs
+        .map((item) => ({ ref: item.ref, signature: this.mapToDigitalSignature(item) }))
+        .filter(({ signature }) => signature.status === 'signed' || signature.status === 'pending')
+        .map(({ ref }) =>
+          updateDoc(ref, {
+            status: 'expired',
+            invalidationReason: reason,
+            updatedAt: now,
+          })
+        ),
+    ]);
+  }
+
   async getSignatureByCertificate(
     certificateId: string
   ): Promise<DigitalSignature | null> {

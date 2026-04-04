@@ -12,7 +12,7 @@ const CERTIFICATES_COLLECTION = 'certificates';
 const SIGNATURES_COLLECTION = 'digitalSignatures';
 const SIGNATURE_REQUESTS_COLLECTION = 'signatureRequests';
 
-const PUBLISHED_STATUSES = new Set(['issued', 'available', 'active']);
+const PUBLISHED_STATUSES = new Set(['available', 'active']);
 const LEGACY_STATUSES = new Set(['active', 'revoked', 'expired']);
 
 type LatestSignatureRecord = {

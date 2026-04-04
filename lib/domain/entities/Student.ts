@@ -15,11 +15,11 @@ export interface StudentPortalAccess {
 }
 
 export interface Student {
-  id: string; // Matrícula o Cédula (Identificador único)
+  id: string; // Matrícula institucional (identificador único del participante)
   firstName: string;
   lastName: string;
   email: string;
-  cedula?: string;
+  cedula?: string; // Documento de identidad opcional (cédula o pasaporte)
   phone?: string;
   career?: string; // Carrera o Departamento
   programId?: string;

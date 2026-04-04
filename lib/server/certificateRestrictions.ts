@@ -12,6 +12,7 @@ import {
 import {
   getCertificateStatusLabel,
   isCertificateBlocked,
+  isCertificatePublished,
   normalizeCertificateStatus,
 } from '@/lib/types/certificateStatus';
 import {
@@ -27,8 +28,6 @@ const BLOCK_ELIGIBLE_STATUSES = new Set([
   'pending_signature',
   'signed',
   'issued',
-  'available',
-  'active',
 ]);
 
 function serializeRestriction(restriction: CertificateRestriction) {
@@ -92,6 +91,20 @@ function resolveStatusToRestore(certificate: Certificate): Certificate['status']
   }
 
   return 'signed';
+}
+
+function ensureRestrictionReleaseAllowed(certificate: Certificate, restoredStatus: Certificate['status']) {
+  if (isCertificatePublished(restoredStatus)) {
+    throw new Error(
+      'Esta restriccion pertenece a un certificado que ya habia sido publicado. Debes revisarlo desde Integridad de Datos en lugar de liberarlo desde esta vista.'
+    );
+  }
+
+  if (certificate.status === 'available' || certificate.status === 'active') {
+    throw new Error(
+      'Los certificados publicados ya no admiten cambios de restriccion desde esta vista.'
+    );
+  }
 }
 
 async function appendRestrictionAuditEntry(params: {
@@ -215,6 +228,7 @@ export async function releaseCertificateRestriction(params: {
 
   const releaseReason = ensureReleaseReason(params.reason);
   const restoredStatus = resolveStatusToRestore(certificate);
+  ensureRestrictionReleaseAllowed(certificate, restoredStatus);
   const now = new Date();
   const releasedRestriction: CertificateRestriction = {
     ...restriction,

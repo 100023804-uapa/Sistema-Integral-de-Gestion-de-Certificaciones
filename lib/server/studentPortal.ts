@@ -249,8 +249,12 @@ function mapCertificateSummary(
     availabilityMessage = `Descarga temporalmente restringida por ${restriction.typeLabel}.`;
   } else if (canDownload) {
     availabilityMessage = 'Disponible para descarga dentro del portal autenticado.';
+  } else if (status === 'issued') {
+    availabilityMessage =
+      'El certificado ya fue emitido internamente, pero aun no ha sido publicado para el portal.';
   } else if (isCertificatePubliclyAvailable(status) && !pdfUrl) {
-    availabilityMessage = 'El documento existe, pero aun no tiene un PDF disponible.';
+    availabilityMessage =
+      'El certificado ya esta publicado, pero aun no tiene un PDF disponible.';
   }
 
   return {
@@ -500,9 +504,11 @@ export async function findPublicCertificateValidation(
   const isValid = isCertificateCurrentlyValid(summary.status);
   const isBlocked = isCertificateBlocked(summary.status);
   const message = isValid
-    ? 'El certificado existe en SIGCE y se encuentra vigente.'
+    ? 'El certificado existe en SIGCE, se encuentra publicado y esta vigente.'
     : isBlocked
       ? `El certificado existe en SIGCE, pero se encuentra ${summary.statusLabel.toLowerCase()}.`
+      : summary.status === 'issued'
+        ? 'El certificado existe en SIGCE y ya fue emitido, pero aun no ha sido publicado para validacion publica.'
       : 'El certificado existe en SIGCE, pero no se encuentra habilitado para uso publico.';
 
   return {

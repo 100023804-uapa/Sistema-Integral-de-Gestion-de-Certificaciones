@@ -21,6 +21,12 @@ export interface TemplateFontRisk {
   detail: string;
 }
 
+export const OFFICIAL_TEMPLATE_FONT_POLICY = {
+  mode: 'safe-browser-only',
+  description:
+    'Las plantillas oficiales solo admiten familias seguras del navegador y ya no aceptan fuentes subidas, fuentes variables ni orígenes remotos.',
+} as const;
+
 export const SAFE_TEMPLATE_FONTS: SafeTemplateFontOption[] = [
   {
     id: 'arial',
@@ -337,6 +343,51 @@ export function analyzeTemplateFontRisks(
   }
 
   return risks;
+}
+
+export function getUnsupportedOfficialTemplateFamilies(
+  htmlContent = '',
+  cssStyles = ''
+): string[] {
+  return uniqueCasePreserving(
+    extractDeclaredFontFamilies(htmlContent, cssStyles).filter(
+      (family) => !isSafeFontFamily(family)
+    )
+  );
+}
+
+export function assertOfficialTemplateTypography(params: {
+  htmlContent?: string;
+  cssStyles?: string;
+  fontRefs?: TemplateFontRef[];
+}): void {
+  const htmlContent = params.htmlContent || '';
+  const cssStyles = params.cssStyles || '';
+  const normalizedFontRefs = normalizeTemplateFontRefs(params.fontRefs || []);
+  const unsupportedFamilies = getUnsupportedOfficialTemplateFamilies(
+    htmlContent,
+    cssStyles
+  );
+  const remoteSources = extractRemoteFontSources(htmlContent, cssStyles);
+
+  if (normalizedFontRefs.length > 0) {
+    throw new Error(
+      'Las plantillas oficiales ya no admiten fuentes subidas o vinculadas. Usa solo tipografías seguras del navegador.'
+    );
+  }
+
+  if (remoteSources.length > 0) {
+    throw new Error(
+      'Las plantillas oficiales no admiten fuentes remotas ni hojas de estilo externas. Elimina @import, Google Fonts y URLs remotas.'
+    );
+  }
+
+  if (unsupportedFamilies.length > 0) {
+    const allowedFamilies = SAFE_TEMPLATE_FONTS.map((font) => font.label).join(', ');
+    throw new Error(
+      `Las plantillas oficiales solo admiten fuentes seguras del navegador. Detectadas: ${unsupportedFamilies.join(', ')}. Usa únicamente: ${allowedFamilies}.`
+    );
+  }
 }
 
 export function extractDeclaredFontFamilies(

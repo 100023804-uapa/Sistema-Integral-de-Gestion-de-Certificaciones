@@ -21,6 +21,7 @@ import { getListCampusesUseCase, getStudentRepository } from '@/lib/container';
 import type { AcademicArea } from '@/lib/types/academicArea';
 import type { AcademicProgram } from '@/lib/types/academicProgram';
 import type { Campus } from '@/lib/types/campus';
+import { validateStudentIdentityDocument } from '@/lib/validation/studentIdentity';
 
 type FormState = {
   firstName: string;
@@ -135,6 +136,11 @@ export default function CreateGraduatePage() {
         throw new Error(`El participante con matrícula ${formData.id} ya existe.`);
       }
 
+      const identityValidation = validateStudentIdentityDocument(formData.cedula);
+      if (!identityValidation.valid) {
+        throw new Error(identityValidation.error);
+      }
+
       const selectedCampus = campuses.find((campus) => campus.id === formData.campusId);
       const selectedArea = areas.find((area) => area.id === formData.academicAreaId);
       const selectedProgram = programs.find((program) => program.id === formData.programId);
@@ -152,7 +158,7 @@ export default function CreateGraduatePage() {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         email: formData.email.trim(),
-        cedula: formData.cedula.trim() || undefined,
+        cedula: identityValidation.normalized || undefined,
         phone: formData.phone.trim() || undefined,
         career: selectedProgram.name,
         programId: selectedProgram.id,
@@ -239,16 +245,19 @@ export default function CreateGraduatePage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                  <CreditCard size={16} /> Cédula (Identidad)
+                  <CreditCard size={16} /> Documento de identidad
                 </label>
                 <input
                   name="cedula"
                   value={formData.cedula}
                   onChange={handleChange}
                   type="text"
-                  placeholder="Ej. 402-1234567-8"
+                  placeholder="Cédula o pasaporte"
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                 />
+                <p className="text-xs text-gray-500">
+                  Acepta cédula dominicana o documento alfanumérico tipo pasaporte. La matrícula sigue siendo el identificador único del participante.
+                </p>
               </div>
 
               <div className="space-y-2">

@@ -4,7 +4,7 @@ import { requireAuthenticatedInternalUser } from '@/lib/auth/server';
 import {
   notifyPendingReview,
   notifyReturnedToDraft,
-  notifyCertificateIssued,
+  notifyCertificateAvailable,
 } from '@/lib/server/certificateWorkflowNotifications';
 
 export async function POST(request: NextRequest) {
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (newState.currentState === 'available') {
-      void notifyCertificateIssued(newState.certificateId).catch((error) => {
+      void notifyCertificateAvailable(newState.certificateId).catch((error) => {
         console.error('Error sending available certificate notification:', error);
       });
     }

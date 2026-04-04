@@ -63,6 +63,11 @@ export default function ValidatePage() {
       if (isCertificatePubliclyAvailable(result.status)) {
         setStatus('valid');
         setMessage('Certificado valido y vigente.');
+      } else if (result.status === 'issued') {
+        setStatus('invalid');
+        setMessage(
+          'Certificado encontrado y emitido, pero aun no ha sido publicado para validacion publica.'
+        );
       } else {
         setStatus('invalid');
         setMessage(

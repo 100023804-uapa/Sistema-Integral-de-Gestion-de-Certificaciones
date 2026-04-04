@@ -4,6 +4,7 @@ import {
   Student,
   StudentPortalAccess,
 } from '@/lib/domain/entities/Student';
+import { NOTIFICATION_EVENT_MATRIX } from '@/lib/config/notification-events';
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { SIGCE_INTERNAL_CLAIM } from '@/lib/auth/claims';
 import { createNotificationFanout } from '@/lib/server/notifications';
@@ -225,6 +226,10 @@ export async function issueStudentTemporaryPassword(
   actorId: string,
   mode: TemporaryPasswordMode
 ): Promise<StudentTemporaryPasswordResult> {
+  const event =
+    mode === 'activate'
+      ? NOTIFICATION_EVENT_MATRIX.studentPortalAccessActivated
+      : NOTIFICATION_EVENT_MATRIX.studentPortalAccessReset;
   const student = await getStudentById(studentId);
   const normalizedEmail = normalizeEmail(student.email);
 
@@ -285,9 +290,9 @@ export async function issueStudentTemporaryPassword(
         recipientId: studentId,
       },
     ],
-    type: mode === 'activate' ? 'student.portal_access.activated' : 'student.portal_access.reset',
-    category: 'access',
-    priority: 'high',
+    type: event.type,
+    category: event.category,
+    priority: event.priority,
     title:
       mode === 'activate'
         ? 'Tu acceso al portal fue habilitado'

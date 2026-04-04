@@ -1,4 +1,5 @@
 import { buildInternalUserClaims } from '@/lib/auth/claims';
+import { NOTIFICATION_EVENT_MATRIX } from '@/lib/config/notification-events';
 import { getAdminApp, getAdminAuth } from '@/lib/firebaseAdmin';
 import { createNotificationFanoutWithEmailResult } from '@/lib/server/notifications';
 import { sendOperationalEmail } from '@/lib/server/operationalEmail';
@@ -270,6 +271,7 @@ export async function createInternalUser(
   input: CreateInternalUserInput,
   actorId: string
 ): Promise<InternalUser> {
+  const invitedEvent = NOTIFICATION_EVENT_MATRIX.internalUserInvited;
   const email = normalizeEmail(input.email);
   const displayName = input.displayName.trim();
   if (!input.roleCode?.trim()) {
@@ -362,9 +364,9 @@ export async function createInternalUser(
           recipientRoleSnapshot: roleCode,
         },
       ],
-        type: 'internal_user.invited',
-        category: 'access',
-        priority: 'high',
+        type: invitedEvent.type,
+        category: invitedEvent.category,
+        priority: invitedEvent.priority,
         title: 'Tu acceso interno a SIGCE fue creado',
         body: `Ya puedes activar tu cuenta con el rol ${roleCode}.`,
         ctaLabel: 'Ir al acceso',
@@ -397,6 +399,7 @@ export async function updateInternalUser(
   input: UpdateInternalUserInput,
   actorId: string
 ): Promise<InternalUser> {
+  const resentEvent = NOTIFICATION_EVENT_MATRIX.internalUserInviteResent;
   const existing = await getInternalUser(uid);
   if (!existing) {
     throw new Error('Usuario interno no encontrado');
@@ -450,9 +453,9 @@ export async function updateInternalUser(
             recipientRoleSnapshot: input.roleCode || existing.roleCode,
           },
         ],
-        type: 'internal_user.invite_resent',
-        category: 'access',
-        priority: 'medium',
+        type: resentEvent.type,
+        category: resentEvent.category,
+        priority: resentEvent.priority,
         title: 'Tu acceso interno fue reenviado',
         body: 'Se generó una nueva activación para tu cuenta interna.',
         ctaLabel: 'Ir al acceso',

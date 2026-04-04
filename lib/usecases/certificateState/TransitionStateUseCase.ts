@@ -53,6 +53,13 @@ export class TransitionStateUseCase {
 
     await this.assertTransitionPrerequisites(certificateId, newState, metadata);
 
+    if (newState === 'draft' || newState === 'cancelled') {
+      await getDigitalSignatureRepository().expireActiveArtifacts(
+        certificateId,
+        `workflow_reset:${newState}`
+      );
+    }
+
     // Ejecutar la transición
     const nextState = await this.certificateStateRepository.transitionState(
       certificateId,

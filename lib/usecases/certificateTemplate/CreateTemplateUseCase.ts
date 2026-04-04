@@ -1,6 +1,7 @@
 import { CertificateTemplate, TemplateFontRef, TemplateLayout, TemplatePlaceholder } from '@/lib/types/certificateTemplate';
 import { FirebaseCertificateTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateTemplateRepository';
 import { getListCertificateTypesUseCase } from '@/lib/container';
+import { assertOfficialTemplateTypography } from '@/lib/config/template-fonts';
 
 export class CreateTemplateUseCase {
   constructor(
@@ -69,15 +70,23 @@ export class CreateTemplateUseCase {
       data.placeholders && data.placeholders.length
         ? data.placeholders
         : this.getDefaultPlaceholders(data.type);
+    const htmlContent = data.htmlContent || '';
+    const cssStyles = data.cssStyles || '';
+
+    assertOfficialTemplateTypography({
+      htmlContent,
+      cssStyles,
+      fontRefs: data.fontRefs || [],
+    });
 
     const templateData = {
       name: data.name,
       description: data.description || '',
       type: data.type,
       certificateTypeId: data.certificateTypeId,
-      htmlContent: data.htmlContent || '',
-      cssStyles: data.cssStyles || '',
-      fontRefs: data.fontRefs || [],
+      htmlContent,
+      cssStyles,
+      fontRefs: [],
       layout,
       placeholders,
     };

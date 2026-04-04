@@ -71,8 +71,6 @@ const STATUS_BADGE_CLASSES: Record<CertificateStatusValue, string> = {
 const PUBLICLY_AVAILABLE_STATUSES = new Set<CertificateStatusValue>([
   'available',
   'active',
-  // Compatibilidad temporal con certificados legacy ya emitidos antes de cerrar la publicación explícita.
-  'issued',
 ]);
 
 const PUBLISHED_STATUSES = new Set<CertificateStatusValue>([

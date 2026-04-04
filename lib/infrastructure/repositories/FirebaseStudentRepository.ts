@@ -2,6 +2,11 @@ import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, setDoc, getDocs, query, limit as firestoreLimit, orderBy, Timestamp, startAfter, QueryDocumentSnapshot, where } from 'firebase/firestore';
 import { IStudentRepository } from '../../domain/repositories/IStudentRepository';
 import { Student, CreateStudentDTO, StudentPortalAccess, StudentPortalAccountStatus } from '../../domain/entities/Student';
+import {
+    normalizeStudentIdentityDocument,
+    normalizeStudentIdentityDocumentKey,
+    validateStudentIdentityDocument,
+} from '@/lib/validation/studentIdentity';
 
 export class FirebaseStudentRepository implements IStudentRepository {
     private collectionName = 'students';
@@ -9,6 +14,80 @@ export class FirebaseStudentRepository implements IStudentRepository {
 
     private normalizeEmail(email: string) {
         return email.trim().toLowerCase();
+    }
+
+    private async ensureUniqueIdentityDocument(
+        studentId: string,
+        rawValue: string | undefined,
+        operation: 'create' | 'update'
+    ) {
+        if (!rawValue || rawValue.trim() === '') {
+            return {
+                normalizedDocument: undefined,
+                normalizedDocumentKey: undefined,
+            };
+        }
+
+        const validation = validateStudentIdentityDocument(rawValue);
+        if (!validation.valid) {
+            throw new Error(validation.error);
+        }
+
+        const normalizedDocument = validation.normalized || undefined;
+        const normalizedDocumentKey = validation.key || undefined;
+
+        if (!normalizedDocument || !normalizedDocumentKey) {
+            return {
+                normalizedDocument: undefined,
+                normalizedDocumentKey: undefined,
+            };
+        }
+
+        const normalizedQuery = query(
+            collection(db, this.collectionName),
+            where('identityDocumentNormalized', '==', normalizedDocumentKey),
+            firestoreLimit(1)
+        );
+        const normalizedSnap = await getDocs(normalizedQuery);
+
+        if (!normalizedSnap.empty) {
+            const existingDoc = normalizedSnap.docs[0];
+            if (operation === 'create' || existingDoc.id !== studentId) {
+                throw new Error(
+                    `Ya existe otro participante registrado con el documento ${normalizedDocument}`
+                );
+            }
+        }
+
+        const legacyValues = Array.from(
+            new Set([
+                rawValue.trim(),
+                normalizedDocument,
+                normalizeStudentIdentityDocumentKey(rawValue),
+            ].filter((value): value is string => Boolean(value)))
+        );
+
+        for (const legacyValue of legacyValues) {
+            const legacyQuery = query(
+                collection(db, this.collectionName),
+                where('cedula', '==', legacyValue),
+                firestoreLimit(1)
+            );
+            const legacySnap = await getDocs(legacyQuery);
+            if (!legacySnap.empty) {
+                const existingDoc = legacySnap.docs[0];
+                if (operation === 'create' || existingDoc.id !== studentId) {
+                    throw new Error(
+                        `Ya existe otro participante registrado con el documento ${normalizedDocument}`
+                    );
+                }
+            }
+        }
+
+        return {
+            normalizedDocument,
+            normalizedDocumentKey,
+        };
     }
 
     private toDate(value: any): Date | undefined {
@@ -75,23 +154,15 @@ export class FirebaseStudentRepository implements IStudentRepository {
             throw new Error(`Ya existe un participante registrado con la matrícula ${student.id}`);
         }
 
-        // Validación de duplicado por Cédula (si aplica)
-        if (student.cedula && student.cedula.trim() !== '') {
-            const cedulaQuery = query(
-                collection(db, this.collectionName),
-                where('cedula', '==', student.cedula.trim())
-            );
-            const cedulaSnap = await getDocs(cedulaQuery);
-            if (!cedulaSnap.empty) {
-                throw new Error(`Ya existe un participante registrado con la cédula ${student.cedula}`);
-            }
-        }
+        const { normalizedDocument, normalizedDocumentKey } =
+            await this.ensureUniqueIdentityDocument(student.id, student.cedula, 'create');
 
         const now = new Date();
         const normalizedEmail = this.normalizeEmail(student.email);
 
         const newStudent: Student = {
             ...student,
+            cedula: normalizedDocument,
             email: normalizedEmail,
             createdAt: now,
             updatedAt: now,
@@ -99,6 +170,7 @@ export class FirebaseStudentRepository implements IStudentRepository {
 
         await setDoc(docRef, {
             ...this.stripUndefinedEntries(newStudent as unknown as Record<string, unknown>),
+            identityDocumentNormalized: normalizedDocumentKey,
             createdAt: Timestamp.fromDate(now),
             updatedAt: Timestamp.fromDate(now),
         });
@@ -107,25 +179,15 @@ export class FirebaseStudentRepository implements IStudentRepository {
     }
 
     async update(id: string, data: Partial<Student>): Promise<void> {
-        // Validación de duplicado por Cédula (si aplica y si cambió)
-        if (data.cedula && data.cedula.trim() !== '') {
-            const cedulaQuery = query(
-                collection(db, this.collectionName),
-                where('cedula', '==', data.cedula.trim())
-            );
-            const cedulaSnap = await getDocs(cedulaQuery);
-            if (!cedulaSnap.empty) {
-                // Verificar que el documento con esta cédula no sea el mismo que se está editando
-                const existingDoc = cedulaSnap.docs[0];
-                if (existingDoc.id !== id) {
-                    throw new Error(`Ya existe otro participante registrado con la cédula ${data.cedula}`);
-                }
-            }
-        }
+        const { normalizedDocument, normalizedDocumentKey } =
+            await this.ensureUniqueIdentityDocument(id, data.cedula, 'update');
 
         const docRef = doc(db, this.collectionName, id);
         const payload = {
             ...data,
+            cedula: data.cedula === undefined ? undefined : normalizedDocument,
+            identityDocumentNormalized:
+                data.cedula === undefined ? undefined : normalizedDocumentKey || null,
             email: data.email ? this.normalizeEmail(data.email) : data.email,
             updatedAt: Timestamp.now(),
         };
@@ -175,7 +237,7 @@ export class FirebaseStudentRepository implements IStudentRepository {
             firstName: data.firstName,
             lastName: data.lastName,
             email: this.normalizeEmail(data.email || ''),
-            cedula: data.cedula,
+            cedula: normalizeStudentIdentityDocument(data.cedula),
             phone: data.phone,
             career: data.career,
             programId: this.toOptionalString(data.programId),

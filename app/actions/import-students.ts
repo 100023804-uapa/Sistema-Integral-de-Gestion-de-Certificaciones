@@ -6,6 +6,7 @@ import {
   StudentImportPreviewRow,
 } from '@/lib/application/utils/student-import';
 import { CreateStudentDTO } from '@/lib/domain/entities/Student';
+import { validateStudentIdentityDocument } from '@/lib/validation/studentIdentity';
 
 const studentRepo = getStudentRepository();
 
@@ -73,7 +74,12 @@ function buildUpdates(
   }
 
   if (row.cedula && row.cedula !== (existing.cedula || '')) {
-    updates.cedula = row.cedula;
+    const identityValidation = validateStudentIdentityDocument(row.cedula);
+    if (!identityValidation.valid) {
+      throw new Error(identityValidation.error);
+    }
+
+    updates.cedula = identityValidation.normalized || '';
   }
 
   if (row.phone && row.phone !== (existing.phone || '')) {
@@ -159,12 +165,17 @@ export async function importStudentsFromExcel(
       const existingStudent = await studentRepo.findById(row.matricula);
 
       if (!existingStudent) {
+        const identityValidation = validateStudentIdentityDocument(row.cedula);
+        if (!identityValidation.valid) {
+          throw new Error(identityValidation.error);
+        }
+
         const newStudent: CreateStudentDTO = {
           id: row.matricula,
           firstName: row.firstName,
           lastName: row.lastName,
           email: row.email,
-          cedula: row.cedula || undefined,
+          cedula: identityValidation.normalized || undefined,
           phone: row.phone || undefined,
           career: options.programName,
           programId: options.programId,

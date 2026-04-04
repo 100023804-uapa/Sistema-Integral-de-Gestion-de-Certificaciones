@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { CertificateType } from '@/lib/container';
-import { FontLibraryPanel } from '@/components/dashboard/templates/FontLibraryPanel';
+import { OfficialTemplateTypographyPanel } from '@/components/dashboard/templates/OfficialTemplateTypographyPanel';
 import {
   buildRuntimePreviewTemplate,
   TemplateRuntimePreview,
@@ -14,9 +14,6 @@ import {
   ArrowLeft, 
   Save, 
   Eye, 
-  Palette, 
-  Layout, 
-  Monitor, 
   File,
   Plus,
   Trash2,
@@ -155,7 +152,7 @@ export default function CreateTemplatePage() {
           ...formData,
           layout,
           placeholders,
-          fontRefs: formData.fontRefs,
+          fontRefs: [],
           createdBy: user?.uid || 'template-editor'
         }),
       });
@@ -280,7 +277,7 @@ export default function CreateTemplatePage() {
     certificateTypeId: formData.certificateTypeId,
     htmlContent: formData.htmlContent,
     cssStyles: formData.cssStyles,
-    fontRefs: formData.fontRefs,
+    fontRefs: [],
     layout,
     placeholders,
     isActive: true,
@@ -328,8 +325,6 @@ export default function CreateTemplatePage() {
         <nav className="-mb-px flex space-x-8">
           {[
             { id: 'basic', label: 'Información Básica', icon: <Settings size={16} /> },
-            { id: 'layout', label: 'Diseño y Layout', icon: <Grid3x3 size={16} /> },
-            { id: 'placeholders', label: 'Placeholders', icon: <Type size={16} /> },
             { id: 'code', label: 'Código HTML/CSS', icon: <File size={16} /> }
           ].map((tab) => (
             <button
@@ -765,17 +760,16 @@ export default function CreateTemplatePage() {
               </p>
             </div>
 
-            <FontLibraryPanel
-              value={formData.fontRefs}
-              onChange={(fontRefs) => setFormData((current) => ({ ...current, fontRefs }))}
+            <OfficialTemplateTypographyPanel
+              linkedFontCount={formData.fontRefs.length}
+              htmlContent={formData.htmlContent}
+              cssStyles={formData.cssStyles}
               onInsertCssSnippet={(snippet) =>
                 setFormData((current) => ({
                   ...current,
                   cssStyles: `${current.cssStyles}${current.cssStyles.trim() ? '\n\n' : ''}${snippet}`.trim(),
                 }))
               }
-              htmlContent={formData.htmlContent}
-              cssStyles={formData.cssStyles}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

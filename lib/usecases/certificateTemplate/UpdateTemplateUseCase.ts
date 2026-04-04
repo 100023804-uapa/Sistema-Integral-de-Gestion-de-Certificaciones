@@ -1,6 +1,7 @@
 import { CertificateTemplate, TemplateFontRef } from '@/lib/types/certificateTemplate';
 import { FirebaseCertificateTemplateRepository } from '@/lib/infrastructure/repositories/FirebaseCertificateTemplateRepository';
 import { getListCertificateTypesUseCase } from '@/lib/container';
+import { assertOfficialTemplateTypography } from '@/lib/config/template-fonts';
 
 export class UpdateTemplateUseCase {
   constructor(
@@ -59,7 +60,20 @@ export class UpdateTemplateUseCase {
       this.validateLayout(data.layout);
     }
 
-    return await this.templateRepository.update(id, data);
+    const nextHtmlContent = data.htmlContent ?? existingTemplate.htmlContent ?? '';
+    const nextCssStyles = data.cssStyles ?? existingTemplate.cssStyles ?? '';
+    const nextFontRefs = data.fontRefs ?? existingTemplate.fontRefs ?? [];
+
+    assertOfficialTemplateTypography({
+      htmlContent: nextHtmlContent,
+      cssStyles: nextCssStyles,
+      fontRefs: nextFontRefs,
+    });
+
+    return await this.templateRepository.update(id, {
+      ...data,
+      fontRefs: [],
+    });
   }
 
   private validateHTML(html: string): void {
