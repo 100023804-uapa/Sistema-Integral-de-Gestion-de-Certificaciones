@@ -212,7 +212,7 @@ export default function GraduatesPage() {
           <Search className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Buscar por nombre, matrícula, correo o cédula..."
+            placeholder="Buscar por nombre, matrícula, correo, cédula, programa o recinto..."
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
@@ -251,7 +251,7 @@ export default function GraduatesPage() {
             </div>
             <h3 className="text-lg font-bold text-gray-800">No se encontraron participantes</h3>
             <p className="text-gray-500 max-w-sm mx-auto">
-              Intenta ajustar la búsqueda. Ahora el sistema consulta nombre, matrícula, correo y cédula.
+              Intenta ajustar la búsqueda. Ahora el sistema consulta nombre, matrícula, correo, cédula, programa y recinto.
             </p>
           </div>
         ) : (
@@ -261,6 +261,7 @@ export default function GraduatesPage() {
                 <tr>
                   <th className="px-6 py-4">Estudiante</th>
                   <th className="px-6 py-4">Matrícula</th>
+                  <th className="px-6 py-4">Programa / Recinto</th>
                   <th className="px-6 py-4">Certificados</th>
                   <th className="px-6 py-4">Portal</th>
                   <th className="px-6 py-4">Fecha Registro</th>
@@ -284,6 +285,15 @@ export default function GraduatesPage() {
                     <td className="px-6 py-4 font-medium text-gray-700">
                       <div>{student.studentId}</div>
                       <div className="text-xs text-gray-400">{student.cedula || 'Sin cédula'}</div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      <div className="font-bold text-gray-900">
+                        {student.programName || student.career || 'Sin programa'}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {student.campusName || 'Sin recinto'}
+                        {student.academicAreaName ? ` · ${student.academicAreaName}` : ''}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-bold text-gray-900">{student.certificateCount}</div>

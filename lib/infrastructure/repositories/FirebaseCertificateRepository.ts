@@ -252,9 +252,14 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
             updateData.signedBy = data.changedBy;
         }
 
-        if (data.status === 'issued' || data.status === 'available' || data.status === 'active') {
+        if (data.status === 'issued') {
             updateData.issuedAt = changedAt;
             updateData.issuedBy = data.changedBy;
+        }
+
+        if (data.status === 'available' || data.status === 'active') {
+            updateData.availableAt = changedAt;
+            updateData.availableBy = data.changedBy;
         }
 
         await updateDoc(docRef, updateData);
@@ -395,6 +400,8 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
             signedBy: typeof data.signedBy === 'string' ? data.signedBy : undefined,
             issuedAt: data.issuedAt ? safeToDate(data.issuedAt) : undefined,
             issuedBy: typeof data.issuedBy === 'string' ? data.issuedBy : undefined,
+            availableAt: data.availableAt ? safeToDate(data.availableAt) : undefined,
+            availableBy: typeof data.availableBy === 'string' ? data.availableBy : undefined,
             restriction: mapRestriction(data.restriction),
             createdAt: safeToDate(data.createdAt),
             updatedAt: safeToDate(data.updatedAt),

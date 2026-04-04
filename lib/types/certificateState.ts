@@ -4,7 +4,8 @@ export type CertificateStateValue =
   | 'verified'        // Verificado por coordinador
   | 'pending_signature' // Esperando firma
   | 'signed'          // Firmado digitalmente
-  | 'issued'          // Emitido y disponible
+  | 'issued'          // Emitido internamente
+  | 'available'       // Publicado para portal y validación
   | 'cancelled';      // Cancelado/anulado
 
 export interface CertificateState {
@@ -42,6 +43,7 @@ const CANCELLABLE_STATES: CertificateStateValue[] = [
   'pending_signature',
   'signed',
   'issued',
+  'available',
 ];
 
 // Definición de transiciones permitidas
@@ -120,7 +122,18 @@ export const STATE_TRANSITIONS: StateTransition[] = [
     requiresAction: true,
     flow: 'generation',
     actionLabel: 'Emitir',
-    description: 'Hacer disponible el certificado para el participante'
+    description: 'Generar el PDF final y cerrar la emisión interna'
+  },
+
+  // Issued → Available
+  {
+    from: 'issued',
+    to: 'available',
+    allowedRoles: ['coordinator', 'administrator'],
+    requiresAction: true,
+    flow: 'direct',
+    actionLabel: 'Publicar',
+    description: 'Habilitar portal del participante y validación pública'
   },
   
   // Cualquier estado operativo → Cancelled (solo admin)
@@ -171,7 +184,13 @@ export const STATE_CONFIG = {
     label: 'Emitido',
     color: 'green',
     icon: 'award',
-    description: 'Certificado emitido y disponible'
+    description: 'PDF final generado, pendiente de publicación'
+  },
+  available: {
+    label: 'Disponible',
+    color: 'emerald',
+    icon: 'award',
+    description: 'Certificado publicado para portal y validación'
   },
   cancelled: {
     label: 'Cancelado',

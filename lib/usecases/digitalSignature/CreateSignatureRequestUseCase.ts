@@ -1,6 +1,7 @@
 import { SignatureRequest } from '@/lib/types/digitalSignature';
 import { FirebaseDigitalSignatureRepository } from '@/lib/infrastructure/repositories/FirebaseDigitalSignatureRepository';
 import { getTransitionStateUseCase } from '@/lib/container';
+import { assertInternalUserCanSignCertificate } from '@/lib/server/signerAuthorization';
 
 export class CreateSignatureRequestUseCase {
   constructor(
@@ -29,6 +30,8 @@ export class CreateSignatureRequestUseCase {
     if (!requestedBy?.trim()) {
       throw new Error('El ID del solicitante es obligatorio');
     }
+
+    await assertInternalUserCanSignCertificate(data.certificateId, data.requestedTo);
 
     // Verificar que el certificado esté en estado 'verified'
     const transitionStateUseCase = getTransitionStateUseCase();

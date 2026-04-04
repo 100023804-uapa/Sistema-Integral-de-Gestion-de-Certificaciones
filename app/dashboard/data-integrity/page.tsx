@@ -212,6 +212,12 @@ export default function DataIntegrityPage() {
               Participantes y portal
             </span>
             <Link
+              href="/dashboard/data-integrity/certificate-metadata"
+              className="inline-flex items-center rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50"
+            >
+              Saneamiento de metadatos
+            </Link>
+            <Link
               href="/dashboard/data-integrity/workflow-sanitization"
               className="inline-flex items-center rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50"
             >

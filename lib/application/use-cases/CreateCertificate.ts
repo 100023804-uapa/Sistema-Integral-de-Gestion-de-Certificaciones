@@ -5,6 +5,7 @@ import { IStudentRepository } from '../../domain/repositories/IStudentRepository
 import { getCreateCertificateStateUseCase } from '../../container';
 import { createCertificateTemplateSnapshot } from '../utils/certificate-template-snapshot';
 import crypto from 'crypto';
+import { isTemplateApprovedForIssuance, getTemplateIssuancePolicyMessage } from '@/lib/config/certificate-template-policy';
 
 export interface CreateCertificateInput {
     studentName: string;
@@ -12,6 +13,7 @@ export interface CreateCertificateInput {
     cedula?: string;
     type: CertificateType;
     academicProgram: string;
+    programId?: string;
     issueDate: Date;
     expirationDate?: Date; // Nuevo: opcional
     prefix?: string;
@@ -31,10 +33,11 @@ export class CreateCertificate {
         private certificateRepository: ICertificateRepository,
         private studentRepository: IStudentRepository,
         private generateFolio: GenerateFolio,
-        private campusRepository: any,
-        private academicAreaRepository: any,
-        private signerRepository: any,
-        private templateRepository: any
+        private campusRepository: any = null,
+        private academicAreaRepository: any = null,
+        private academicProgramRepository: any = null,
+        private signerRepository: any = null,
+        private templateRepository: any = null
     ) { }
 
     async execute(input: CreateCertificateInput): Promise<Certificate> {
@@ -50,14 +53,9 @@ export class CreateCertificate {
         const existingStudent = await this.studentRepository.findById(studentId);
 
         if (!existingStudent) {
-            await this.studentRepository.create({
-                id: studentId,
-                firstName: input.studentName,
-                lastName: '',
-                email: input.studentEmail || '',
-                cedula: input.cedula,
-                career: ''
-            });
+            throw new Error(
+                "El participante debe existir antes de crear el certificado. Regístralo manualmente o por carga masiva y vuelve a intentarlo."
+            );
         } else if (input.cedula && !existingStudent.cedula) {
             // Si ya existe pero no tiene cédula, y ahora sí se provee, la actualizamos
             await this.studentRepository.update(studentId, { cedula: input.cedula });
@@ -71,6 +69,19 @@ export class CreateCertificate {
         // 3. Validar createdBy
         if (!input.createdBy || input.createdBy.trim() === '') {
             throw new Error("El ID del usuario que crea el certificado es obligatorio.");
+        }
+
+        if (!input.templateId || input.templateId.trim() === '') {
+            throw new Error("La plantilla institucional es obligatoria para crear el certificado.");
+        }
+
+        if (!input.signer1Id || input.signer1Id.trim() === '') {
+            throw new Error("Debes seleccionar al menos una autoridad firmante para el certificado.");
+        }
+
+        const normalizedProgramName = input.academicProgram?.trim();
+        if (!normalizedProgramName) {
+            throw new Error("El programa académico es obligatorio para crear el certificado.");
         }
 
         // 4. Resolver Folio
@@ -88,60 +99,94 @@ export class CreateCertificate {
         // 5. Generar Código de Verificación Público (Hash US-13)
         const publicVerificationCode = crypto.randomBytes(8).toString('hex').toUpperCase();
 
-        // 6. Enriquecer metadatos con nombres reales para el PDF
+        // 6. Resolver dependencias institucionales
         const enrichedMetadata = { ...input.metadata };
+        const [campus, area, signer1, signer2, template, allPrograms] = await Promise.all([
+            this.campusRepository.findById(input.campusId),
+            input.academicAreaId ? this.academicAreaRepository.findById(input.academicAreaId) : Promise.resolve(null),
+            this.signerRepository.findById(input.signer1Id),
+            input.signer2Id ? this.signerRepository.findById(input.signer2Id) : Promise.resolve(null),
+            this.templateRepository.findById(input.templateId),
+            this.academicProgramRepository?.findActive
+                ? this.academicProgramRepository.findActive()
+                : this.academicProgramRepository?.findAll
+                    ? this.academicProgramRepository.findAll()
+                    : Promise.resolve([]),
+        ]);
 
-        // Resolver nombre de recinto
-        if (input.campusId) {
-            const campus = await this.campusRepository.findById(input.campusId);
-            if (campus) enrichedMetadata.campusName = campus.name;
+        if (!campus) {
+            throw new Error("El recinto seleccionado no existe o no está disponible.");
         }
 
-        // Resolver nombre de área académica
-        if (input.academicAreaId) {
-            const area = await this.academicAreaRepository.findById(input.academicAreaId);
-            if (area) enrichedMetadata.academicArea = area.name;
+        if (input.academicAreaId && !area) {
+            throw new Error("El área académica seleccionada no existe o no está disponible.");
+        }
+
+        if (!signer1 || !signer1.isActive) {
+            throw new Error("La autoridad firmante principal no existe o está inactiva.");
+        }
+
+        if (input.signer2Id && (!signer2 || !signer2.isActive)) {
+            throw new Error("La segunda autoridad firmante no existe o está inactiva.");
+        }
+
+        if (!template || !template.isActive) {
+            throw new Error("La plantilla seleccionada no existe o está inactiva.");
+        }
+
+        if (!isTemplateApprovedForIssuance(template)) {
+            throw new Error(getTemplateIssuancePolicyMessage());
+        }
+
+        const resolvedProgram =
+            (Array.isArray(allPrograms) ? allPrograms : []).find((program: any) =>
+                (input.programId && program.id === input.programId) ||
+                program.name?.trim().toLowerCase() === normalizedProgramName.toLowerCase()
+            ) || null;
+
+        if (!resolvedProgram) {
+            throw new Error("El programa académico seleccionado no existe o no está activo.");
+        }
+
+        // 7. Enriquecer metadatos con nombres reales para el PDF
+
+        enrichedMetadata.campusName = campus.name;
+        enrichedMetadata.programId = resolvedProgram.id;
+        enrichedMetadata.programName = resolvedProgram.name;
+        enrichedMetadata.programCode = resolvedProgram.code || null;
+
+        if (area) {
+            enrichedMetadata.academicArea = area.name;
         }
 
         // Resolver detalles de firmantes
-        if (input.signer1Id) {
-            enrichedMetadata.signer1Id = input.signer1Id;
-            const signer1 = await this.signerRepository.findById(input.signer1Id);
-            if (signer1) {
-                enrichedMetadata.signer1_Name = signer1.name;
-                enrichedMetadata.signer1_Title = signer1.title;
-                enrichedMetadata.signer1_SignatureImage = signer1.signatureUrl;
-            }
-        }
-        if (input.signer2Id) {
+        enrichedMetadata.signer1Id = input.signer1Id;
+        enrichedMetadata.signer1_Name = signer1.name;
+        enrichedMetadata.signer1_Title = signer1.title;
+        enrichedMetadata.signer1_SignatureImage = signer1.signatureUrl;
+
+        if (input.signer2Id && signer2) {
             enrichedMetadata.signer2Id = input.signer2Id;
-            const signer2 = await this.signerRepository.findById(input.signer2Id);
-            if (signer2) {
-                enrichedMetadata.signer2_Name = signer2.name;
-                enrichedMetadata.signer2_Title = signer2.title;
-                enrichedMetadata.signer2_SignatureImage = signer2.signatureUrl;
-            }
+            enrichedMetadata.signer2_Name = signer2.name;
+            enrichedMetadata.signer2_Title = signer2.title;
+            enrichedMetadata.signer2_SignatureImage = signer2.signatureUrl;
         }
 
-        // 7. Preparar datos (DTO)
+        // 8. Preparar datos (DTO)
         const templateSnapshot =
-            input.templateId && this.templateRepository?.findById
-                ? await this.templateRepository
-                    .findById(input.templateId)
-                    .then((selectedTemplate: any) =>
-                        selectedTemplate ? createCertificateTemplateSnapshot(selectedTemplate) : null
-                    )
-                : null;
+            template ? createCertificateTemplateSnapshot(template) : null;
 
         const certificateData: CreateCertificateDTO & { publicVerificationCode: string } = {
             folio,
             publicVerificationCode,
-            studentName: input.studentName,
+            studentName: `${existingStudent.firstName} ${existingStudent.lastName}`.trim() || input.studentName,
             studentId: studentId,
-            studentEmail: input.studentEmail || null,
-            cedula: input.cedula || null,
+            studentEmail: input.studentEmail || existingStudent.email || null,
+            cedula: input.cedula || existingStudent.cedula || null,
             type: input.type,
-            academicProgram: input.academicProgram,
+            academicProgram: resolvedProgram.name,
+            programId: resolvedProgram.id,
+            programCodeSnapshot: resolvedProgram.code || null,
             issueDate: input.issueDate,
             expirationDate: input.expirationDate || null,
             status: 'draft' as CertificateStatus,
@@ -149,13 +194,19 @@ export class CreateCertificate {
             templateId: input.templateId || null,
             templateSnapshot,
             campusId: input.campusId,
+            campusNameSnapshot: campus.name,
             academicAreaId: input.academicAreaId || null,
+            academicAreaNameSnapshot: area?.name || null,
+            signer1Id: signer1.id,
+            signer1NameSnapshot: signer1.name,
+            signer2Id: signer2?.id || null,
+            signer2NameSnapshot: signer2?.name || null,
         };
 
-        // 7. Guardar en repositorio de certificados
+        // 9. Guardar en repositorio de certificados
         const savedCertificate = await this.certificateRepository.create(certificateData as any);
 
-        // 7. Crear estado inicial del certificado
+        // 10. Crear estado inicial del certificado
         const createCertificateStateUseCase = getCreateCertificateStateUseCase();
         await createCertificateStateUseCase.execute(
             savedCertificate.id,

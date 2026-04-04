@@ -71,6 +71,10 @@ export default function GraduateDetailsPage() {
         disabled: 'bg-red-100 text-red-700',
     }[portalStatus];
 
+    const programLabel = student?.programNameSnapshot || student?.career || 'No especificado';
+    const campusLabel = student?.campusNameSnapshot || 'No especificado';
+    const academicAreaLabel = student?.academicAreaNameSnapshot || 'No especificada';
+
     const issueTemporaryPassword = async (action: 'activate' | 'reset-temporary-password') => {
         if (!student) return;
 
@@ -200,8 +204,28 @@ export default function GraduateDetailsPage() {
                                 <GraduationCap size={18} />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-500 font-medium">Carrera / Programa</p>
-                                <p className="font-medium text-gray-900">{student.career || 'No especificada'}</p>
+                                <p className="text-sm text-gray-500 font-medium">Programa Académico</p>
+                                <p className="font-medium text-gray-900">{programLabel}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                            <div className="bg-primary/10 p-2 rounded-lg text-primary mt-1">
+                                <GraduationCap size={18} />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500 font-medium">Recinto Institucional</p>
+                                <p className="font-medium text-gray-900">{campusLabel}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                            <div className="bg-primary/10 p-2 rounded-lg text-primary mt-1">
+                                <GraduationCap size={18} />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500 font-medium">Área Académica</p>
+                                <p className="font-medium text-gray-900">{academicAreaLabel}</p>
                             </div>
                         </div>
                         

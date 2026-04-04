@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCreateSignatureRequestUseCase } from '@/lib/container';
 import { requireInternalUserRole } from '@/lib/auth/server';
 import { notifySignatureRequest } from '@/lib/server/certificateWorkflowNotifications';
+import { FirebaseDigitalSignatureRepository } from '@/lib/infrastructure/repositories/FirebaseDigitalSignatureRepository';
+import { CreateSignatureRequestUseCase } from '@/lib/usecases/digitalSignature/CreateSignatureRequestUseCase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +14,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    const createSignatureRequestUseCase = getCreateSignatureRequestUseCase();
+    const createSignatureRequestUseCase = new CreateSignatureRequestUseCase(
+      new FirebaseDigitalSignatureRepository()
+    );
     const signatureRequest = await createSignatureRequestUseCase.execute(
       {
         certificateId: body.certificateId,

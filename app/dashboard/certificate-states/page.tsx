@@ -20,17 +20,25 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { STATE_CONFIG, StateTransition } from '@/lib/types/certificateState';
+import {
+  filterApprovedTemplatesForIssuance,
+  findPreferredTemplateForIssuance,
+  getTemplateIssuancePolicyMessage,
+} from '@/lib/config/certificate-template-policy';
 
 type SignerCandidate = {
   uid: string;
   displayName: string;
   email: string;
   roleCode: string;
+  authorizationMode?: string;
+  authorizedSignerNames?: string[];
 };
 
 type TemplateCandidate = {
   id: string;
   name: string;
+  isActive: boolean;
   description?: string;
 };
 
@@ -50,6 +58,22 @@ type TransitionExecutionRequest = {
 
 function getCertificateLabel(state: CertificateState) {
   return (state.metadata?.folio as string) || state.certificateId;
+}
+
+function getStateTemplateId(state: CertificateState) {
+  const templateId = state.metadata?.templateId;
+  return typeof templateId === 'string' ? templateId.trim() : '';
+}
+
+function getStateSignerIds(state: CertificateState) {
+  const signerIds = [
+    state.metadata?.signer1Id,
+    state.metadata?.signer2Id,
+  ];
+
+  return signerIds.filter(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0
+  );
 }
 
 function intersectTransitions(transitionGroups: StateTransition[][]): StateTransition[] {
@@ -267,6 +291,7 @@ export default function CertificateStatesPage() {
       'pending_signature': <Shield size={20} />,
       'signed': <Shield size={20} />,
       'issued': <Award size={20} />,
+      'available': <Award size={20} />,
       'cancelled': <XCircle size={20} />
     };
     return icons[state] || <Clock size={20} />;
@@ -280,6 +305,7 @@ export default function CertificateStatesPage() {
       'pending_signature': 'bg-purple-100 text-purple-800 border-purple-200',
       'signed': 'bg-indigo-100 text-indigo-800 border-indigo-200',
       'issued': 'bg-green-100 text-green-800 border-green-200',
+      'available': 'bg-emerald-100 text-emerald-800 border-emerald-200',
       'cancelled': 'bg-red-100 text-red-800 border-red-200'
     };
     return colors[state] || 'bg-gray-100 text-gray-800';
@@ -331,6 +357,7 @@ export default function CertificateStatesPage() {
             <option value="pending_signature">Esperando firma</option>
             <option value="signed">Firmados</option>
             <option value="issued">Emitidos</option>
+            <option value="available">Disponibles</option>
             <option value="cancelled">Cancelados</option>
           </select>
         </div>
@@ -586,17 +613,20 @@ function TransitionModal({
   const [templates, setTemplates] = useState<TemplateCandidate[]>([]);
   const [selectedSigner, setSelectedSigner] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [signerScopeMessage, setSignerScopeMessage] = useState('');
 
   const certificateLabel = getCertificateLabel(state);
   const currentStateLabel =
     STATE_CONFIG[state.currentState as keyof typeof STATE_CONFIG]?.label || state.currentState;
   const hasAvailableTransitions = availableTransitions.length > 0;
   const noTransitionMessage =
-    state.currentState === 'issued'
-      ? 'El certificado ya fue emitido y no tiene cambios manuales disponibles para tu rol desde este módulo. Si necesitas afectar su disponibilidad usa las restricciones del certificado o solicita a un administrador la cancelación.'
+    state.currentState === 'available'
+      ? 'El certificado ya está publicado y no tiene más acciones manuales disponibles para tu rol desde este módulo. Si necesitas afectar su disponibilidad usa las restricciones del certificado o solicita a un administrador la cancelación.'
+      : state.currentState === 'issued'
+        ? 'El certificado ya fue emitido internamente. Si corresponde, el siguiente paso es publicarlo como disponible para portal y validación pública.'
       : state.currentState === 'cancelled'
         ? 'El certificado ya está cancelado y no admite nuevos cambios en este flujo.'
-        : 'No hay transiciones manuales disponibles para el estado actual y tu rol.';
+      : 'No hay transiciones manuales disponibles para el estado actual y tu rol.';
 
   useEffect(() => {
     const fetchModalData = async () => {
@@ -604,7 +634,7 @@ function TransitionModal({
         setLoadingTransitions(true);
         const [transitionResponse, signerResponse, templateResponse] = await Promise.all([
           fetch(`/api/admin/certificate-states/transition?certificateId=${state.certificateId}`),
-          fetch('/api/admin/internal-users/signers'),
+          fetch(`/api/admin/internal-users/signers?certificateId=${state.certificateId}`),
           fetch('/api/admin/certificate-templates?activeOnly=true'),
         ]);
 
@@ -621,7 +651,17 @@ function TransitionModal({
         }
 
         if (templateData.success) {
-          setTemplates(templateData.data);
+          const templateCandidates = (templateData.data || []) as TemplateCandidate[];
+          const approvedTemplates = filterApprovedTemplatesForIssuance(templateCandidates);
+          setTemplates(approvedTemplates);
+
+          const preferredTemplate =
+            approvedTemplates.find((template) => template.id === getStateTemplateId(state)) ||
+            findPreferredTemplateForIssuance(templateCandidates);
+
+          if (preferredTemplate) {
+            setSelectedTemplate(preferredTemplate.id);
+          }
         }
       } catch (error) {
         console.error('Error fetching transition modal data:', error);
@@ -640,7 +680,7 @@ function TransitionModal({
     setLoading(true);
     try {
       if (selectedTransition === 'pending_signature' && !selectedSigner) {
-        alert('Selecciona un firmante para continuar.');
+        alert('Selecciona el usuario interno que firmará para continuar.');
         return;
       }
 
@@ -728,7 +768,7 @@ function TransitionModal({
           {hasAvailableTransitions && selectedTransition === 'pending_signature' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Firmante asignado
+                Usuario interno firmante
               </label>
               <select
                 required
@@ -736,16 +776,22 @@ function TransitionModal({
                 onChange={(e) => setSelectedSigner(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <option value="">Selecciona un firmante</option>
+                <option value="">Selecciona el usuario que firmará</option>
                 {signers.map((signer) => (
                   <option key={signer.uid} value={signer.uid}>
                     {signer.displayName} ({signer.roleCode})
+                    {signer.authorizedSignerNames?.length
+                      ? ` · ${signer.authorizedSignerNames.join(' / ')}`
+                      : ''}
                   </option>
                 ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                Se creará la solicitud de firma y se notificará al firmante.
+                Este usuario interno ejecutará la firma digital operativa. La autoridad impresa del certificado sale del catálogo de firmantes configurado en el documento.
               </p>
+              {signerScopeMessage ? (
+                <p className="mt-1 text-xs text-amber-700">{signerScopeMessage}</p>
+              ) : null}
             </div>
           )}
 
@@ -768,7 +814,9 @@ function TransitionModal({
                 ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                La emisión genera el PDF final, persiste el archivo y marca el certificado como emitido.
+                {getStateTemplateId(state)
+                  ? 'La emisión usará la plantilla ya configurada en el certificado.'
+                  : getTemplateIssuancePolicyMessage()}
               </p>
             </div>
           )}
@@ -829,6 +877,7 @@ function BulkTransitionModal({
   const [templates, setTemplates] = useState<TemplateCandidate[]>([]);
   const [selectedSigner, setSelectedSigner] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [signerScopeMessage, setSignerScopeMessage] = useState('');
 
   const distinctStateLabels = Array.from(
     new Set(
@@ -849,13 +898,18 @@ function BulkTransitionModal({
     const fetchModalData = async () => {
       try {
         setLoadingTransitions(true);
+        const signerIds = Array.from(new Set(states.flatMap((item) => getStateSignerIds(item))));
         const [transitionResponses, signerResponse, templateResponse] = await Promise.all([
           Promise.all(
             states.map((state) =>
               fetch(`/api/admin/certificate-states/transition?certificateId=${state.certificateId}`)
             )
           ),
-          fetch('/api/admin/internal-users/signers'),
+          fetch(
+            `/api/admin/internal-users/signers${
+              signerIds.length > 0 ? `?signerIds=${encodeURIComponent(signerIds.join(','))}` : ''
+            }`
+          ),
           fetch('/api/admin/certificate-templates?activeOnly=true'),
         ]);
 
@@ -875,10 +929,32 @@ function BulkTransitionModal({
 
         if (signerData.success) {
           setSigners(signerData.data);
+          setSignerScopeMessage(
+            typeof signerData.meta?.explanation === 'string' ? signerData.meta.explanation : ''
+          );
         }
 
         if (templateData.success) {
-          setTemplates(templateData.data);
+          const templateCandidates = (templateData.data || []) as TemplateCandidate[];
+          const approvedTemplates = filterApprovedTemplatesForIssuance(templateCandidates);
+          setTemplates(approvedTemplates);
+
+          const distinctTemplateIds = Array.from(
+            new Set(
+              states
+                .map((item) => getStateTemplateId(item))
+                .filter((templateId) => templateId.length > 0)
+            )
+          );
+
+          if (distinctTemplateIds.length === 1) {
+            setSelectedTemplate(distinctTemplateIds[0]);
+          } else {
+            const preferredTemplate = findPreferredTemplateForIssuance(templateCandidates);
+            if (preferredTemplate) {
+              setSelectedTemplate(preferredTemplate.id);
+            }
+          }
         }
       } catch (error) {
         console.error('Error fetching bulk transition modal data:', error);
@@ -895,7 +971,7 @@ function BulkTransitionModal({
     if (!selectedTransition) return;
 
     if (selectedTransition === 'pending_signature' && !selectedSigner) {
-      alert('Selecciona un firmante para continuar.');
+      alert('Selecciona el usuario interno que firmará para continuar.');
       return;
     }
 
@@ -1010,7 +1086,7 @@ function BulkTransitionModal({
           {hasAvailableTransitions && selectedTransition === 'pending_signature' && (
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Firmante asignado
+                Usuario interno firmante
               </label>
               <select
                 required
@@ -1018,16 +1094,22 @@ function BulkTransitionModal({
                 onChange={(e) => setSelectedSigner(e.target.value)}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <option value="">Selecciona un firmante</option>
+                <option value="">Selecciona el usuario que firmará</option>
                 {signers.map((signer) => (
                   <option key={signer.uid} value={signer.uid}>
                     {signer.displayName} ({signer.roleCode})
+                    {signer.authorizedSignerNames?.length
+                      ? ` · ${signer.authorizedSignerNames.join(' / ')}`
+                      : ''}
                   </option>
                 ))}
               </select>
               <p className="mt-1 text-xs text-gray-500">
-                Se generará una solicitud de firma para cada certificado seleccionado.
+                Se generará una solicitud de firma para cada certificado seleccionado. La autoridad impresa sigue saliendo del certificado, no de este usuario interno.
               </p>
+              {signerScopeMessage ? (
+                <p className="mt-1 text-xs text-amber-700">{signerScopeMessage}</p>
+              ) : null}
             </div>
           )}
 
@@ -1050,7 +1132,7 @@ function BulkTransitionModal({
                 ))}
               </select>
               <p className="mt-1 text-xs text-gray-500">
-                Se emitirá el PDF final para cada certificado seleccionado.
+                {getTemplateIssuancePolicyMessage()}
               </p>
             </div>
           )}

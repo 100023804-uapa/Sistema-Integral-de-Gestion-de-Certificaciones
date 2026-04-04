@@ -69,7 +69,13 @@ const STATUS_BADGE_CLASSES: Record<CertificateStatusValue, string> = {
 };
 
 const PUBLICLY_AVAILABLE_STATUSES = new Set<CertificateStatusValue>([
+  'available',
+  'active',
+  // Compatibilidad temporal con certificados legacy ya emitidos antes de cerrar la publicación explícita.
   'issued',
+]);
+
+const PUBLISHED_STATUSES = new Set<CertificateStatusValue>([
   'available',
   'active',
 ]);
@@ -78,6 +84,15 @@ const EMITTED_STATUSES = new Set<CertificateStatusValue>([
   'issued',
   'available',
   'active',
+]);
+
+const WORKFLOW_STATUSES = new Set<CertificateStatusValue>([
+  'draft',
+  'pending_review',
+  'verified',
+  'pending_signature',
+  'signed',
+  'issued',
 ]);
 
 export function isKnownCertificateStatus(
@@ -110,8 +125,16 @@ export function isCertificatePubliclyAvailable(value: unknown): boolean {
   return PUBLICLY_AVAILABLE_STATUSES.has(normalizeCertificateStatus(value));
 }
 
+export function isCertificatePublished(value: unknown): boolean {
+  return PUBLISHED_STATUSES.has(normalizeCertificateStatus(value));
+}
+
 export function isCertificateEmitted(value: unknown): boolean {
   return EMITTED_STATUSES.has(normalizeCertificateStatus(value));
+}
+
+export function isCertificateInWorkflow(value: unknown): boolean {
+  return WORKFLOW_STATUSES.has(normalizeCertificateStatus(value));
 }
 
 export function canDownloadCertificate(

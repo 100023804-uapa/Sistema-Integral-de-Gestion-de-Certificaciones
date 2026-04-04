@@ -45,6 +45,16 @@ export class FirebaseStudentRepository implements IStudentRepository {
         };
     }
 
+    private toOptionalString(value: unknown): string | undefined {
+        return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+    }
+
+    private stripUndefinedEntries<T extends Record<string, unknown>>(value: T): Partial<T> {
+        return Object.fromEntries(
+            Object.entries(value).filter(([, fieldValue]) => fieldValue !== undefined)
+        ) as Partial<T>;
+    }
+
     async findById(id: string): Promise<Student | null> {
         const docRef = doc(db, this.collectionName, id);
         const docSnap = await getDoc(docRef);
@@ -88,7 +98,7 @@ export class FirebaseStudentRepository implements IStudentRepository {
         };
 
         await setDoc(docRef, {
-            ...newStudent,
+            ...this.stripUndefinedEntries(newStudent as unknown as Record<string, unknown>),
             createdAt: Timestamp.fromDate(now),
             updatedAt: Timestamp.fromDate(now),
         });
@@ -121,7 +131,7 @@ export class FirebaseStudentRepository implements IStudentRepository {
         };
 
         await setDoc(docRef, {
-            ...payload,
+            ...this.stripUndefinedEntries(payload as unknown as Record<string, unknown>),
         }, { merge: true });
     }
 
@@ -168,6 +178,12 @@ export class FirebaseStudentRepository implements IStudentRepository {
             cedula: data.cedula,
             phone: data.phone,
             career: data.career,
+            programId: this.toOptionalString(data.programId),
+            programNameSnapshot: this.toOptionalString(data.programNameSnapshot) || this.toOptionalString(data.career),
+            campusId: this.toOptionalString(data.campusId),
+            campusNameSnapshot: this.toOptionalString(data.campusNameSnapshot),
+            academicAreaId: this.toOptionalString(data.academicAreaId),
+            academicAreaNameSnapshot: this.toOptionalString(data.academicAreaNameSnapshot),
             portalAccess: this.mapPortalAccess(data.portalAccess),
             createdAt: this.toDate(data.createdAt) || new Date(),
             updatedAt: this.toDate(data.updatedAt) || new Date(),

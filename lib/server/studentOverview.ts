@@ -96,6 +96,9 @@ function matchesStudentQuery(student: StudentOverviewItem, query: string) {
     student.email || '',
     student.cedula || '',
     student.career || '',
+    student.programName || '',
+    student.campusName || '',
+    student.academicAreaName || '',
   ];
 
   return fields.some((field) => normalizeText(field).includes(normalizedQuery));
@@ -159,6 +162,10 @@ export async function listStudentOverview(
       email: toOptionalString(data.email),
       cedula: toOptionalString(data.cedula),
       career: toOptionalString(data.career),
+      programName:
+        toOptionalString(data.programNameSnapshot) || toOptionalString(data.career),
+      campusName: toOptionalString(data.campusNameSnapshot),
+      academicAreaName: toOptionalString(data.academicAreaNameSnapshot),
       createdAt: toDate(data.createdAt)?.toISOString() ?? null,
       updatedAt: toDate(data.updatedAt)?.toISOString() ?? null,
       certificateCount: stats?.certificateCount ?? 0,

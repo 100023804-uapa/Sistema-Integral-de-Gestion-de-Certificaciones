@@ -238,7 +238,7 @@ export class FirebaseCertificateStateRepository {
 
   private getPendingStatesForRole(userRole: string): CertificateStateValue[] {
     const roleStates: Record<string, CertificateStateValue[]> = {
-      coordinator: ['draft', 'verified', 'signed'],
+      coordinator: ['draft', 'verified', 'signed', 'issued'],
       verifier: ['pending_review'],
       signer: ['pending_signature'],
       administrator: [
@@ -247,6 +247,7 @@ export class FirebaseCertificateStateRepository {
         'verified',
         'pending_signature',
         'signed',
+        'issued',
         'cancelled',
       ],
     };
@@ -256,7 +257,7 @@ export class FirebaseCertificateStateRepository {
 
   private getVisibleStatesForRole(userRole: string): CertificateStateValue[] {
     const roleStates: Record<string, CertificateStateValue[]> = {
-      coordinator: ['draft', 'verified', 'signed', 'issued', 'cancelled'],
+      coordinator: ['draft', 'verified', 'signed', 'issued', 'available', 'cancelled'],
       verifier: ['pending_review'],
       signer: ['pending_signature', 'signed'],
       administrator: [
@@ -266,6 +267,7 @@ export class FirebaseCertificateStateRepository {
         'pending_signature',
         'signed',
         'issued',
+        'available',
         'cancelled',
       ],
     };
@@ -294,13 +296,14 @@ export class FirebaseCertificateStateRepository {
       value === 'pending_signature' ||
       value === 'signed' ||
       value === 'issued' ||
+      value === 'available' ||
       value === 'cancelled'
     ) {
       return value;
     }
 
     if (value === 'active') {
-      return 'issued';
+      return 'available';
     }
 
     return null;
@@ -352,6 +355,9 @@ export class FirebaseCertificateStateRepository {
         studentName: data.studentName,
         academicProgram: data.academicProgram,
         pdfUrl: data.pdfUrl,
+        templateId: data.templateId,
+        signer1Id: data.signer1Id,
+        signer2Id: data.signer2Id,
       },
     };
   }

@@ -41,7 +41,13 @@ export async function PUT(
       email: data.email,
       phone: data.phone,
       cedula: data.cedula,
-      career: data.career,
+      career: data.programNameSnapshot || data.career,
+      programId: data.programId,
+      programNameSnapshot: data.programNameSnapshot,
+      campusId: data.campusId,
+      campusNameSnapshot: data.campusNameSnapshot,
+      academicAreaId: data.academicAreaId,
+      academicAreaNameSnapshot: data.academicAreaNameSnapshot,
     });
 
     return NextResponse.json({ success: true, message: 'Participante actualizado exitosamente' }, { status: 200 });

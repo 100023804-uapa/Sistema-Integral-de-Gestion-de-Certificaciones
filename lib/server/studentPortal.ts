@@ -26,6 +26,9 @@ export interface StudentPortalProfile {
   cedula?: string;
   phone?: string;
   career?: string;
+  programName?: string;
+  campusName?: string;
+  academicAreaName?: string;
   authUid?: string;
   portalAccessEnabled: boolean;
   portalAccessStatus: StudentPortalAccountStatus;
@@ -188,6 +191,10 @@ function mapStudentProfile(
     cedula: toOptionalString(data.cedula),
     phone: toOptionalString(data.phone),
     career: toOptionalString(data.career),
+    programName:
+      toOptionalString(data.programNameSnapshot) || toOptionalString(data.career),
+    campusName: toOptionalString(data.campusNameSnapshot),
+    academicAreaName: toOptionalString(data.academicAreaNameSnapshot),
     authUid,
     portalAccessEnabled,
     portalAccessStatus: portalStatus,

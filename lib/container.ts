@@ -35,7 +35,6 @@ import { AssignRoleUseCase } from './usecases/role/AssignRoleUseCase';
 import { CreateCertificateStateUseCase } from './usecases/certificateState/CreateCertificateStateUseCase';
 import { TransitionStateUseCase } from './usecases/certificateState/TransitionStateUseCase';
 import { GetStateHistoryUseCase } from './usecases/certificateState/GetStateHistoryUseCase';
-import { CreateSignatureRequestUseCase } from './usecases/digitalSignature/CreateSignatureRequestUseCase';
 import { SignCertificateUseCase } from './usecases/digitalSignature/SignCertificateUseCase';
 import { RejectSignatureUseCase } from './usecases/digitalSignature/RejectSignatureUseCase';
 import { GetSignatureRequestsUseCase } from './usecases/digitalSignature/GetSignatureRequestsUseCase';
@@ -247,11 +246,6 @@ export function getGetStateHistoryUseCase() {
     return new GetStateHistoryUseCase(getCertificateStateRepository());
 }
 
-// Digital Signature Use Cases
-export function getCreateSignatureRequestUseCase() {
-    return new CreateSignatureRequestUseCase(getDigitalSignatureRepository());
-}
-
 export function getSignCertificateUseCase() {
     return new SignCertificateUseCase(getDigitalSignatureRepository());
 }
@@ -295,6 +289,7 @@ export function getCreateCertificateUseCase() {
     const studentRepository = getStudentRepository();
     const campusRepository = getCampusRepository();
     const academicAreaRepository = getAcademicAreaRepository();
+    const academicProgramRepository = getAcademicProgramRepository();
     const signerRepository = getSignerRepository();
     const templateRepository = getCertificateTemplateRepository();
     const generateFolio = new GenerateFolio(certificateRepository);
@@ -305,6 +300,7 @@ export function getCreateCertificateUseCase() {
         generateFolio,
         campusRepository,
         academicAreaRepository,
+        academicProgramRepository,
         signerRepository,
         templateRepository
     );

@@ -33,6 +33,11 @@ import { AcademicArea } from '@/lib/types/academicArea';
 import { Campus } from '@/lib/types/campus';
 import { CertificateTemplate } from '@/lib/types/certificateTemplate';
 import { Signer } from '@/lib/types/signer';
+import {
+  filterApprovedTemplatesForIssuance,
+  findPreferredTemplateForIssuance,
+  getTemplateIssuancePolicyMessage,
+} from '@/lib/config/certificate-template-policy';
 
 type PreviewFilter = 'all' | CertificateImportPreviewRow['status'];
 type ResultFilter = 'all' | CertificateImportDetail['type'];
@@ -171,8 +176,9 @@ export default function ImportCertificatesPage() {
           fetch('/api/admin/academic-programs?active=true'),
         ]);
 
+        const approvedTemplates = filterApprovedTemplatesForIssuance(templateData);
         setCampuses(campusData);
-        setTemplates(templateData);
+        setTemplates(approvedTemplates);
 
         const signersData = await signersResponse.json();
         if (signersData.success) {
@@ -182,6 +188,11 @@ export default function ImportCertificatesPage() {
         const programsData = await programsResponse.json();
         if (programsData.success) {
           setPrograms(programsData.data);
+        }
+
+        const preferredTemplate = findPreferredTemplateForIssuance(templateData);
+        if (preferredTemplate) {
+          setSelectedTemplateId(preferredTemplate.id);
         }
       } catch (configError) {
         console.error('Error loading certificate import config:', configError);
@@ -297,6 +308,16 @@ export default function ImportCertificatesPage() {
 
     if (blockingErrors) {
       setError('Hay columnas obligatorias faltantes. Corrige el archivo antes de importar.');
+      return;
+    }
+
+    if (!selectedTemplateId) {
+      setError('Debes seleccionar una plantilla institucional antes de importar.');
+      return;
+    }
+
+    if (!selectedSigner1Id) {
+      setError('Debes seleccionar una autoridad firmante principal antes de importar.');
       return;
     }
 
@@ -463,15 +484,19 @@ export default function ImportCertificatesPage() {
               <select
                 value={selectedTemplateId}
                 onChange={(event) => setSelectedTemplateId(event.target.value)}
+                required
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white text-sm"
               >
-                <option value="">Predeterminada del sistema</option>
+                <option value="">Selecciona una plantilla activa</option>
                 {templates.map((template) => (
                   <option key={template.id} value={template.id}>
                     {template.name} ({template.type})
                   </option>
                 ))}
               </select>
+              <p className="text-xs text-gray-400">
+                {getTemplateIssuancePolicyMessage()}
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -481,9 +506,10 @@ export default function ImportCertificatesPage() {
               <select
                 value={selectedSigner1Id}
                 onChange={(event) => setSelectedSigner1Id(event.target.value)}
+                required
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white text-sm"
               >
-                <option value="">Sin firmante</option>
+                <option value="">Selecciona la autoridad principal</option>
                 {signers.map((signer) => (
                   <option key={signer.id} value={signer.id}>
                     {signer.name} ({signer.title})
@@ -700,13 +726,13 @@ export default function ImportCertificatesPage() {
             </div>
             <div className="rounded-xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm text-gray-600 space-y-1">
               <p><span className="font-bold text-gray-800">Recinto:</span> {campuses.find((campus) => campus.id === selectedCampusId)?.name || '-'}</p>
-              <p><span className="font-bold text-gray-800">Plantilla:</span> {selectedTemplateId ? (templates.find((template) => template.id === selectedTemplateId)?.name || '-') : 'Predeterminada del sistema'}</p>
-              <p><span className="font-bold text-gray-800">Firmantes:</span> {[signers.find((signer) => signer.id === selectedSigner1Id)?.name, signers.find((signer) => signer.id === selectedSigner2Id)?.name].filter(Boolean).join(' / ') || 'Sin firmantes globales'}</p>
+              <p><span className="font-bold text-gray-800">Plantilla:</span> {selectedTemplateId ? (templates.find((template) => template.id === selectedTemplateId)?.name || '-') : 'Pendiente de selección'}</p>
+              <p><span className="font-bold text-gray-800">Firmantes:</span> {[signers.find((signer) => signer.id === selectedSigner1Id)?.name, signers.find((signer) => signer.id === selectedSigner2Id)?.name].filter(Boolean).join(' / ') || 'Pendiente de selección'}</p>
             </div>
 
             <button
               onClick={handleImport}
-              disabled={loading || !selectedCampusId || blockingErrors}
+              disabled={loading || !selectedCampusId || !selectedTemplateId || !selectedSigner1Id || blockingErrors}
               className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? <Loader2 className="animate-spin" /> : <Upload size={20} />}

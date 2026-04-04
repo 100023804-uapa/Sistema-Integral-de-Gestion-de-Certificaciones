@@ -87,6 +87,13 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
   },
   {
     kind: "link",
+    label: "Plantillas de Certificado",
+    icon: Palette,
+    href: "/dashboard/certificate-templates",
+    allowedRoles: ["administrator", "coordinator"],
+  },
+  {
+    kind: "link",
     label: "Gestor de Medios",
     icon: ImageIcon,
     href: "/dashboard/media",
@@ -137,13 +144,6 @@ export const dashboardMenuItems: DashboardMenuItem[] = [
     icon: PenTool,
     href: "/dashboard/digital-signatures",
     allowedRoles: ["administrator", "signer"],
-  },
-  {
-    kind: "link",
-    label: "Plantillas de Diseno",
-    icon: Palette,
-    href: "/dashboard/certificate-templates",
-    allowedRoles: ["administrator", "coordinator"],
   },
   {
     kind: "separator",

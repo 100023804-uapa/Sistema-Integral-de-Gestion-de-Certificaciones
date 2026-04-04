@@ -10,7 +10,9 @@ import {
   QrCode, 
   BarChart3, 
   Users, 
-  AlertCircle
+  AlertCircle,
+  Clock3,
+  GraduationCap
 } from 'lucide-react';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { QuickAction } from '@/components/dashboard/QuickAction';
@@ -106,9 +108,9 @@ export default function DashboardPage() {
         >
           <StatsCard 
             variant="primary"
-            title="Certificados Emitidos"
-            value={stats?.totalIssued.toLocaleString() || '0'}
-            icon={CheckCircle}
+            title="Certificados Registrados"
+            value={stats?.totalCertificates.toLocaleString() || '0'}
+            icon={FileText}
           />
         </motion.div>
         
@@ -118,9 +120,9 @@ export default function DashboardPage() {
           transition={{ delay: 0.2 }}
         >
           <StatsCard 
-            title="Pendientes (Firma/Rev.)"
-            value={stats?.pendingValidation || '0'}
-            icon={FileText}
+            title="En Flujo"
+            value={stats?.inWorkflow || '0'}
+            icon={Clock3}
           />
         </motion.div>
 
@@ -130,9 +132,9 @@ export default function DashboardPage() {
           transition={{ delay: 0.3 }}
         >
           <StatsCard 
-            title="Programas Activos"
-            value={stats?.activePrograms || '0'}
-            icon={BarChart3}
+            title="Participantes Registrados"
+            value={stats?.totalParticipants || '0'}
+            icon={GraduationCap}
           />
         </motion.div>
 
@@ -142,18 +144,19 @@ export default function DashboardPage() {
           transition={{ delay: 0.4 }}
         >
           <StatsCard 
-            title="Bloqueados / Revocados"
-            value={stats?.blockedCertificates || '0'}
-            icon={AlertCircle}
+            title="Publicados"
+            value={stats?.publishedCertificates || '0'}
+            icon={CheckCircle}
+            trend={stats?.blockedCertificates ? `Bloq. ${stats.blockedCertificates}` : undefined}
           />
         </motion.div>
       </div>
 
       {/* Progress Bars for Macro Analysis */}
-      {stats && (stats.totalIssued > 0 || stats.blockedCertificates > 0) && (
+      {stats && stats.totalCertificates > 0 && (
         <section className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">
-            Distribución por Tipo de Programa
+            Distribución Real del Lote
           </h2>
           <div className="space-y-4">
             <div>
@@ -177,6 +180,42 @@ export default function DashboardPage() {
                 <div 
                   className="h-full bg-accent" 
                   style={{ width: `${(stats.byType?.PROFUNDO || 0) / Math.max(1, (stats.byType?.CAP || 0) + (stats.byType?.PROFUNDO || 0)) * 100}%` }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-sm font-bold text-gray-700 mb-1">
+                <span>En flujo</span>
+                <span>{stats.inWorkflow || 0}</span>
+              </div>
+              <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-amber-400" 
+                  style={{ width: `${(stats.inWorkflow || 0) / Math.max(1, stats.totalCertificates || 0) * 100}%` }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-sm font-bold text-gray-700 mb-1">
+                <span>Publicados</span>
+                <span>{stats.publishedCertificates || 0}</span>
+              </div>
+              <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-emerald-500" 
+                  style={{ width: `${(stats.publishedCertificates || 0) / Math.max(1, stats.totalCertificates || 0) * 100}%` }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-sm font-bold text-gray-700 mb-1">
+                <span>Programas representados</span>
+                <span>{stats.activePrograms || 0}</span>
+              </div>
+              <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-accent" 
+                  style={{ width: `${(stats.activePrograms || 0) / Math.max(1, stats.totalCertificates || 0) * 100}%` }}
                 />
               </div>
             </div>

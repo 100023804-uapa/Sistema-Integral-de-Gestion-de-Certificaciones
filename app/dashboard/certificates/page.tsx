@@ -437,6 +437,8 @@ export default function CertificatesPage() {
 
                         <option value="issued">Emitido</option>
 
+                        <option value="available">Disponible</option>
+
                         <option value="blocked_payment">Bloqueado por pago</option>
 
                         <option value="blocked_documents">Bloqueado por documentacion</option>

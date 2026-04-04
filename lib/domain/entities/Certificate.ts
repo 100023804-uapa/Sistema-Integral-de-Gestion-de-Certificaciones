@@ -35,6 +35,8 @@ export interface Certificate {
   cedula?: string | null;
   type: CertificateType;
   academicProgram: string;
+  programId?: string | null;
+  programCodeSnapshot?: string | null;
   issueDate: Date;
   expirationDate?: Date | null;
   status: CertificateStatus;
@@ -43,8 +45,14 @@ export interface Certificate {
   publicVerificationCode?: string;
   pdfUrl?: string | null;
   campusId: string;
+  campusNameSnapshot?: string | null;
   academicAreaId?: string | null;
+  academicAreaNameSnapshot?: string | null;
   certificateTypeId?: string | null;
+  signer1Id?: string | null;
+  signer1NameSnapshot?: string | null;
+  signer2Id?: string | null;
+  signer2NameSnapshot?: string | null;
   templateSnapshot?: CertificateTemplateSnapshot | null;
   metadata: Record<string, any>;
   previousStatus?: CertificateStatus;
@@ -57,6 +65,8 @@ export interface Certificate {
   signedBy?: string;
   issuedAt?: Date;
   issuedBy?: string;
+  availableAt?: Date;
+  availableBy?: string;
   restriction?: CertificateRestriction;
   createdAt: Date;
   updatedAt: Date;

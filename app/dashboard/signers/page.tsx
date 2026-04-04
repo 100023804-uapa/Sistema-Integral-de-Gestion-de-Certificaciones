@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Signer, getAccessRepository } from '@/lib/container';
+import { Signer } from '@/lib/container';
 import { Plus, Edit, Trash2, UserCheck, Briefcase, Building, Image as ImageIcon, X, Mail, UserPlus, UserMinus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAlert } from '@/hooks/useAlert';
@@ -10,7 +10,14 @@ import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import Image from 'next/image';
-import { AccessUser } from '@/lib/infrastructure/repositories/FirebaseAccessRepository';
+
+type InternalUserCandidate = {
+  uid: string;
+  email: string;
+  displayName: string;
+  roleCode: string;
+  status: string;
+};
 
 export default function SignersPage() {
   const [signers, setSigners] = useState<Signer[]>([]);
@@ -271,16 +278,20 @@ function SignerFormModal({
     isActive: signer?.isActive ?? true,
   });
   const [loading, setLoading] = useState(false);
-  const [availableUsers, setAvailableUsers] = useState<AccessUser[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<InternalUserCandidate[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const { showAlert } = useAlert();
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const accessRepo = getAccessRepository();
-        const usersList = await accessRepo.listAdmins();
-        setAvailableUsers(usersList);
+        const response = await fetch('/api/admin/internal-users/signers');
+        const payload = await response.json();
+        if (payload.success) {
+          setAvailableUsers(payload.data || []);
+        } else {
+          setAvailableUsers([]);
+        }
       } catch (error) {
         console.error('Error fetching users for signing:', error);
       }
@@ -483,9 +494,9 @@ function SignerFormModal({
             <div className="pt-2 border-t mt-4">
               <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center gap-2">
                 <Mail size={16} className="text-primary" />
-                Vincular Usuarios Autorizados <span className="text-gray-400 font-normal">(Opcional)</span>
+                Vincular Usuarios Internos Firmantes <span className="text-gray-400 font-normal">(Opcional)</span>
               </label>
-              <p className="text-xs text-gray-500 mb-3">Asigna secretarios o asistentes que podrán cargar certificados a nombre de este firmante.</p>
+              <p className="text-xs text-gray-500 mb-3">Relaciona correos de usuarios internos con rol firmante o administrador que podrán firmar digitalmente por esta autoridad.</p>
               
               <div className="space-y-3">
                 {/* Lista de vinculados */}
@@ -527,7 +538,10 @@ function SignerFormModal({
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto animate-in slide-in-from-top-2 duration-200">
                       {availableUsers
                         .filter(u => 
-                          u.email.toLowerCase().includes(userSearch.toLowerCase()) &&
+                          (
+                            u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+                            (u.displayName || '').toLowerCase().includes(userSearch.toLowerCase())
+                          ) &&
                           !formData.allowedEmails.includes(u.email)
                         )
                         .map(user => (
@@ -541,14 +555,18 @@ function SignerFormModal({
                             className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center justify-between border-b last:border-0"
                           >
                             <div className="flex flex-col">
-                              <span className="text-sm font-medium text-gray-900">{user.email}</span>
+                              <span className="text-sm font-medium text-gray-900">{user.displayName || user.email}</span>
+                              <span className="text-xs text-gray-500">{user.email} · {user.roleCode}</span>
                             </div>
                             <UserPlus size={16} className="text-gray-400" />
                           </button>
                         ))
                       }
                       {availableUsers.filter(u => 
-                        u.email.toLowerCase().includes(userSearch.toLowerCase()) &&
+                        (
+                          u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+                          (u.displayName || '').toLowerCase().includes(userSearch.toLowerCase())
+                        ) &&
                         !formData.allowedEmails.includes(u.email)
                       ).length === 0 && (
                         <div className="p-4 text-center text-sm text-gray-500">No hay usuarios disponibles que coincidan</div>

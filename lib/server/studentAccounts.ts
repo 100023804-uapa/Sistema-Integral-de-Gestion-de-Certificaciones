@@ -85,6 +85,22 @@ function mapStudentSnapshot(
     cedula: typeof source.cedula === 'string' ? source.cedula : undefined,
     phone: typeof source.phone === 'string' ? source.phone : undefined,
     career: typeof source.career === 'string' ? source.career : undefined,
+    programId: typeof source.programId === 'string' ? source.programId : undefined,
+    programNameSnapshot:
+      typeof source.programNameSnapshot === 'string'
+        ? source.programNameSnapshot
+        : typeof source.career === 'string'
+          ? source.career
+          : undefined,
+    campusId: typeof source.campusId === 'string' ? source.campusId : undefined,
+    campusNameSnapshot:
+      typeof source.campusNameSnapshot === 'string' ? source.campusNameSnapshot : undefined,
+    academicAreaId:
+      typeof source.academicAreaId === 'string' ? source.academicAreaId : undefined,
+    academicAreaNameSnapshot:
+      typeof source.academicAreaNameSnapshot === 'string'
+        ? source.academicAreaNameSnapshot
+        : undefined,
     portalAccess: mapPortalAccess(source.portalAccess),
     createdAt: toDate(source.createdAt) ?? new Date(),
     updatedAt: toDate(source.updatedAt) ?? new Date(),

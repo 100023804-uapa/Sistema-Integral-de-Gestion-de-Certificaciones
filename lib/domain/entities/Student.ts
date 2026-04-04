@@ -22,6 +22,12 @@ export interface Student {
   cedula?: string;
   phone?: string;
   career?: string; // Carrera o Departamento
+  programId?: string;
+  programNameSnapshot?: string;
+  campusId?: string;
+  campusNameSnapshot?: string;
+  academicAreaId?: string;
+  academicAreaNameSnapshot?: string;
   portalAccess?: StudentPortalAccess;
   createdAt: Date;
   updatedAt: Date;

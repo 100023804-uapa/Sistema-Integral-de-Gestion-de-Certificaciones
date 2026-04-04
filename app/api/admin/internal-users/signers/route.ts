@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireInternalUserRole } from '@/lib/auth/server';
-import { listInternalUsers } from '@/lib/server/internalUsers';
+import { listEligibleSigningUsersForCertificate, listEligibleSigningUsersForSignerIds } from '@/lib/server/signerAuthorization';
 
 export async function GET(request: NextRequest) {
   const auth = await requireInternalUserRole(request, ['administrator', 'coordinator']);
@@ -9,14 +9,29 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const users = await listInternalUsers();
-    const signers = users.filter(
-      (user) =>
-        user.status !== 'disabled' &&
-        (user.roleCode === 'signer' || user.roleCode === 'administrator')
-    );
+    const { searchParams } = new URL(request.url);
+    const certificateId = searchParams.get('certificateId');
+    const signerIdsParam = searchParams.get('signerIds');
 
-    return NextResponse.json({ success: true, data: signers });
+    const authorization = certificateId
+      ? await listEligibleSigningUsersForCertificate(certificateId)
+      : await listEligibleSigningUsersForSignerIds(
+          (signerIdsParam || '')
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean)
+        );
+
+    return NextResponse.json({
+      success: true,
+      data: authorization.users,
+      meta: {
+        mode: authorization.mode,
+        explanation: authorization.explanation,
+        signerIds: authorization.signers.map((signer) => signer.id),
+        signerNames: authorization.signers.map((signer) => signer.name),
+      },
+    });
   } catch (error) {
     console.error('Error listing signer candidates:', error);
     return NextResponse.json(

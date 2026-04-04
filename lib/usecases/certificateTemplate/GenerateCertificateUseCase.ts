@@ -10,6 +10,10 @@ import {
   getTransitionStateUseCase,
 } from '@/lib/container';
 import { CertificateGenerationService } from '@/lib/services/CertificateGenerationService';
+import {
+  getTemplateIssuancePolicyMessage,
+  isTemplateApprovedForIssuance,
+} from '@/lib/config/certificate-template-policy';
 
 export class GenerateCertificateUseCase {
   constructor(
@@ -53,10 +57,18 @@ export class GenerateCertificateUseCase {
       throw new Error('La plantilla especificada no está activa');
     }
 
+    if (!isTemplateApprovedForIssuance(template)) {
+      throw new Error(getTemplateIssuancePolicyMessage());
+    }
+
     const certificateRepository = getCertificateRepository();
     const certificate = await certificateRepository.findById(certificateId);
     if (!certificate) {
       throw new Error('El certificado especificado no existe');
+    }
+
+    if (certificate.templateId && certificate.templateId !== template.id) {
+      throw new Error('La emisión debe usar la plantilla configurada en el certificado.');
     }
 
     const transitionStateUseCase = getTransitionStateUseCase();
@@ -82,9 +94,12 @@ export class GenerateCertificateUseCase {
     let signer1Data = {};
     let signer2Data = {};
 
-    if (certificate.metadata?.signer1Id) {
+    const signer1Id = certificate.signer1Id || certificate.metadata?.signer1Id;
+    const signer2Id = certificate.signer2Id || certificate.metadata?.signer2Id;
+
+    if (signer1Id) {
       try {
-        const signer = await getSignerRepository().findById(certificate.metadata.signer1Id);
+        const signer = await getSignerRepository().findById(signer1Id);
         if (signer && signer.isActive) {
           signer1Data = {
             signer1_Name: signer.name,
@@ -97,9 +112,9 @@ export class GenerateCertificateUseCase {
       }
     }
 
-    if (certificate.metadata?.signer2Id) {
+    if (signer2Id) {
       try {
-        const signer = await getSignerRepository().findById(certificate.metadata.signer2Id);
+        const signer = await getSignerRepository().findById(signer2Id);
         if (signer && signer.isActive) {
           signer2Data = {
             signer2_Name: signer.name,

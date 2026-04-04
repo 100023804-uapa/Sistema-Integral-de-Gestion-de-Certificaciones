@@ -8,6 +8,9 @@ export interface StudentOverviewItem {
   email: string | null;
   cedula: string | null;
   career: string | null;
+  programName: string | null;
+  campusName: string | null;
+  academicAreaName: string | null;
   createdAt: string | null;
   updatedAt: string | null;
   certificateCount: number;

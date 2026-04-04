@@ -6,11 +6,14 @@ import * as XLSX from 'xlsx';
 import {
   AlertCircle,
   ArrowLeft,
+  Briefcase,
+  Building2,
   CheckCircle2,
   ClipboardCheck,
   Download,
   FileSpreadsheet,
   Loader2,
+  MapPin,
   ShieldCheck,
   Upload,
   UserPlus,
@@ -26,8 +29,13 @@ import { toSerializableImportRows } from '@/lib/application/utils/serialize-impo
 import {
   importStudentsFromExcel,
   StudentImportDetail,
+  StudentImportOptions,
   StudentImportResult,
 } from '@/app/actions/import-students';
+import { getListCampusesUseCase } from '@/lib/container';
+import type { AcademicArea } from '@/lib/types/academicArea';
+import type { AcademicProgram } from '@/lib/types/academicProgram';
+import type { Campus } from '@/lib/types/campus';
 
 const REQUIRED_COLUMNS = ['Matricula', 'Nombres', 'Apellidos'];
 const OPTIONAL_COLUMNS = ['Cedula', 'Email', 'Telefono', 'Carrera'];
@@ -105,6 +113,7 @@ export default function ImportGraduatesPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState(true);
   const [previewRows, setPreviewRows] = useState<StudentImportPreviewRow[]>([]);
   const [missingColumns, setMissingColumns] = useState<string[]>([]);
   const [result, setResult] = useState<StudentImportResult | null>(null);
@@ -112,6 +121,12 @@ export default function ImportGraduatesPage() {
   const [previewFilter, setPreviewFilter] = useState<PreviewFilter>('all');
   const [resultFilter, setResultFilter] = useState<ResultFilter>('all');
   const [copied, setCopied] = useState(false);
+  const [campuses, setCampuses] = useState<Campus[]>([]);
+  const [programs, setPrograms] = useState<AcademicProgram[]>([]);
+  const [areas, setAreas] = useState<AcademicArea[]>([]);
+  const [selectedCampusId, setSelectedCampusId] = useState('');
+  const [selectedProgramId, setSelectedProgramId] = useState('');
+  const [selectedAcademicAreaId, setSelectedAcademicAreaId] = useState('');
 
   const summary = {
     total: previewRows.length,
@@ -132,11 +147,70 @@ export default function ImportGraduatesPage() {
       ? result?.details ?? []
       : result.details.filter((detail) => detail.type === resultFilter);
 
+  const selectedCampus = campuses.find((campus) => campus.id === selectedCampusId);
+  const selectedProgram = programs.find((program) => program.id === selectedProgramId);
+  const selectedAcademicArea = areas.find((area) => area.id === selectedAcademicAreaId);
+
   useEffect(() => {
     if (!copied) return;
     const timer = window.setTimeout(() => setCopied(false), 2200);
     return () => window.clearTimeout(timer);
   }, [copied]);
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const [campusData, programsResponse] = await Promise.all([
+          getListCampusesUseCase().execute(true),
+          fetch('/api/admin/academic-programs?active=true'),
+        ]);
+
+        setCampuses(campusData);
+
+        const programsPayload = await programsResponse.json();
+        if (programsPayload.success) {
+          setPrograms(programsPayload.data || []);
+        } else {
+          setPrograms([]);
+        }
+      } catch (configError) {
+        console.error('Error loading participant import config:', configError);
+        setError('No fue posible cargar la configuración institucional del lote.');
+      } finally {
+        setLoadingConfig(false);
+      }
+    };
+
+    loadConfig();
+  }, []);
+
+  useEffect(() => {
+    const loadAcademicAreas = async () => {
+      if (!selectedCampusId) {
+        setAreas([]);
+        setSelectedAcademicAreaId('');
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/admin/academic-areas?campusId=${selectedCampusId}&activeOnly=true`
+        );
+        const payload = await response.json();
+
+        if (payload.success) {
+          setAreas(payload.data || []);
+        } else {
+          setAreas([]);
+        }
+      } catch (areaError) {
+        console.error('Error loading participant academic areas:', areaError);
+        setAreas([]);
+      }
+    };
+
+    loadAcademicAreas();
+  }, [selectedCampusId]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -171,11 +245,27 @@ export default function ImportGraduatesPage() {
 
   const handleImport = async () => {
     if (!previewRows.length || missingColumns.length > 0) return;
+
+    if (!selectedCampus || !selectedProgram) {
+      setError('Debes seleccionar recinto y programa antes de importar el lote.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
+      const importOptions: StudentImportOptions = {
+        campusId: selectedCampus.id,
+        campusName: selectedCampus.name,
+        programId: selectedProgram.id,
+        programName: selectedProgram.name,
+        academicAreaId: selectedAcademicArea?.id || undefined,
+        academicAreaName: selectedAcademicArea?.name || undefined,
+      };
+
       const importResult = await importStudentsFromExcel(
-        toSerializableImportRows(previewRows.map((row) => row.source))
+        toSerializableImportRows(previewRows.map((row) => row.source)),
+        importOptions
       );
       setResult(importResult);
       setResultFilter(importResult.errors > 0 ? 'error' : 'all');
@@ -195,12 +285,15 @@ export default function ImportGraduatesPage() {
     setError('');
     setPreviewFilter('all');
     setResultFilter('all');
+    setSelectedCampusId('');
+    setSelectedAcademicAreaId('');
+    setSelectedProgramId('');
   };
 
   const steps = [
-    ['01', 'Preparar archivo', file ? 'Listo' : 'En foco'],
-    ['02', 'Revisar prevalidacion', previewRows.length ? 'Listo' : 'Pendiente'],
-    ['03', 'Procesar lote', result ? 'Listo' : previewRows.length ? 'En foco' : 'Pendiente'],
+    ['01', 'Configurar lote', selectedCampusId && selectedProgramId ? 'Listo' : 'En foco'],
+    ['02', 'Cargar archivo', file ? 'Listo' : selectedCampusId && selectedProgramId ? 'En foco' : 'Pendiente'],
+    ['03', 'Revisar prevalidacion', previewRows.length ? 'Listo' : 'Pendiente'],
     ['04', 'Cerrar con reporte', result ? 'En foco' : 'Pendiente'],
   ] as const;
 
@@ -247,22 +340,101 @@ export default function ImportGraduatesPage() {
         </div>
       </div>
 
+      <div className="rounded-[28px] border border-gray-100 bg-white p-6 shadow-sm space-y-5">
+        <div>
+          <h2 className="text-lg font-black text-gray-800">Paso 1. Configuración institucional del lote</h2>
+          <p className="text-sm text-gray-400">
+            Estos valores se aplicarán a todos los participantes importados para asegurar vínculo institucional desde origen.
+          </p>
+        </div>
+
+        {loadingConfig ? (
+          <div className="flex items-center gap-2 text-gray-400">
+            <Loader2 size={18} className="animate-spin" />
+            <span className="text-sm">Cargando catálogos...</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                <Building2 size={14} className="text-primary" /> Recinto <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedCampusId}
+                onChange={(event) => setSelectedCampusId(event.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white text-sm"
+              >
+                <option value="">Selecciona un recinto</option>
+                {campuses.map((campus) => (
+                  <option key={campus.id} value={campus.id}>
+                    {campus.name} ({campus.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                <Briefcase size={14} className="text-primary" /> Programa <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedProgramId}
+                onChange={(event) => setSelectedProgramId(event.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white text-sm"
+              >
+                <option value="">Selecciona un programa</option>
+                {programs.map((program) => (
+                  <option key={program.id} value={program.id}>
+                    {program.name} ({program.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                <MapPin size={14} className="text-blue-500" /> Área Académica
+              </label>
+              <select
+                value={selectedAcademicAreaId}
+                onChange={(event) => setSelectedAcademicAreaId(event.target.value)}
+                disabled={!selectedCampusId}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {selectedCampusId ? 'Selecciona un área (opcional)' : 'Primero selecciona un recinto'}
+                </option>
+                {areas.map((area) => (
+                  <option key={area.id} value={area.id}>
+                    {area.name} ({area.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
         <section className="space-y-6">
           <div className="rounded-[28px] border border-gray-100 bg-white p-6 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Upload size={20} /></div>
               <div>
-                <h2 className="text-lg font-black text-gray-900">Paso 1. Carga del archivo</h2>
+                <h2 className="text-lg font-black text-gray-900">Paso 2. Carga del archivo</h2>
                 <p className="text-sm text-gray-500">Se valida la estructura antes de ejecutar cambios reales.</p>
               </div>
             </div>
             <div className="mt-6 rounded-[24px] border-2 border-dashed border-primary/20 bg-slate-50/80 p-6">
-              <input id="student-import-upload" type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" />
-              <label htmlFor="student-import-upload" className="flex cursor-pointer flex-col items-center gap-4 rounded-[20px] border border-white/80 bg-white px-6 py-10 text-center shadow-sm hover:bg-slate-50">
+              <input id="student-import-upload" type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" disabled={!selectedCampus || !selectedProgram} />
+              <label htmlFor="student-import-upload" className={`flex flex-col items-center gap-4 rounded-[20px] border border-white/80 bg-white px-6 py-10 text-center shadow-sm ${selectedCampus && selectedProgram ? 'cursor-pointer hover:bg-slate-50' : 'cursor-not-allowed opacity-60'}`}>
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary"><FileSpreadsheet size={30} /></div>
                 <div>
-                  <p className="text-base font-bold text-gray-800">Haz clic para cargar el Excel de participantes</p>
+                  <p className="text-base font-bold text-gray-800">
+                    {selectedCampus && selectedProgram
+                      ? 'Haz clic para cargar el Excel de participantes'
+                      : 'Primero define recinto y programa del lote'}
+                  </p>
                   <p className="text-sm text-gray-500">Formatos permitidos: .xlsx y .xls</p>
                 </div>
               </label>
@@ -274,8 +446,8 @@ export default function ImportGraduatesPage() {
           {previewRows.length > 0 && !result && (
             <div className="rounded-[28px] border border-gray-100 bg-white shadow-sm">
               <div className="border-b border-gray-100 px-6 py-5">
-                <h2 className="text-lg font-black text-gray-900">Paso 2. Prevalidacion del lote</h2>
-                <p className="text-sm text-gray-500">Revisa antes de importar que filas crean, actualizan, se omiten o fallan.</p>
+                <h2 className="text-lg font-black text-gray-900">Paso 3. Prevalidación del lote</h2>
+                <p className="text-sm text-gray-500">Revisa antes de importar qué filas crean, actualizan, se omiten o fallan.</p>
               </div>
               <div className="grid gap-4 border-b border-gray-100 px-6 py-5 md:grid-cols-5">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Filas</div><div className="mt-2 text-3xl font-black text-slate-900">{summary.total}</div></div>
@@ -314,17 +486,25 @@ export default function ImportGraduatesPage() {
                 </div>
                 <div className="space-y-4">
                   <div className="rounded-[24px] border border-primary/10 bg-primary/[0.03] p-5">
+                    <h3 className="font-black text-gray-900">Contexto que se aplicará</h3>
+                    <div className="mt-4 space-y-3 text-sm text-slate-600">
+                      <p><span className="font-bold text-gray-800">Recinto:</span> {selectedCampus?.name || 'Pendiente'}</p>
+                      <p><span className="font-bold text-gray-800">Programa:</span> {selectedProgram?.name || 'Pendiente'}</p>
+                      <p><span className="font-bold text-gray-800">Área:</span> {selectedAcademicArea?.name || 'Sin área global'}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-[24px] border border-primary/10 bg-white p-5">
                     <h3 className="font-black text-gray-900">Checklist operativo</h3>
                     <ul className="mt-4 space-y-3 text-sm text-slate-600">
-                      <li>{missingColumns.length === 0 ? 'Si' : 'No'} hay columnas minimas requeridas.</li>
-                      <li>{summary.warning} filas requieren revision manual.</li>
-                      <li>{summary.error} filas fallaran si las dejas en el lote.</li>
+                      <li>{missingColumns.length === 0 ? 'Sí' : 'No'} hay columnas mínimas requeridas.</li>
+                      <li>{summary.warning} filas requieren revisión manual.</li>
+                      <li>{summary.error} filas fallarán si las dejas en el lote.</li>
                       <li>{summary.skip} filas no aportan cambios nuevos.</li>
                     </ul>
                   </div>
-                  <button onClick={handleImport} disabled={loading || missingColumns.length > 0} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-sm font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+                  <button onClick={handleImport} disabled={loading || missingColumns.length > 0 || !selectedCampus || !selectedProgram} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-sm font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus size={18} />}
-                    {loading ? 'Procesando lote...' : 'Paso 3. Iniciar importacion'}
+                    {loading ? 'Procesando lote...' : 'Paso 4. Iniciar importación'}
                   </button>
                 </div>
               </div>
@@ -341,15 +521,15 @@ export default function ImportGraduatesPage() {
             <div className="mt-5 space-y-4">
               <div><p className="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-gray-500">Requeridas</p><div className="flex flex-wrap gap-2">{REQUIRED_COLUMNS.map((column) => <span key={column} className="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-bold text-red-700">{column}</span>)}</div></div>
               <div><p className="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-gray-500">Opcionales</p><div className="flex flex-wrap gap-2">{OPTIONAL_COLUMNS.map((column) => <span key={column} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700">{column}</span>)}</div></div>
-              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4 text-sm text-amber-700"><p className="font-bold">Compatibilidad temporal</p><p className="mt-1">Se admite la columna legacy <span className="font-mono">Nombre</span>, pero la prevalidacion la marcara para revision.</p></div>
+              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4 text-sm text-amber-700"><p className="font-bold">Compatibilidad temporal</p><p className="mt-1">Se admite la columna legacy <span className="font-mono">Nombre</span>. La columna <span className="font-mono">Carrera</span> queda solo como referencia; el programa oficial del lote lo define el catálogo seleccionado.</p></div>
             </div>
           </div>
           <div className="rounded-[28px] border border-gray-100 bg-white p-6 shadow-sm">
-            <h2 className="font-black text-gray-900">Que debes esperar</h2>
+            <h2 className="font-black text-gray-900">Qué debes esperar</h2>
             <ul className="mt-4 space-y-3 text-sm text-gray-600">
-              <li>Las filas validas crean o actualizan participantes.</li>
-              <li>Las filas sin cambios se omiten con detalle explicito.</li>
-              <li>Los errores quedan visibles antes y despues del lote.</li>
+              <li>Las filas válidas crean o actualizan participantes con recinto y programa institucionales.</li>
+              <li>Las filas sin cambios se omiten con detalle explícito.</li>
+              <li>Los errores quedan visibles antes y después del lote.</li>
               <li>Este flujo no genera certificados.</li>
             </ul>
           </div>

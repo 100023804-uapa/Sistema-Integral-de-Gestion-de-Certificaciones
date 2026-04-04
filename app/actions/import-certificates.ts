@@ -1,11 +1,15 @@
 'use server';
 
-import { getCreateCertificateUseCase, getStudentRepository } from '@/lib/container';
+import { getCertificateTemplateRepository, getCreateCertificateUseCase, getStudentRepository } from '@/lib/container';
 import { CreateStudentDTO } from '@/lib/domain/entities/Student';
 import {
   buildCertificateImportPreviewRows,
   CertificateImportPreviewRow,
 } from '@/lib/application/utils/certificate-import';
+import {
+  getTemplateIssuancePolicyMessage,
+  isTemplateApprovedForIssuance,
+} from '@/lib/config/certificate-template-policy';
 
 const studentRepo = getStudentRepository();
 
@@ -143,6 +147,27 @@ export async function importCertificatesFromExcel(
 
   if (!options.campusId?.trim()) {
     throw new Error('Debes seleccionar un recinto antes de importar certificados.');
+  }
+
+  if (!options.templateId?.trim()) {
+    throw new Error(
+      'Debes seleccionar una plantilla institucional para todos los certificados del lote.'
+    );
+  }
+
+  if (!options.signer1Id?.trim()) {
+    throw new Error(
+      'Debes seleccionar una autoridad firmante principal para todos los certificados del lote.'
+    );
+  }
+
+  const selectedTemplate = await getCertificateTemplateRepository().findById(options.templateId);
+  if (!selectedTemplate || !selectedTemplate.isActive) {
+    throw new Error('La plantilla seleccionada no existe o está inactiva.');
+  }
+
+  if (!isTemplateApprovedForIssuance(selectedTemplate)) {
+    throw new Error(getTemplateIssuancePolicyMessage());
   }
 
   const createCertificateUseCase = getCreateCertificateUseCase();

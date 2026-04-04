@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, BarChart3, Loader2, Download, FileText, CheckCircle2, AlertTriangle, Clock3, Filter } from 'lucide-react';
+import { ArrowLeft, BarChart3, Loader2, Download, FileText, CheckCircle2, Clock3, Filter, Users } from 'lucide-react';
 import { getCertificateRepository, getListCampusesUseCase, getListAcademicAreasUseCase } from '@/lib/container';
 import { Certificate } from '@/lib/domain/entities/Certificate';
 import { Campus } from '@/lib/container';
@@ -11,6 +11,8 @@ import {
   getCertificateStatusLabel,
   isCertificateBlocked,
   isCertificateEmitted,
+  isCertificateInWorkflow,
+  isCertificatePublished,
 } from '@/lib/types/certificateStatus';
 
 interface MonthlyPoint {
@@ -212,6 +214,7 @@ export default function ReportsPage() {
               <option value="pending_signature">Espera de firma</option>
               <option value="signed">Firmado</option>
               <option value="issued">Emitido</option>
+              <option value="available">Disponible</option>
               <option value="blocked_payment">Bloqueado por pago</option>
               <option value="blocked_documents">Bloqueado por documentacion</option>
               <option value="blocked_administrative">Bloqueado administrativo</option>
@@ -245,14 +248,14 @@ export default function ReportsPage() {
       ) : (
         <>
           <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-            Los reportes se estan calculando con todos los certificados recuperados del repositorio actual, no con una carga parcial.
+            Este panel se calcula con el estado operativo real de los certificados filtrados, no con métricas legacy de emisión.
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard icon={FileText} label="Certificados Analizados" value={report.total.toString()} />
-            <MetricCard icon={CheckCircle2} label="Emitidos" value={report.active.toString()} tone="green" />
-            <MetricCard icon={AlertTriangle} label="Bloqueados" value={report.revoked.toString()} tone="red" />
-            <MetricCard icon={Clock3} label="En Flujo" value={report.expired.toString()} tone="gray" />
+            <MetricCard icon={Users} label="Participantes Únicos" value={report.uniqueParticipants.toString()} tone="blue" />
+            <MetricCard icon={BarChart3} label="Programas Representados" value={report.uniquePrograms.toString()} tone="gray" />
+            <MetricCard icon={Clock3} label="En Flujo" value={report.inWorkflow.toString()} tone="gray" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -268,24 +271,40 @@ export default function ReportsPage() {
 
             <section className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
               <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" /> Ultimos 6 Meses
+                <BarChart3 className="h-5 w-5 text-primary" /> Estado Operativo
               </h2>
-              <div className="space-y-3">
-                {report.monthly.map((point) => (
-                  <div key={point.label} className="flex items-center gap-3 text-sm">
-                    <div className="w-24 text-gray-500">{point.label}</div>
-                    <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                      <div
-                        className="h-full bg-primary"
-                        style={{ width: `${report.maxMonthly > 0 ? (point.count / report.maxMonthly) * 100 : 0}%` }}
-                      />
-                    </div>
-                    <div className="w-8 text-right font-bold text-gray-700">{point.count}</div>
-                  </div>
-                ))}
+              <div className="space-y-3 text-sm">
+                <TypeRow label="Borrador" value={report.byStatus.draft} total={report.total} />
+                <TypeRow label="Pendiente de revisión" value={report.byStatus.pending_review} total={report.total} />
+                <TypeRow label="Verificado" value={report.byStatus.verified} total={report.total} />
+                <TypeRow label="Pendiente de firma" value={report.byStatus.pending_signature} total={report.total} />
+                <TypeRow label="Firmado" value={report.byStatus.signed} total={report.total} />
+                <TypeRow label="Emitido interno" value={report.byStatus.issued} total={report.total} />
+                <TypeRow label="Publicado" value={report.byStatus.available + report.byStatus.active} total={report.total} />
+                <TypeRow label="Bloqueado / Cancelado" value={report.blocked} total={report.total} />
               </div>
             </section>
           </div>
+
+          <section className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" /> Registros en los Últimos 6 Meses
+            </h2>
+            <div className="space-y-3">
+              {report.monthly.map((point) => (
+                <div key={point.label} className="flex items-center gap-3 text-sm">
+                  <div className="w-24 text-gray-500">{point.label}</div>
+                  <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                    <div
+                      className="h-full bg-primary"
+                      style={{ width: `${report.maxMonthly > 0 ? (point.count / report.maxMonthly) * 100 : 0}%` }}
+                    />
+                  </div>
+                  <div className="w-8 text-right font-bold text-gray-700">{point.count}</div>
+                </div>
+              ))}
+            </div>
+          </section>
         </>
       )}
     </div>
@@ -339,20 +358,31 @@ function TypeRow({ label, value, total }: { label: string; value: number; total:
 
 function buildReport(certificates: Certificate[]) {
   const total = certificates.length;
-  const active = certificates.filter((c) => isCertificateEmitted(c.status)).length;
-  const revoked = certificates.filter((c) => isCertificateBlocked(c.status)).length;
-  const expired = certificates.filter(
-    (c) => !isCertificateEmitted(c.status) && !isCertificateBlocked(c.status)
-  ).length;
+  const published = certificates.filter((c) => isCertificatePublished(c.status)).length;
+  const blocked = certificates.filter((c) => isCertificateBlocked(c.status)).length;
+  const inWorkflow = certificates.filter((c) => isCertificateInWorkflow(c.status)).length;
+  const uniqueParticipants = new Set(certificates.map((c) => c.studentId).filter(Boolean)).size;
+  const uniquePrograms = new Set(certificates.map((c) => c.programId || c.academicProgram).filter(Boolean)).size;
 
   const byType = {
     CAP: certificates.filter((c) => c.type === 'CAP').length,
     PROFUNDO: certificates.filter((c) => c.type === 'PROFUNDO').length,
   };
 
+  const byStatus = {
+    draft: certificates.filter((c) => c.status === 'draft').length,
+    pending_review: certificates.filter((c) => c.status === 'pending_review').length,
+    verified: certificates.filter((c) => c.status === 'verified').length,
+    pending_signature: certificates.filter((c) => c.status === 'pending_signature').length,
+    signed: certificates.filter((c) => c.status === 'signed').length,
+    issued: certificates.filter((c) => c.status === 'issued').length,
+    available: certificates.filter((c) => c.status === 'available').length,
+    active: certificates.filter((c) => c.status === 'active').length,
+  };
+
   const monthly = lastSixMonths().map((entry) => {
     const count = certificates.filter((cert) => {
-      const date = cert.issueDate;
+      const date = cert.createdAt;
       return date.getFullYear() === entry.year && date.getMonth() === entry.month;
     }).length;
 
@@ -364,7 +394,18 @@ function buildReport(certificates: Certificate[]) {
 
   const maxMonthly = monthly.reduce((max, point) => Math.max(max, point.count), 0);
 
-  return { total, active, revoked, expired, byType, monthly, maxMonthly };
+  return {
+    total,
+    published,
+    blocked,
+    inWorkflow,
+    uniqueParticipants,
+    uniquePrograms,
+    byType,
+    byStatus,
+    monthly,
+    maxMonthly,
+  };
 }
 
 function lastSixMonths(): Array<{ label: string; month: number; year: number }> {

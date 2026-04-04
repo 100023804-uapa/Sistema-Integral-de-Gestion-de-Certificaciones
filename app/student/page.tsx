@@ -106,7 +106,8 @@ export default async function StudentPortalPage({ searchParams }: StudentPagePro
               </p>
               <p className="text-sm text-gray-500">
                 Matrícula: <span className="font-semibold">{student.studentId}</span>
-                {student.career ? ` · ${student.career}` : ''}
+                {student.programName ? ` · ${student.programName}` : student.career ? ` · ${student.career}` : ''}
+                {student.campusName ? ` · ${student.campusName}` : ''}
               </p>
             </div>
           </div>

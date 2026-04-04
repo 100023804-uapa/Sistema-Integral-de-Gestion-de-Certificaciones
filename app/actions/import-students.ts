@@ -31,6 +31,15 @@ export type StudentImportResult = {
   details: StudentImportDetail[];
 };
 
+export type StudentImportOptions = {
+  campusId: string;
+  campusName: string;
+  programId: string;
+  programName: string;
+  academicAreaId?: string;
+  academicAreaName?: string;
+};
+
 function buildUpdates(
   existing: {
     firstName: string;
@@ -39,8 +48,15 @@ function buildUpdates(
     cedula?: string;
     phone?: string;
     career?: string;
+    programId?: string;
+    programNameSnapshot?: string;
+    campusId?: string;
+    campusNameSnapshot?: string;
+    academicAreaId?: string;
+    academicAreaNameSnapshot?: string;
   },
-  row: StudentImportPreviewRow
+  row: StudentImportPreviewRow,
+  options: StudentImportOptions
 ) {
   const updates: Record<string, string> = {};
 
@@ -64,16 +80,46 @@ function buildUpdates(
     updates.phone = row.phone;
   }
 
-  if (row.career && row.career !== (existing.career || '')) {
-    updates.career = row.career;
+  if (options.programName !== (existing.programNameSnapshot || existing.career || '')) {
+    updates.programNameSnapshot = options.programName;
+    updates.career = options.programName;
+  }
+
+  if (options.programId !== (existing.programId || '')) {
+    updates.programId = options.programId;
+  }
+
+  if (options.campusId !== (existing.campusId || '')) {
+    updates.campusId = options.campusId;
+  }
+
+  if (options.campusName !== (existing.campusNameSnapshot || '')) {
+    updates.campusNameSnapshot = options.campusName;
+  }
+
+  if ((options.academicAreaId || '') !== (existing.academicAreaId || '')) {
+    updates.academicAreaId = options.academicAreaId || '';
+  }
+
+  if ((options.academicAreaName || '') !== (existing.academicAreaNameSnapshot || '')) {
+    updates.academicAreaNameSnapshot = options.academicAreaName || '';
   }
 
   return updates;
 }
 
 export async function importStudentsFromExcel(
-  rawRows: Record<string, unknown>[]
+  rawRows: Record<string, unknown>[],
+  options: StudentImportOptions
 ): Promise<StudentImportResult> {
+  if (!options.campusId?.trim()) {
+    throw new Error('Debes seleccionar un recinto para importar participantes.');
+  }
+
+  if (!options.programId?.trim()) {
+    throw new Error('Debes seleccionar un programa académico para importar participantes.');
+  }
+
   const previewRows = buildStudentImportPreviewRows(rawRows);
   const details: StudentImportDetail[] = [];
 
@@ -120,7 +166,13 @@ export async function importStudentsFromExcel(
           email: row.email,
           cedula: row.cedula || undefined,
           phone: row.phone || undefined,
-          career: row.career || undefined,
+          career: options.programName,
+          programId: options.programId,
+          programNameSnapshot: options.programName,
+          campusId: options.campusId,
+          campusNameSnapshot: options.campusName,
+          academicAreaId: options.academicAreaId || undefined,
+          academicAreaNameSnapshot: options.academicAreaName || undefined,
         };
 
         await studentRepo.create(newStudent);
@@ -135,7 +187,7 @@ export async function importStudentsFromExcel(
         continue;
       }
 
-      const updates = buildUpdates(existingStudent, row);
+      const updates = buildUpdates(existingStudent, row, options);
 
       if (!Object.keys(updates).length) {
         skipped += 1;

@@ -142,6 +142,16 @@ export class TransitionStateUseCase {
         throw new Error('Debe generarse el PDF final antes de emitir el certificado');
       }
     }
+
+    if (newState === 'available') {
+      const certificate = await getCertificateRepository().findById(certificateId);
+
+      if (!certificate?.pdfUrl) {
+        throw new Error(
+          'El certificado debe tener PDF final antes de publicarse como disponible'
+        );
+      }
+    }
   }
 
 }
