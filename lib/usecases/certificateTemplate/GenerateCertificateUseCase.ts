@@ -162,10 +162,15 @@ export class GenerateCertificateUseCase {
     );
 
     await certificateRepository.updateGeneratedAssets(certificateId, {
-      pdfUrl: generatedCertificate.pdfUrl,
       qrCodeUrl: generatedCertificate.qrCodeUrl,
       templateId,
     });
+
+    await certificateRepository.updatePdfAsset(
+      certificateId,
+      generatedCertificate.pdfUrl,
+      generatedCertificate.pdfStorageKey ?? null
+    );
 
     await transitionStateUseCase.execute(
       certificateId,
@@ -177,6 +182,8 @@ export class GenerateCertificateUseCase {
         pdfUrl: generatedCertificate.pdfUrl,
         qrCodeUrl: generatedCertificate.qrCodeUrl,
         templateId,
+        pdfStorageKey: generatedCertificate.pdfStorageKey ?? null,
+        pdfStorageProvider: generatedCertificate.metadata.storageProvider ?? 'uploadthing',
       }
     );
 

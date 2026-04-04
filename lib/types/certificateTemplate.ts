@@ -103,6 +103,7 @@ export interface GeneratedCertificate {
   certificateId: string;
   templateId: string;
   pdfUrl: string;
+  pdfStorageKey?: string;
   qrCodeUrl: string;
   generatedAt: Date;
   generatedBy: string;
@@ -110,6 +111,7 @@ export interface GeneratedCertificate {
     fileSize: number;
     pageCount: number;
     templateVersion: string;
+    storageProvider?: string;
   };
 }
 

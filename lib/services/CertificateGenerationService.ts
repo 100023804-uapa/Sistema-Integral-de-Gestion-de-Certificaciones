@@ -2,6 +2,7 @@ import { PDFGenerationService } from './PDFGenerationService';
 import { QRCodeService } from './QRCodeService';
 import { GeneratedCertificate, CertificateTemplate } from '@/lib/types/certificateTemplate';
 import { getCertificateRepository } from '@/lib/container';
+import { uploadCertificatePdfToUploadThing } from '@/lib/server/uploadthing';
 
 export interface CertificateGenerationOptions {
   includeQR?: boolean;
@@ -118,21 +119,23 @@ export class CertificateGenerationService {
       });
 
       // 6. Subir PDF a storage (simulado)
-      const pdfUrl = await this.uploadPDF(finalPDF, data.id, template.id);
+      const uploadedPdf = await this.uploadPDF(finalPDF, data.id, data.folio, template.id);
 
       // 7. Crear registro del certificado generado
       const generatedCertificate: GeneratedCertificate = {
         id: '', // Se generaría en la base de datos
         certificateId: data.id,
         templateId: template.id,
-        pdfUrl,
+        pdfUrl: uploadedPdf.url,
+        pdfStorageKey: uploadedPdf.key,
         qrCodeUrl,
         generatedAt: new Date(),
         generatedBy,
         metadata: {
           fileSize: finalPDF.length,
           pageCount: 1,
-          templateVersion: '1.0'
+          templateVersion: '1.0',
+          storageProvider: 'uploadthing',
         } as any
       };
 
@@ -243,18 +246,17 @@ export class CertificateGenerationService {
     };
   }
 
-  private async uploadPDF(pdfBuffer: Buffer, certificateId: string, templateId: string): Promise<string> {
-    // Simulación de subida a storage
-    // En producción, esto usaría Firebase Storage, AWS S3, etc.
-
-    const fileName = `certificates/${certificateId}/${templateId}.pdf`;
-    const storageUrl = `https://storage.googleapis.com/certificates-bucket/${fileName}`;
-
-    // Simulación de subida
-    console.log(`PDF would be uploaded to: ${fileName}`);
-    console.log(`PDF size: ${pdfBuffer.length} bytes`);
-
-    return storageUrl;
+  private async uploadPDF(
+    pdfBuffer: Buffer,
+    certificateId: string,
+    folio: string,
+    templateId: string
+  ): Promise<{ url: string; key: string }> {
+    return uploadCertificatePdfToUploadThing(pdfBuffer, {
+      certificateId,
+      folio,
+      templateId,
+    });
   }
 
   async generateBatchCertificates(

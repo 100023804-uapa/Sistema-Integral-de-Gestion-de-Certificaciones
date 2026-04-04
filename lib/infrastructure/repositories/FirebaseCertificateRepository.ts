@@ -305,6 +305,16 @@ export class FirebaseCertificateRepository implements ICertificateRepository {
             updatePayload['metadata.pdfStorageKey'] = storageKey || null;
         }
 
+        if (typeof pdfUrl === 'string' && pdfUrl.trim()) {
+            if (pdfUrl.includes('ufs.sh') || pdfUrl.includes('uploadthing')) {
+                updatePayload['metadata.pdfStorageProvider'] = 'uploadthing';
+            } else if (pdfUrl.includes('storage.googleapis.com')) {
+                updatePayload['metadata.pdfStorageProvider'] = 'gcs';
+            }
+        } else if (pdfUrl === null) {
+            updatePayload['metadata.pdfStorageProvider'] = null;
+        }
+
         await updateDoc(docRef, updatePayload);
     }
 

@@ -62,6 +62,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
+    if (certificate.pdfUrl.includes('storage.googleapis.com')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Este certificado fue emitido con un almacenamiento legado y debe reemitirse para descargarlo desde el portal.',
+        },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.redirect(new URL(certificate.pdfUrl, request.url));
   } catch (error) {
     console.error('Error downloading student certificate:', error);
