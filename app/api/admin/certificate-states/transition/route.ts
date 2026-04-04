@@ -28,7 +28,9 @@ export async function POST(request: NextRequest) {
     );
 
     if (newState.currentState === 'pending_review') {
-      await notifyPendingReview(newState.certificateId, newState.comments);
+      void notifyPendingReview(newState.certificateId, newState.comments).catch((error) => {
+        console.error('Error sending pending review notification:', error);
+      });
     }
 
     if (
@@ -37,16 +39,18 @@ export async function POST(request: NextRequest) {
       newState.metadata &&
       typeof newState.metadata.previousChangedBy === 'string'
     ) {
-      await notifyReturnedToDraft(
+      void notifyReturnedToDraft(
         newState.certificateId,
         newState.metadata.previousChangedBy,
         newState.comments,
         currentUser.uid
-      );
+      ).catch((error) => {
+        console.error('Error sending returned to draft notification:', error);
+      });
     }
 
     if (newState.currentState === 'available') {
-      await notifyCertificateIssued(newState.certificateId).catch((error) => {
+      void notifyCertificateIssued(newState.certificateId).catch((error) => {
         console.error('Error sending available certificate notification:', error);
       });
     }

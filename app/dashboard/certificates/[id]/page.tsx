@@ -269,6 +269,10 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
   const statusLabel = getCertificateStatusLabel(certificate.status);
   const restrictionActive = certificate.restriction?.active === true;
   const hasOfficialDocument = Boolean(certificate.pdfUrl && !restrictionActive);
+  const previewFrameWidth =
+    certificate.templateSnapshot?.layout?.orientation === 'portrait'
+      ? 850
+      : 1100;
   const canApplyRestriction = !restrictionActive && [
     'verified',
     'pending_signature',
@@ -357,12 +361,18 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
                             <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
                                 Esta vista carga el PDF oficial emitido. La descarga interna utiliza el mismo documento persistido para evitar diferencias entre preview y archivo final.
                             </div>
-                            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+                            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3">
+                                <p className="mb-3 text-xs text-gray-500">
+                                    Si la plantilla es horizontal, desplázate dentro del recuadro para revisar el documento completo.
+                                </p>
+                                <div className="overflow-auto rounded-xl border border-gray-200 bg-white">
                                 <iframe
                                     src={`${officialDocumentUrl}?disposition=inline`}
                                     title={`Documento oficial ${certificate.folio}`}
-                                    className="h-[900px] w-full bg-white"
+                                    className="h-[900px] bg-white"
+                                    style={{ width: `${previewFrameWidth}px`, minWidth: `${previewFrameWidth}px` }}
                                 />
+                                </div>
                             </div>
                         </div>
                     ) : (
@@ -375,12 +385,18 @@ export default function CertificateDetailsPage({ params }: { params: any }) {
                                         : 'El PDF oficial aun no existe o no esta accesible. Se muestra una vista operativa de referencia con los datos del certificado.'}
                             </div>
                             {previewHtml ? (
-                                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+                                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3">
+                                    <p className="mb-3 text-xs text-gray-500">
+                                        Si la plantilla es horizontal, desplázate dentro del recuadro para revisar el certificado completo antes de continuar el flujo.
+                                    </p>
+                                    <div className="overflow-auto rounded-xl border border-gray-200 bg-white">
                                     <iframe
                                         srcDoc={previewHtml}
                                         title={`Vista previa operativa ${certificate.folio}`}
-                                        className="h-[900px] w-full bg-white"
+                                        className="h-[900px] bg-white"
+                                        style={{ width: `${previewFrameWidth}px`, minWidth: `${previewFrameWidth}px` }}
                                     />
+                                    </div>
                                 </div>
                             ) : (
                                 <>
