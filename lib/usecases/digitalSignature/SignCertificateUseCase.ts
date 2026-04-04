@@ -10,7 +10,6 @@ export class SignCertificateUseCase {
   async execute(
     data: {
       certificateId: string;
-      signatureBase64: string;
       comments?: string;
       ipAddress?: string;
       userAgent?: string;
@@ -27,17 +26,8 @@ export class SignCertificateUseCase {
       throw new Error('El ID del certificado es obligatorio');
     }
 
-    if (!data.signatureBase64?.trim()) {
-      throw new Error('La firma digital es obligatoria');
-    }
-
     if (!signerId?.trim()) {
       throw new Error('El ID del firmante es obligatorio');
-    }
-
-    // Validar tamaño de la firma
-    if (data.signatureBase64.length > 1048576) { // 1MB
-      throw new Error('La firma digital es demasiado grande');
     }
 
     // Verificar que exista una solicitud de firma pendiente
@@ -63,7 +53,6 @@ export class SignCertificateUseCase {
     const signature = await this.signatureRepository.createSignature({
       certificateId: data.certificateId,
       signatureData: {
-        signatureBase64: data.signatureBase64,
         comments: data.comments,
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
@@ -79,7 +68,7 @@ export class SignCertificateUseCase {
       'signed',
       signerId,
       signerRole,
-      data.comments || 'Certificado firmado digitalmente',
+      data.comments || 'Certificado aprobado por usuario interno autorizado',
       {
         signerId,
         signatureId: signature.id,

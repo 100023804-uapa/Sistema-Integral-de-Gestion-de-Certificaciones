@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
       const signature = await signCertificateUseCase.execute(
         {
           certificateId: body.certificateId,
-          signatureBase64: body.signatureBase64,
           comments: body.comments,
           ipAddress:
             request.headers.get('x-forwarded-for') ||

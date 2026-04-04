@@ -11,7 +11,6 @@ import {
   XCircle,
 } from 'lucide-react';
 
-import { SignatureCanvas } from '@/components/signatures/SignatureCanvas';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import {
   SIGNATURE_STATUS_LABELS,
@@ -311,7 +310,7 @@ export default function DigitalSignaturesPage() {
                     className="flex-1 px-3 py-2 bg-primary text-white rounded-md hover:bg-primary/90 text-sm flex items-center justify-center gap-1"
                   >
                     <PenTool size={16} />
-                    Firmar
+                    Aprobar
                   </button>
                   <button
                     onClick={() => handleReject(request)}
@@ -405,13 +404,11 @@ function SignatureModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [signatureData, setSignatureData] = useState('');
   const [comments, setComments] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signatureData) return;
 
     setLoading(true);
 
@@ -424,7 +421,6 @@ function SignatureModal({
         body: JSON.stringify({
           action: 'sign',
           certificateId: request.certificateId,
-          signatureBase64: signatureData,
           comments,
         }),
       });
@@ -448,7 +444,7 @@ function SignatureModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Firmar Certificado</h2>
+          <h2 className="text-xl font-bold">Aprobar Certificado</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             ×
           </button>
@@ -464,11 +460,12 @@ function SignatureModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Firma Digital *</label>
-            <SignatureCanvas value={signatureData} onChange={setSignatureData} disabled={loading} />
-            <p className="text-xs text-gray-500 mt-1">
-              * La firma digital es obligatoria y debe ser clara y legible
+          <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <p className="font-medium">Aprobación operativa</p>
+            <p className="mt-1">
+              Esta acción aprueba el certificado para continuar el flujo interno. El PDF final usará
+              únicamente las firmas configuradas en <span className="font-medium">Firmantes Autorizados</span>,
+              junto con el sello y el QR.
             </p>
           </div>
 
@@ -487,8 +484,8 @@ function SignatureModal({
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
             <p className="text-sm text-yellow-800">
-              <strong>Importante:</strong> Al firmar este certificado, confirmas que toda la
-              información es correcta y auténtica.
+              <strong>Importante:</strong> Al aprobar este certificado, confirmas que la
+              información está lista para emisión según el firmante institucional configurado.
             </p>
           </div>
 
@@ -502,10 +499,10 @@ function SignatureModal({
             </button>
             <button
               type="submit"
-              disabled={loading || !signatureData}
+              disabled={loading}
               className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50"
             >
-              {loading ? 'Firmando...' : 'Firmar Certificado'}
+              {loading ? 'Aprobando...' : 'Aprobar Certificado'}
             </button>
           </div>
         </form>

@@ -165,7 +165,7 @@ export class CertificateGenerationService {
       '{{grade}}': data.grade || '',
       '{{description}}': data.description || '',
       '{{verificationUrl}}': data.verificationUrl || '',
-      '{{digitalSignature}}': options.includeSignature ? (data.digitalSignature || '<div class="signature-placeholder">Firma Digital</div>') : '',
+      '{{digitalSignature}}': '',
       '{{signatureDate}}': data.signatureDate || new Date().toLocaleDateString('es-ES'),
       '{{verificationQR}}': data.qrCode ? `<img src="${data.qrCode}" alt="QR" class="qr-code" />` : (options.includeQR ? '<img src="/qr-placeholder.png" alt="QR" class="qr-code" />' : ''),
       '{{qrCode}}': data.qrCode ? `<img src="${data.qrCode}" alt="QR" class="qr-code" />` : '',

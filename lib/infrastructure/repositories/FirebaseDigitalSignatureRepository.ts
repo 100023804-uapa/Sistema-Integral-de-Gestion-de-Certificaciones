@@ -173,7 +173,6 @@ export class FirebaseDigitalSignatureRepository {
       signerEmail: signer.email,
       signerRole: signer.roleCode,
       signatureData: {
-        signatureBase64: data.signatureData.signatureBase64,
         timestamp: Timestamp.fromDate(now),
         ipAddress: data.signatureData.ipAddress || '',
         userAgent: data.signatureData.userAgent || '',
@@ -463,7 +462,7 @@ export class FirebaseDigitalSignatureRepository {
             signatureBase64:
               typeof rawSignatureData.signatureBase64 === 'string'
                 ? rawSignatureData.signatureBase64
-                : '',
+                : undefined,
             timestamp: this.toDate(rawSignatureData.timestamp) || new Date(),
             ipAddress:
               typeof rawSignatureData.ipAddress === 'string'

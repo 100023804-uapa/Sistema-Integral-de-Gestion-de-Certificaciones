@@ -102,7 +102,6 @@ export default function EditTemplatePage({ params }: { params: Promise<{ id: str
     { id: 'folio', name: 'Folio', type: 'text', required: true },
     { id: 'campusName', name: 'Nombre del Recinto', type: 'text', required: true },
     { id: 'verificationQR', name: 'Código QR de Verificación', type: 'qr', required: false },
-    { id: 'digitalSignature', name: 'Firma Digital (Genérica)', type: 'signature', required: false },
     { id: 'signer1_Name', name: 'Nombre Firmante 1', type: 'text', required: false },
     { id: 'signer1_Title', name: 'Cargo Firmante 1', type: 'text', required: false },
     { id: 'signer1_SignatureImage', name: 'Firma Firmante 1 (Imagen)', type: 'image', required: false },

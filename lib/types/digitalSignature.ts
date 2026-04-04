@@ -8,7 +8,7 @@ export interface DigitalSignature {
   signerEmail: string;
   signerRole: string;
   signatureData?: {
-    signatureBase64: string;
+    signatureBase64?: string;
     timestamp: Date;
     ipAddress: string;
     userAgent: string;
@@ -78,7 +78,7 @@ export interface CreateSignatureRequest {
 export interface SignCertificateRequest {
   certificateId: string;
   signatureData: {
-    signatureBase64: string;
+    signatureBase64?: string;
     comments?: string;
     ipAddress?: string;
     userAgent?: string;

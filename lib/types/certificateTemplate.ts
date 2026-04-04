@@ -165,7 +165,7 @@ export const TEMPLATE_CONFIG = {
     date: ['issueDate', 'completionDate'],
     image: ['logo', 'seal', 'signature'],
     qr: ['verificationQR'],
-    signature: ['digitalSignature']
+    signature: ['signer1_SignatureImage', 'signer2_SignatureImage']
   },
   CSS_VARIABLES: {
     primaryColor: '#1e40af',

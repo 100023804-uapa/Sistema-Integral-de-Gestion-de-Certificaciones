@@ -5,7 +5,6 @@ import {
   getAcademicProgramRepository,
   getCampusRepository,
   getCertificateRepository,
-  getDigitalSignatureRepository,
   getSignerRepository,
   getTransitionStateUseCase,
 } from '@/lib/container';
@@ -81,14 +80,13 @@ export class GenerateCertificateUseCase {
       throw new Error('El certificado no está listo para ser emitido');
     }
 
-    const [campus, academicArea, signature] = await Promise.all([
+    const [campus, academicArea] = await Promise.all([
       certificate.campusId
         ? getCampusRepository().findById(certificate.campusId)
         : Promise.resolve(null),
       certificate.academicAreaId
         ? getAcademicAreaRepository().findById(certificate.academicAreaId)
         : Promise.resolve(null),
-      getDigitalSignatureRepository().getSignatureByCertificate(certificateId),
     ]);
 
     let signer1Data = {};
@@ -140,12 +138,6 @@ export class GenerateCertificateUseCase {
       }
     }
 
-    const signatureMarkup =
-      options.includeSignature !== false &&
-      signature?.signatureData?.signatureBase64
-        ? `<img src="${signature.signatureData.signatureBase64}" alt="Firma digital" style="max-width: 220px; max-height: 96px;" />`
-        : '';
-
     const certificateData = {
       id: certificate.id,
       folio: certificate.folio || '',
@@ -156,10 +148,8 @@ export class GenerateCertificateUseCase {
       academicAreaName: academicArea?.name || certificate.academicAreaId || '',
       certificateType: certificate.type || '',
       duration,
-      digitalSignature: signatureMarkup,
-      signatureDate: signature?.signedAt
-        ? signature.signedAt.toISOString()
-        : new Date().toISOString(),
+      digitalSignature: '',
+      signatureDate: new Date().toISOString(),
       ...signer1Data,
       ...signer2Data,
     };

@@ -17,7 +17,6 @@ const LEGACY_STATUSES = new Set(['active', 'revoked', 'expired']);
 
 type LatestSignatureRecord = {
   status: SignatureStatus | null;
-  hasSignatureAsset: boolean;
   signedAt: Date | null;
 };
 
@@ -99,18 +98,12 @@ export async function buildCertificateWorkflowSanitationReport(): Promise<Certif
     }
 
     const signedAt = toDate(data.signedAt) || toDate(data.requestedAt);
-    const signatureData =
-      data.signatureData && typeof data.signatureData === 'object'
-        ? (data.signatureData as Record<string, unknown>)
-        : {};
-    const hasSignatureAsset = Boolean(toOptionalString(signatureData.signatureBase64));
     const status = (toOptionalString(data.status) as SignatureStatus | null) || null;
     const current = latestSignatureByCertificateId.get(certificateId);
 
     if (!current || (signedAt?.getTime() || 0) >= (current.signedAt?.getTime() || 0)) {
       latestSignatureByCertificateId.set(certificateId, {
         status,
-        hasSignatureAsset,
         signedAt,
       });
     }
@@ -160,8 +153,7 @@ export async function buildCertificateWorkflowSanitationReport(): Promise<Certif
     );
     const latestSignature = latestSignatureByCertificateId.get(certificateDoc.id);
     const latestRequest = latestSignatureRequestByCertificateId.get(certificateDoc.id);
-    const hasSignedSignature =
-      latestSignature?.status === 'signed' && latestSignature.hasSignatureAsset === true;
+    const hasSignedSignature = latestSignature?.status === 'signed';
     const signatureRequestStatus = latestRequest?.status ?? null;
 
     if (LEGACY_STATUSES.has(currentStatus)) {
@@ -216,7 +208,7 @@ export async function buildCertificateWorkflowSanitationReport(): Promise<Certif
         hasSignedSignature,
         hasPdf,
         hasTemplate,
-        findings: ['Está marcado como firmado, pero no tiene una firma digital válida registrada.'],
+        findings: ['Está marcado como firmado, pero no tiene una aprobación de firma registrada.'],
         recommendedState: signatureRequestStatus === 'pending' ? 'pending_signature' : 'verified',
         cleanupActions:
           signatureRequestStatus === 'pending'
@@ -234,7 +226,7 @@ export async function buildCertificateWorkflowSanitationReport(): Promise<Certif
     const findings: string[] = [];
 
     if (!hasSignedSignature) {
-      findings.push('Publicado sin firma digital válida.');
+        findings.push('Publicado sin una aprobación de firma registrada.');
       publishedWithoutSignature += 1;
     }
 
