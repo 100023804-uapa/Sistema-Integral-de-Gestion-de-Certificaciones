@@ -22,6 +22,8 @@ import {
   Image,
   QrCode,
   PenTool,
+  Monitor,
+  Layout,
   X
 } from 'lucide-react';
 
