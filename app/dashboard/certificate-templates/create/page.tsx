@@ -23,6 +23,8 @@ import {
   Image as ImageIcon,
   QrCode,
   PenTool,
+  Monitor,
+  Layout,
   X
 } from 'lucide-react';
 
