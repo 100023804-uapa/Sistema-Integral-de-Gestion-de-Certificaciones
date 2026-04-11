@@ -97,22 +97,30 @@ export default async function VerifyPage({ searchParams }: PageProps) {
                   >
                     <Card className="overflow-hidden border border-gray-100 shadow-sm transition-all duration-300 group-hover:shadow-lg">
                       <CardContent className="p-6">
-                        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-mono font-bold text-primary">
                             {cert.folio}
                           </span>
                           <span
-                            className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${
+                            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase ${
                               cert.isValid
                                 ? 'bg-green-100 text-green-700'
                                 : 'bg-amber-100 text-amber-700'
                             }`}
                           >
-                            {cert.statusLabel}
+                            {cert.isValid ? (
+                              <ShieldCheck className="h-3 w-3" />
+                            ) : (
+                              <AlertCircle className="h-3 w-3" />
+                            )}
+                            {cert.isValid ? 'Vigente' : 'No vigente'}
                           </span>
                         </div>
 
-                        <p className="mb-2 text-lg font-bold text-gray-900">
+                        <h3 className="mb-2 text-lg font-bold text-gray-900 group-hover:text-primary transition-colors">
+                          {cert.programName}
+                        </h3>
+                        <p className="mb-3 text-sm text-gray-600">
                           {cert.message}
                         </p>
                         <div className="space-y-1 text-sm text-gray-500">

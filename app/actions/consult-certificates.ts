@@ -5,6 +5,8 @@ import { findPublicCertificateValidation } from '@/lib/server/studentPortal';
 export interface CertificateSummary {
     id: string;
     folio: string;
+    programName: string;
+    type?: string;
     verificationCode?: string;
     issueDate: string;
     status: string;

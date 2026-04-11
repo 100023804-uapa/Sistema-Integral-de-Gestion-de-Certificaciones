@@ -40,10 +40,13 @@ export async function renderCertificateTemplate(
   options: RenderCertificateTemplateOptions = {}
 ): Promise<RenderedCertificateTemplate> {
   const layout = template?.layout || DEFAULT_LAYOUT;
-  const verificationUrl =
+  const baseUrl =
     options.verificationUrl ||
-    certificate.qrCodeUrl ||
-    `https://sigce.uapa.edu.do/verify/${certificate.publicVerificationCode || certificate.folio}`;
+    (typeof window !== 'undefined' ? window.location.origin : '') ||
+    'https://sigce-pasantia.vercel.app';
+  const verificationUrl = baseUrl.startsWith('http')
+    ? `${baseUrl.replace(/\/verify.*$/, '')}/verify/${certificate.publicVerificationCode || certificate.folio}`
+    : `https://sigce-pasantia.vercel.app/verify/${certificate.publicVerificationCode || certificate.folio}`;
   const qrCodeDataUrl = options.qrCodeDataUrl || (await generateQRCodeDataUrl(verificationUrl));
   const values = buildTemplateValueMap(certificate, verificationUrl, qrCodeDataUrl);
 

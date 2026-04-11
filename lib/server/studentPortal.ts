@@ -10,6 +10,7 @@ import {
   getCertificateStatusLabel as getSharedCertificateStatusLabel,
   isCertificateBlocked,
   isCertificatePubliclyAvailable,
+  isCertificateInWorkflow,
 } from '@/lib/types/certificateStatus';
 
 const STUDENTS_COLLECTION = 'students';
@@ -73,6 +74,8 @@ export interface StudentPortalCertificateRestriction {
 export interface PublicCertificateValidation {
   id: string;
   folio: string;
+  programName: string;
+  type?: string;
   verificationCode?: string;
   issueDate: string;
   status: string;
@@ -501,19 +504,27 @@ export async function findPublicCertificateValidation(
 
   const data = doc.data() as Record<string, unknown>;
   const summary = mapCertificateSummary(doc.id, data);
+  
+  if (isCertificateInWorkflow(summary.status)) {
+    // Si el certificado aún está en una fase interna (borrador, firmado, emitido pero no publicado) 
+    // no permitimos que sea visible en el portal público.
+    return null;
+  }
+
   const isValid = isCertificateCurrentlyValid(summary.status);
   const isBlocked = isCertificateBlocked(summary.status);
+  
   const message = isValid
     ? 'El certificado existe en SIGCE, se encuentra publicado y esta vigente.'
     : isBlocked
       ? `El certificado existe en SIGCE, pero se encuentra ${summary.statusLabel.toLowerCase()}.`
-      : summary.status === 'issued'
-        ? 'El certificado existe en SIGCE y ya fue emitido, pero aun no ha sido publicado para validacion publica.'
       : 'El certificado existe en SIGCE, pero no se encuentra habilitado para uso publico.';
 
   return {
     id: summary.id,
     folio: summary.folio,
+    programName: summary.programName,
+    type: toOptionalString(data.type),
     verificationCode: summary.verificationCode,
     issueDate: summary.issueDate,
     status: summary.status,

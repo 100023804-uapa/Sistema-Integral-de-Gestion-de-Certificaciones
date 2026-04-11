@@ -9,6 +9,17 @@ import {
   replaceTemplatePlaceholders,
 } from '@/lib/application/utils/certificate-template-renderer';
 
+const getBaseUrl = () => {
+  if (typeof window !== 'undefined') return window.location.origin;
+  return process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://sigce-pasantia.vercel.app';
+};
+
+const getVerificationUrl = (cert: Partial<Certificate> | any) => {
+  const baseUrl = getBaseUrl();
+  const base = baseUrl.startsWith('http') ? baseUrl.replace(/\/verify.*$/, '') : 'https://sigce-pasantia.vercel.app';
+  return `${base}/verify/${cert.publicVerificationCode || cert.folio}`;
+};
+
 export const generateCertificatePDF = async (
   certificate: Certificate,
   template?: CertificateTemplate | null
@@ -196,7 +207,7 @@ async function generateLegacyCertificatePDF(
       if (section.type === 'qr') {
         try {
           const qrDataUrl = await QRCode.toDataURL(
-            certificate.qrCodeUrl || `https://sigce.uapa.edu.do/verify/${certificate.publicVerificationCode || certificate.folio}`
+            getVerificationUrl(certificate)
           );
           const size = Math.min(pos.width, pos.height);
           doc.addImage(qrDataUrl, 'PNG', pos.x + (pos.width - size) / 2, pos.y + (pos.height - size) / 2, size, size);
@@ -262,8 +273,7 @@ function resolveLegacyVariable(content: string, cert: Certificate): string {
     cedula: cert.cedula || cert.studentId || '',
     grade: cert.metadata?.grade || '',
     duration: cert.metadata?.duration || '',
-    verificationUrl:
-      cert.qrCodeUrl || `https://sigce.uapa.edu.do/verify/${cert.publicVerificationCode || cert.folio}`,
+    verificationUrl: getVerificationUrl(cert),
     description: cert.metadata?.description || '',
     signer1_Name: cert.metadata?.signer1_Name || '',
     signer1_Title: cert.metadata?.signer1_Title || '',
@@ -338,7 +348,7 @@ async function renderDefaultLayout(doc: jsPDF, cert: Certificate, width: number,
 
   try {
     const qrDataUrl = await QRCode.toDataURL(
-      cert.qrCodeUrl || `https://sigce.uapa.edu.do/verify/${cert.publicVerificationCode || cert.folio}`
+      getVerificationUrl(cert)
     );
     doc.addImage(qrDataUrl, 'PNG', width - 40, height - 40, 30, 30);
   } catch (error) {
