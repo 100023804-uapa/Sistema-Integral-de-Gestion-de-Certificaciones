@@ -24,6 +24,7 @@ export interface StudentPortalProfile {
   firstName: string;
   lastName: string;
   fullName: string;
+  profilePictureUrl?: string; // <--- Agregado para el frontend
   cedula?: string;
   phone?: string;
   career?: string;
@@ -220,6 +221,7 @@ function mapStudentProfile(
     firstName,
     lastName,
     fullName: buildFullName(firstName, lastName),
+    profilePictureUrl: toOptionalString(data.profilePictureUrl),
     cedula: toOptionalString(data.cedula),
     phone: toOptionalString(data.phone),
     career: toOptionalString(data.career),

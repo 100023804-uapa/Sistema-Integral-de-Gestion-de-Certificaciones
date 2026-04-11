@@ -19,6 +19,7 @@ export interface Student {
   firstName: string;
   lastName: string;
   email: string;
+  profilePictureUrl?: string; // URL alojada en UploadThing para el perfil
   cedula?: string; // Documento de identidad opcional (cédula o pasaporte)
   phone?: string;
   career?: string; // Carrera o Departamento

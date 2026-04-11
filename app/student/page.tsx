@@ -12,6 +12,7 @@ import {
   resolveSessionAccessFromSessionCookie,
 } from '@/lib/server/studentPortal';
 import { StudentLogoutButton } from '@/components/student/StudentLogoutButton';
+import { ProfileAvatar } from '@/components/student/ProfileAvatar';
 
 interface StudentPageProps {
   searchParams: Promise<{ search?: string }>;
@@ -97,18 +98,24 @@ export default async function StudentPortalPage({ searchParams }: StudentPagePro
               <ShieldCheck className="h-4 w-4" />
               Portal autenticado del participante
             </div>
-            <div>
-              <h1 className="text-3xl font-black tracking-tight text-primary">
-                Mis certificados
-              </h1>
-              <p className="text-gray-600">
-                {student.fullName} · {student.email}
-              </p>
-              <p className="text-sm text-gray-500">
-                Matrícula: <span className="font-semibold">{student.studentId}</span>
-                {student.programName ? ` · ${student.programName}` : student.career ? ` · ${student.career}` : ''}
-                {student.campusName ? ` · ${student.campusName}` : ''}
-              </p>
+            <div className="flex items-center gap-5 pt-2">
+              <ProfileAvatar 
+                fullName={student.fullName} 
+                profilePictureUrl={student.profilePictureUrl} 
+              />
+              <div>
+                <h1 className="text-3xl font-black tracking-tight text-primary">
+                  Mis certificados
+                </h1>
+                <p className="text-gray-600">
+                  {student.fullName} · {student.email}
+                </p>
+                <p className="text-sm text-gray-500">
+                  Matrícula: <span className="font-semibold">{student.studentId}</span>
+                  {student.programName ? ` · ${student.programName}` : student.career ? ` · ${student.career}` : ''}
+                  {student.campusName ? ` · ${student.campusName}` : ''}
+                </p>
+              </div>
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
