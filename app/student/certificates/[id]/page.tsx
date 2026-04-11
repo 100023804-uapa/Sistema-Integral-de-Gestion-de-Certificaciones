@@ -13,6 +13,7 @@ import {
 } from '@/lib/server/studentPortal';
 import { StudentLogoutButton } from '@/components/student/StudentLogoutButton';
 import { CertificateActions } from '@/components/certificates/CertificateActions';
+import { ProfileAvatar } from '@/components/student/ProfileAvatar';
 
 interface StudentCertificateDetailsPageProps {
   params: Promise<{ id: string }>;
@@ -116,16 +117,26 @@ export default async function StudentCertificateDetailsPage({
               {certificate.statusLabel}
             </div>
 
-            <div className="space-y-4">
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-gray-400">
-                Certificado académico
-              </p>
-              <h2 className="text-3xl font-black leading-tight text-primary md:text-4xl">
-                {certificate.programName}
-              </h2>
-              <p className="text-lg text-gray-700">
-                Emitido a <span className="font-bold">{certificate.studentName || access.student.fullName}</span>
-              </p>
+            <div className="flex flex-col gap-6 md:flex-row md:items-center py-2">
+              <div className="space-y-4 flex-1">
+                <p className="text-sm font-bold uppercase tracking-[0.2em] text-gray-400">
+                  Certificado académico
+                </p>
+                <h2 className="text-3xl font-black leading-tight text-primary md:text-4xl">
+                  {certificate.programName}
+                </h2>
+                <p className="text-lg text-gray-700">
+                  Emitido a <span className="font-bold">{certificate.studentName || access.student.fullName}</span>
+                </p>
+              </div>
+              <div className="hidden md:flex">
+                <ProfileAvatar 
+                  fullName={certificate.studentName || access.student.fullName}
+                  profilePictureUrl={access.student.profilePictureUrl}
+                  readonly
+                  className="h-28 w-28 md:h-32 md:w-32 border-4 border-white shadow-xl bg-gray-50 text-3xl"
+                />
+              </div>
             </div>
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">

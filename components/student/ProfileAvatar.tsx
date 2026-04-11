@@ -10,9 +10,11 @@ import { cn } from '@/lib/utils';
 interface ProfileAvatarProps {
   fullName: string;
   profilePictureUrl?: string;
+  className?: string;
+  readonly?: boolean;
 }
 
-export function ProfileAvatar({ fullName, profilePictureUrl }: ProfileAvatarProps) {
+export function ProfileAvatar({ fullName, profilePictureUrl, className, readonly = false }: ProfileAvatarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -46,9 +48,13 @@ export function ProfileAvatar({ fullName, profilePictureUrl }: ProfileAvatarProp
   return (
     <>
       <button
-        onClick={() => setIsOpen(true)}
-        disabled={isUpdating}
-        className="group relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-blue-100 text-blue-700 shadow-sm transition-all hover:ring-2 hover:ring-primary hover:ring-offset-2 focus:outline-none"
+        onClick={() => !readonly && setIsOpen(true)}
+        disabled={isUpdating || readonly}
+        className={cn(
+          "group relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-blue-100 text-blue-700 shadow-sm focus:outline-none",
+          !readonly && "transition-all hover:ring-2 hover:ring-primary hover:ring-offset-2",
+          className
+        )}
       >
         {profilePictureUrl ? (
           <Image
@@ -58,18 +64,20 @@ export function ProfileAvatar({ fullName, profilePictureUrl }: ProfileAvatarProp
             className="object-cover"
           />
         ) : (
-          <span className="text-xl font-bold tracking-tight">
+          <span className="font-bold tracking-tight" style={{ fontSize: 'max(1.25rem, 33%)' }}>
             {getInitials(fullName)}
           </span>
         )}
         
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-          {isUpdating ? (
-            <Loader2 className="h-6 w-6 animate-spin text-white" />
-          ) : (
-            <Camera className="h-6 w-6 text-white" />
-          )}
-        </div>
+        {!readonly && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+            {isUpdating ? (
+              <Loader2 className="h-6 w-6 animate-spin text-white" />
+            ) : (
+              <Camera className="h-6 w-6 text-white" />
+            )}
+          </div>
+        )}
       </button>
 
       {isOpen && (
